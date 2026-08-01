@@ -25,10 +25,51 @@ const S = () => {
 };
 
 // ============================================================
-// CALENDÁRIO
+// CALENDÁRIO — mês, temporada, janelas e detalhes do jogo
 // ============================================================
 let calWeek = null;
 let calMonth = 1;
+let calView = 'month'; // 'month' | 'season'
+let calComp = 'all';
+
+// Janelas de transferência em semanas (espelho de transferWindowOpen)
+const CAL_WINDOWS = [[1, 6], [20, 24]];
+
+function calFixtureById(s, key) {
+  const [compId, fixtureId] = key.split('|');
+  const comp = s.competitions.find((c) => c.id === compId);
+  const fixture = comp?.fixtures.find((f) => f.id === fixtureId);
+  return comp && fixture ? { comp, fixture } : null;
+}
+
+function openFixtureModal(s, key) {
+  const found = calFixtureById(s, key);
+  if (!found) return;
+  const { comp, fixture } = found;
+  const h = s.db.clubs[fixture.home], a = s.db.clubs[fixture.away];
+  const date = refDateInfo(fixture.week, s.year);
+  const isUser = fixture.home === s.clubId || fixture.away === s.clubId;
+  const canPlay = isUser && !fixture.played && fixture.week === s.week;
+  const winner = fixture.played ? (fixture.gh > fixture.ga ? fixture.home : fixture.ga > fixture.gh ? fixture.away : (fixture.pen?.winner === 'h' ? fixture.home : fixture.pen?.winner === 'a' ? fixture.away : null)) : null;
+  const userResult = fixture.played && isUser ? (winner === s.clubId ? 'Vitória' : winner ? 'Derrota' : 'Empate') : null;
+  const m = openModal(`
+    <div class="modal-title">${icon('trophy')} ${esc(comp.name)}</div>
+    <div class="tiny muted" style="margin:-6px 0 12px">${esc(comp.roundNames?.[fixture.round - 1] || `Rodada ${fixture.round || 1}`)} · Semana ${fixture.week} · ${esc(date.weekday)} ${esc(date.day)} de ${esc(date.month.toLowerCase())}</div>
+    <div class="fx-modal">
+      <div class="fx-team ${winner === fixture.home ? 'winner' : ''}">${crest(h, 54)}<strong>${esc(h.short)}</strong><small>${fixture.home === s.clubId ? 'Você' : 'Mandante'}</small></div>
+      <div class="fx-score">${fixture.played ? `${fixture.gh} × ${fixture.ga}` : '—'}${fixture.pen ? `<small>pên ${fixture.pen.h}-${fixture.pen.a}</small>` : ''}</div>
+      <div class="fx-team ${winner === fixture.away ? 'winner' : ''}">${crest(a, 54)}<strong>${esc(a.short)}</strong><small>${fixture.away === s.clubId ? 'Você' : 'Visitante'}</small></div>
+    </div>
+    <div class="tiny muted" style="text-align:center;margin:10px 0 4px">${fixture.neutral ? '🏟️ Campo neutro' : `🏟️ ${esc(h.stadium)}`} · ${esc(h.city || '')}${userResult ? ` · <b class="fx-res ${userResult === 'Vitória' ? 'win' : userResult === 'Derrota' ? 'loss' : ''}">${userResult}</b>` : ''}${fixture.leg ? ` · Jogo ${fixture.leg}${fixture.leg === 2 ? ' (decisão)' : ' (ida)'}` : ''}</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+      ${canPlay ? `<button class="btn primary" data-play-now>${icon('play')} Jogar agora</button>` : ''}
+      ${!fixture.played && !canPlay ? `<span class="pill">${fixture.week > s.week ? `Agendado — faltam ${fixture.week - s.week} sem.` : 'Aguardando simulação'}</span>` : ''}
+      <button class="btn ghost" data-close-x>Fechar</button>
+    </div>`);
+  m.querySelector('[data-play-now]')?.addEventListener('click', () => { closeModal(); go('match'); });
+  m.querySelector('[data-close-x]').onclick = closeModal;
+}
+
 export const calendarScreen = {
   html() {
     const s = S();
@@ -38,25 +79,38 @@ export const calendarScreen = {
     const daysInMonth = new Date(Date.UTC(s.year, calMonth + 1, 0)).getUTCDate();
     const firstDay = monthDate.getUTCDay();
     const base = Date.UTC(s.year, 0, 2);
+    const weekStartDay = (wk) => new Date(base + Math.max(0, wk - 1) * 7 * 86400000);
+    const compFilter = (comp) => calComp === 'all' || comp.id === calComp;
     const events = {};
+    const seasonFixtures = [];
     for (const comp of s.competitions) {
+      if (!compFilter(comp)) continue;
       for (const fixture of comp.fixtures) {
         if (fixture.home !== s.clubId && fixture.away !== s.clubId) continue;
-        const date = new Date(base + Math.max(0, fixture.week - 1) * 7 * 86400000);
+        seasonFixtures.push({ comp, fixture });
+        const date = weekStartDay(fixture.week);
         if (date.getUTCFullYear() !== s.year || date.getUTCMonth() !== calMonth) continue;
         const day = date.getUTCDate();
         (events[day] = events[day] || []).push({ comp, fixture });
       }
     }
+    seasonFixtures.sort((a, b) => a.fixture.week - b.fixture.week || (a.fixture.round || 0) - (b.fixture.round || 0));
+    // O mês inteiro cai dentro de alguma janela aberta?
+    const inWindow = (dayDate) => CAL_WINDOWS.some(([w1, w2]) => {
+      const d1 = weekStartDay(w1), d2 = new Date(weekStartDay(w2).getTime() + 6 * 86400000);
+      return dayDate >= d1 && dayDate <= d2;
+    });
     const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
     const cells = [];
     for (let i = 0; i < firstDay; i++) cells.push('<div class="ref-calendar-day is-empty"></div>');
     for (let day = 1; day <= daysInMonth; day++) {
       const entries = events[day] || [];
-      cells.push(`<div class="ref-calendar-day ${entries.length ? 'has-event' : ''}"><b class="ref-calendar-number">${day}</b>${entries.map(({ comp, fixture }) => {
+      const dayDate = new Date(Date.UTC(s.year, calMonth, day));
+      const marketOpen = inWindow(dayDate);
+      cells.push(`<div class="ref-calendar-day ${entries.length ? 'has-event' : ''} ${marketOpen ? 'open-window' : ''}"><b class="ref-calendar-number">${day}${marketOpen ? '<i class="win-dot" title="Janela de transferências aberta"></i>' : ''}</b>${entries.map(({ comp, fixture }) => {
         const opponent = s.db.clubs[fixture.home === s.clubId ? fixture.away : fixture.home];
-        return `<button class="ref-calendar-event" data-go-match><strong>${fixture.home === s.clubId ? 'CAS' : 'FOR'} · ${esc(opponent.short)}</strong><small>${icon('trophy')} ${fixture.played ? `${fixture.gh} × ${fixture.ga}` : `18:00 · ${esc(comp.short || comp.name)}`}</small></button>`;
+        return `<button class="ref-calendar-event" data-fx="${comp.id}|${fixture.id}"><strong>${fixture.home === s.clubId ? 'CAS' : 'FOR'} · ${esc(opponent.short)}</strong><small>${icon('trophy')} ${fixture.played ? `${fixture.gh} × ${fixture.ga}` : `18:00 · ${esc(comp.short || comp.name)}`}</small></button>`;
       }).join('')}</div>`);
     }
     while (cells.length % 7) cells.push('<div class="ref-calendar-day is-empty"></div>');
@@ -64,39 +118,81 @@ export const calendarScreen = {
     const nextHome = next ? s.db.clubs[next.fixture.home] : null;
     const nextAway = next ? s.db.clubs[next.fixture.away] : null;
     const nextIsHome = next?.fixture.home === s.clubId;
+    // Estado real das janelas
+    const windowOpen = G.transferWindowOpen(s);
+    const nextWindowWeek = s.week < CAL_WINDOWS[0][0] ? CAL_WINDOWS[0][0] : (s.week > CAL_WINDOWS[0][1] && s.week < CAL_WINDOWS[1][0]) ? CAL_WINDOWS[1][0] : (s.week > CAL_WINDOWS[1][1] ? CAL_WINDOWS[0][0] : null);
+    const windowState = windowOpen ? 'JANELA ABERTA' : 'JANELA FECHADA';
+    const windowLabel = (wk, end) => { const d = refDateInfo(wk, s.year); return end ? `${d.short.toLowerCase()}` : d.short.toLowerCase(); };
+    const myComps = s.competitions.filter((c) => c.teams.includes(s.clubId) || c.custom || c.friendly);
 
     return `
     <div class="ref-calendar">
       <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('calendar')} CALENDÁRIO</span><span></span></header>
       <section class="ref-calendar-hero">
-        <div class="ref-calendar-brand">${crest(club, 92)}<div><span class="ref-eyebrow">TEMPORADA ${s.year}</span><h1>Calendário.</h1><p>Jogos, mandos, competições e períodos de recuperação.</p></div></div>
+        <div class="ref-calendar-brand">${crest(club, 76)}<div><span class="ref-eyebrow">TEMPORADA ${s.year}</span><h1>Calendário.</h1><p>Jogos, mandos, competições e períodos de recuperação.</p></div></div>
         <div class="ref-origin">${icon('calendar')}<span><b>ORIGEM</b><strong>Tabela oficial</strong></span></div>
       </section>
 
       <section class="ref-card ref-calendar-next ref-action" data-go-match tabindex="0">
         <div><span class="ref-section-label">PRÓXIMO JOGO</span><h2>${nextDate ? `${nextDate.day} de ${nextDate.month.toLowerCase()} · 18:00` : 'Agenda livre'}</h2><p>${next ? `${icon('trophy')} ${esc(next.comp.name)} · ${next.fixture.round || 1}/${next.comp.fixtures.length || 1}` : 'Nenhum compromisso pendente.'}</p></div>
-        ${next ? `<div class="ref-calendar-matchup"><span>${crest(nextHome, 60)}<b>${esc(nextHome.short)}</b></span><strong>×</strong><span><b>${esc(nextAway.short)}</b>${crest(nextAway, 60)}</span></div><div class="ref-calendar-location"><b>${nextIsHome ? 'CASA' : 'FORA'}</b><strong>${esc(nextIsHome ? club.stadium : nextHome.stadium)}</strong></div>` : ''}
+        ${next ? `<div class="ref-calendar-matchup"><span>${crest(nextHome, 50)}<b>${esc(nextHome.short)}</b></span><strong>×</strong><span><b>${esc(nextAway.short)}</b>${crest(nextAway, 50)}</span></div><div class="ref-calendar-location"><b>${nextIsHome ? 'CASA' : 'FORA'}</b><strong>${esc(nextIsHome ? club.stadium : nextHome.stadium)}</strong></div>` : ''}
       </section>
 
-      <section class="ref-calendar-filters"><div class="ref-calendar-tabs"><button class="active">Mês</button><button>Temporada</button></div><span>${icon('sliders')}</span><select><option>Todas as competições</option>${s.competitions.map((c) => `<option>${esc(c.name)}</option>`).join('')}</select></section>
+      <section class="ref-calendar-filters">
+        <div class="ref-calendar-tabs">
+          <button class="${calView === 'month' ? 'active' : ''}" data-view="month">Mês</button>
+          <button class="${calView === 'season' ? 'active' : ''}" data-view="season">Temporada</button>
+        </div>
+        <span>${icon('sliders')}</span>
+        <select data-calcomp>
+          <option value="all" ${calComp === 'all' ? 'selected' : ''}>Todas as competições</option>
+          ${myComps.map((c) => `<option value="${c.id}" ${calComp === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </section>
 
       <section class="ref-card ref-transfer-windows">
-        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} MERCADO DE TRANSFERÊNCIAS</span><h2>Janelas da temporada</h2><span class="ref-window-state">JANELA FECHADA</span></div>
-        <div class="ref-window-grid"><div><b>1ª JANELA</b><strong>02 de jan. <small>até</small> 20 de abr.</strong><em>PRÓXIMA</em></div><div><b>2ª JANELA</b><strong>10 de jul. <small>até</small> 02 de set.</strong><em>PRÓXIMA</em></div></div>
-        <div class="ref-window-foot"><span>▢ Dias destacados no calendário indicam mercado aberto.</span><span><b>Abertura</b> e fechamento aparecem marcados nos dias exatos.</span></div>
+        <div class="ref-card-head"><span class="ref-section-label">${icon('cart')} MERCADO DE TRANSFERÊNCIAS</span><h2>Janelas da temporada</h2><span class="ref-window-state ${windowOpen ? 'open' : ''}">${windowState}</span></div>
+        <div class="ref-window-grid">
+          <div><b>1ª JANELA</b><strong>${windowLabel(CAL_WINDOWS[0][0])} <small>até</small> ${windowLabel(CAL_WINDOWS[0][1])}</strong><em>${s.week > CAL_WINDOWS[0][1] ? 'ENCERRADA' : s.week >= CAL_WINDOWS[0][0] ? 'ABERTA AGORA' : `EM ${CAL_WINDOWS[0][0] - s.week} SEM.`}</em></div>
+          <div><b>2ª JANELA</b><strong>${windowLabel(CAL_WINDOWS[1][0])} <small>até</small> ${windowLabel(CAL_WINDOWS[1][1])}</strong><em>${s.week > CAL_WINDOWS[1][1] ? 'ENCERRADA' : s.week >= CAL_WINDOWS[1][0] ? 'ABERTA AGORA' : (nextWindowWeek === CAL_WINDOWS[1][0] ? `EM ${CAL_WINDOWS[1][0] - s.week} SEM.` : 'FUTURA')}</em></div>
+        </div>
+        <div class="ref-window-foot"><span><i class="win-dot"></i> Dias com selo laranja indicam mercado aberto no calendário.</span><span>Propostas só são aceitas com a janela <b>aberta</b>.</span></div>
       </section>
 
+      ${calView === 'month' ? `
       <section class="ref-card ref-month-card">
         <div class="ref-month-head"><button class="ref-month-button" data-month="-1">${icon('back')}</button><h2>${monthNames[calMonth]} <b>${s.year}</b></h2><button class="ref-month-button" data-month="1">${icon('back')}</button></div>
         <div class="ref-calendar-grid"><div class="ref-calendar-weekdays">${weekdays.map((d) => `<b>${d}</b>`).join('')}</div><div class="ref-calendar-cells">${cells.join('')}</div></div>
-      </section>
+      </section>` : `
+      <section class="ref-card ref-season-card">
+        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} TEMPORADA COMPLETA</span><h2>Todos os jogos <small>${seasonFixtures.length} compromissos</small></h2></div>
+        <div class="ref-season-list">
+          ${seasonFixtures.map(({ comp, fixture }) => {
+            const d = refDateInfo(fixture.week, s.year);
+            const opp = s.db.clubs[fixture.home === s.clubId ? fixture.away : fixture.home];
+            const isHome = fixture.home === s.clubId;
+            const played = fixture.played;
+            const gf = isHome ? fixture.gh : fixture.ga, ga = isHome ? fixture.ga : fixture.gh;
+            const resCls = played ? (gf > ga ? 'win' : gf < ga ? 'loss' : 'draw') : (fixture.week === s.week ? 'now' : '');
+            return `<button class="ref-season-row ${resCls}" data-fx="${comp.id}|${fixture.id}">
+              <b class="rs-date">${d.day} ${d.month.slice(0, 3)}</b>
+              <span class="rs-opp">${crest(opp, 30)}<span><strong>${esc(opp.name)}</strong><small>${isHome ? 'Casa' : 'Fora'} · ${esc(comp.short || comp.name)}${fixture.leg ? ` · jogo ${fixture.leg}` : ''}</small></span></span>
+              <em class="rs-res">${played ? `${gf} × ${ga}` : (fixture.week === s.week ? 'HOJE' : `S${fixture.week}`)}</em>
+            </button>`;
+          }).join('') || '<div class="ref-empty-small">Nenhum compromisso nesta competição.</div>'}
+        </div>
+      </section>`}
       <div class="ref-calendar-action">${playBarHTML()}</div>
     </div>`;
   },
   mount(el) {
     el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
     el.querySelectorAll('[data-month]').forEach((b) => b.onclick = () => { calMonth = Math.max(0, Math.min(11, calMonth + Number(b.dataset.month))); renderRoute(); });
-    el.querySelectorAll('[data-go-match]').forEach((b) => b.onclick = () => go('match'));
+    el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { calView = b.dataset.view; renderRoute(); });
+    el.querySelector('[data-calcomp]')?.addEventListener('change', (e) => { calComp = e.target.value; renderRoute(); });
+    el.querySelectorAll('[data-fx]').forEach((b) => b.onclick = () => { const s = S(); openFixtureModal(s, b.dataset.fx); });
+    el.querySelector('[data-go-match]')?.addEventListener('click', () => go('match'));
+    el.querySelector('[data-go-match]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go('match'); });
     playBarMount(el);
   },
 };
@@ -154,6 +250,7 @@ export const cupsScreen = {
               <span class="${f.played && winnerOf(f) === f.away ? 'winner' : ''}">${clubCell(s, f.away)}</span>
             </div>
             <div class="tscore">${f.played ? `${f.gh} × ${f.ga}${f.pen ? ` <span class="tiny muted">pên ${f.pen.h}-${f.pen.a}</span>` : ''}` : `<span class="pill">S${f.week}</span>`}</div>
+            ${f.leg ? `<div class="tiny muted" style="grid-column:1/-1">${f.leg === 1 ? 'Jogo de ida' : `Jogo de volta${aggLabel(comp, f)}`}</div>` : ''}
           </div>`).join('')}
         </div>`).join('');
     };
@@ -262,7 +359,17 @@ export const marketScreen = {
     el.querySelectorAll('#mkt-tabs [data-tab]').forEach((b) => b.onclick = () => { mkt.tab = b.dataset.tab; renderRoute(); });
     el.querySelectorAll('[data-mpos]').forEach((b) => b.onclick = () => { mkt.pos = b.dataset.mpos; renderRoute(); });
     const q = el.querySelector('#mk-q');
-    if (q) q.onchange = () => { mkt.q = q.value; renderRoute(); };
+    if (q) {
+      let mqTimer = null;
+      q.addEventListener('input', () => {
+        clearTimeout(mqTimer);
+        mqTimer = setTimeout(() => {
+          mkt.q = q.value;
+          renderRoute();
+          setTimeout(() => { const nq = document.querySelector('#mk-q'); if (nq) { nq.focus(); nq.setSelectionRange(nq.value.length, nq.value.length); } }, 30);
+        }, 260);
+      });
+    }
     el.querySelector('[data-more]')?.addEventListener('click', () => { mkt.limit += 40; renderRoute(); });
     el.querySelectorAll('[data-offer]').forEach((b) => b.onclick = () => openOfferModal(b.dataset.offer));
     el.querySelectorAll('[data-list]').forEach((r) => r.onclick = () => {
@@ -890,74 +997,116 @@ export const creditsScreen = {
 };
 
 // ============================================================
-// TREINOS
+// TREINOS — planejador semanal com efeitos reais + histórico
 // ============================================================
 export const trainingScreen = {
   html() {
     const s = S();
     const tr = s.training || { focus: 'fisico', done: false };
+    const plan = Array.isArray(tr.plan) && tr.plan.length === 7 ? tr.plan : G.defaultTrainPlan();
     const squad = G.clubPlayers(s.db, s.clubId);
     const avgFit = Math.round(squad.reduce((x, p) => x + p.fitness, 0) / Math.max(1, squad.length));
     const avgMor = Math.round(squad.reduce((x, p) => x + p.morale, 0) / Math.max(1, squad.length));
     const avgForm = Math.round(squad.reduce((x, p) => x + p.form, 0) / Math.max(1, squad.length));
-    const tactical = Math.round((s.chemistry || 70) * 0.83);
+    const chemNow = Math.round(s.chemistry || 70);
+    const injuredCount = squad.filter((p) => p.injuredWeeks > 0).length;
     const focus = G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico;
-    const dayActivities = ['descanso', 'tecnica', 'tecnica', 'tecnica', 'tecnica', 'tecnica', 'tecnica'];
-    const dayIntensity = ['Leve', 'Normal', 'Normal', 'Normal', 'Normal', 'Normal', 'Normal'];
-    const activityLabel = (key) => key === 'descanso' ? 'Recuperação' : G.TRAINING_FOCUS[key]?.label || 'Treino técnico';
-    const typeRows = [
-      ['Descanso', 'Recupera condição e reduz fadiga.'],
-      ['Recuperação', 'Trabalho leve para jogadores desgastados.'],
-      ['Treino físico', 'Aumenta capacidade física com desgaste elevado.'],
-      ['Treino técnico', 'Melhora ritmo, fundamentos e confiança.'],
-      ['Treino tático', 'Eleva familiaridade com o plano de jogo.'],
-      ['Preparação de jogo', 'Sessão específica para o próximo adversário.'],
-      ['Coesão de grupo', 'Fortalece moral, confiança e ambiente do elenco.'],
-      ['Desenvolvimento', 'Trabalha fundamentos individuais sem priorizar o resultado imediato.'],
-    ];
+    // Recomendação dinâmica da comissão, calculada pelo estado real do elenco
+    const recKey = avgFit < 70 ? 'fisico' : chemNow < 66 ? 'tatica' : avgForm < 58 ? 'tecnica' : avgMor < 62 ? 'descanso' : 'tecnica';
+    const recReason = avgFit < 70 ? 'Elenco abaixo da condição ideal para a sequência.'
+      : chemNow < 66 ? 'O grupo ainda não absorveu o plano de jogo.'
+        : avgForm < 58 ? 'O ritmo de jogo está caindo; fundamentos ajudam.'
+          : avgMor < 62 ? 'O ambiente do vestiário pede leveza.'
+            : 'Semana equilibrada: mantenha a evolução técnica.';
+    const rec = G.TRAINING_FOCUS[recKey];
+    const totals = G.planTotals(plan);
+    const history = Array.isArray(tr.history) ? tr.history : [];
+    const fmtSigned = (v) => `${v > 0 ? '+' : ''}${Math.round(v)}`;
+    const activityOptions = Object.entries(G.TRAIN_ACTIVITIES);
+    const typeRows = activityOptions.map(([k, v]) => [v.label, v.desc]);
 
     return `
     <div class="ref-training">
       <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à Central</span></button><span class="ref-page-nav-title">${icon('whistle')} CENTRO DE TREINAMENTO</span><button class="ref-view-squad" data-ref-squad>Ver elenco</button></header>
-      <section class="ref-training-hero"><div><h1>Prepare. Recupere. Evolua.</h1><p>Planeje cada sessão e encontre o equilíbrio entre desempenho, desgaste e risco.</p></div>${crest(s.db.clubs[s.clubId], 92)}</section>
+      <section class="ref-training-hero"><div><h1>Prepare. Recupere. Evolua.</h1><p>Planeje cada sessão e encontre o equilíbrio entre desempenho, desgaste e risco.</p></div>${crest(s.db.clubs[s.clubId], 76)}</section>
       <section class="ref-training-kpis">
         <div><span>${icon('medical')}<b>CONDIÇÃO</b></span><strong>${avgFit}%</strong><i><b style="width:${avgFit}%"></b></i></div>
         <div><span>${icon('fire')}<b>RITMO</b></span><strong>${avgForm}%</strong><i><b style="width:${avgForm}%"></b></i></div>
         <div><span>${icon('star')}<b>MORAL</b></span><strong>${avgMor}%</strong><i><b style="width:${avgMor}%"></b></i></div>
-        <div><span>${icon('target')}<b>FAMILIARIDADE TÁTICA</b></span><strong>${tactical}%</strong><i><b style="width:${tactical}%"></b></i></div>
+        <div><span>${icon('target')}<b>ENTROSAMENTO</b></span><strong>${chemNow}%</strong><i><b style="width:${chemNow}%"></b></i></div>
       </section>
       <section class="ref-training-recommendation">
-        <div class="ref-recommendation-copy"><span class="ref-section-label">${icon('star')} RECOMENDAÇÃO DA COMISSÃO</span><strong>${focus.label} · Normal</strong><small>${esc(focus.desc)}</small></div>
-        <label><span>Administração</span><select><option>Assistida</option><option>Manual</option></select></label>
-        <label><span>Prioridade</span><select data-focus-select>${Object.entries(G.TRAINING_FOCUS).map(([k, v]) => `<option value="${k}" ${tr.focus === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
+        <div class="ref-recommendation-copy"><span class="ref-section-label">${icon('star')} RECOMENDAÇÃO DA COMISSÃO</span><strong>${rec.label}</strong><small>${esc(recReason)}${injuredCount ? ` ${injuredCount} atleta(s) no DM.` : ''}</small></div>
+        <label><span>Prioridade semanal</span><select data-focus-select>${Object.entries(G.TRAINING_FOCUS).map(([k, v]) => `<option value="${k}" ${tr.focus === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
+        <label><span>Efeito do foco</span><i class="ref-focus-effect">${esc(focus.desc)}</i></label>
         <button class="ref-apply-training" data-train ${tr.done ? 'disabled' : ''}>${tr.done ? 'Treino aplicado' : 'Aplicar à semana'}</button>
       </section>
 
       <section class="ref-card ref-week-planner">
-        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} PRÓXIMOS SETE DIAS</span><h2>Planejamento da semana</h2><small>As sessões são aplicadas quando você avança o dia.</small></div>
-        <div class="ref-training-days">${dayActivities.map((activity, index) => {
+        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} PRÓXIMOS SETE DIAS</span><h2>Planejamento da semana</h2><small>Cada sessão altera condição, ritmo, entrosamento e risco.</small></div>
+        <div class="ref-training-days">${plan.map((day, index) => {
           const date = refDateInfo(s.week, s.year, index);
-          return `<article class="ref-training-day"><b>${date.weekday} · ${date.day} DE ${date.month}</b><strong>${activityLabel(activity)}</strong><label>Atividade<select><option>${activityLabel(activity)}</option><option>Treino físico</option><option>Treino tático</option><option>Recuperação</option></select></label><label>Intensidade<select><option>${dayIntensity[index]}</option><option>Leve</option><option>Alta</option></select></label><div class="ref-training-tags"><span>Condição ${index ? '-2' : '+4'}</span><span>Ritmo ${index ? '+4' : '+0'}</span><small>Risco ${index ? '4' : '1'}%</small></div><p>${index ? 'Melhora ritmo, fundamentos e confiança.' : 'Trabalho leve para jogadores desgastados.'}</p></article>`;
+          const act = G.TRAIN_ACTIVITIES[day.activity] || G.TRAIN_ACTIVITIES.tecnica;
+          const mult = G.intensityMult(day.intensity);
+          const eff = (v) => Math.round(v * mult);
+          return `<article class="ref-training-day">
+            <b>${date.weekday} · ${date.day} DE ${date.month}</b>
+            <strong>${esc(act.label)}</strong>
+            <label>Atividade<select data-day-act="${index}">${activityOptions.map(([k, v]) => `<option value="${k}" ${day.activity === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
+            <label>Intensidade<select data-day-int="${index}">${['leve', 'normal', 'alta'].map((it) => `<option value="${it}" ${day.intensity === it ? 'selected' : ''}>${it.charAt(0).toUpperCase() + it.slice(1)}</option>`).join('')}</select></label>
+            <div class="ref-training-tags"><span>Condição ${fmtSigned(eff(act.cond))}</span><span>Ritmo ${fmtSigned(eff(act.ritmo))}</span><small>Risco ${Math.round(act.risk * mult)}%</small></div>
+            <p>${esc(act.desc)}${act.morale ? ` Moral ${fmtSigned(eff(act.morale))}.` : ''}${act.chem ? ` Entrosamento ${fmtSigned(eff(act.chem))}.` : ''}</p>
+          </article>`;
         }).join('')}</div>
+        <div class="ref-week-forecast">
+          <span>${icon('pulse')} <b>PREVISÃO DA SEMANA</b></span>
+          <em class="${totals.cond >= 0 ? 'pos' : 'neg'}">Condição ${fmtSigned(totals.cond)}</em>
+          <em class="${totals.ritmo >= 0 ? 'pos' : 'neg'}">Ritmo ${fmtSigned(totals.ritmo)}</em>
+          <em class="${totals.morale >= 0 ? 'pos' : 'neg'}">Moral ${fmtSigned(totals.morale)}</em>
+          <em class="pos">Entrosamento ${fmtSigned(totals.chem)}</em>
+          <em class="${totals.risk > 0 ? 'neg' : 'pos'}">Risco de lesão ${Math.round(totals.risk)}%</em>
+          ${tr.done ? '<i class="rf-done">✓ Semana já treinada — novo plano após avançar</i>' : ''}
+        </div>
       </section>
 
       <section class="ref-training-bottom">
         <section class="ref-card ref-session-types"><div class="ref-card-head"><span class="ref-section-label">${icon('pulse')} TIPOS DE SESSÃO</span><h2>Objetivo de cada atividade</h2></div>${typeRows.map(([title, desc]) => `<div class="ref-session-row">${icon('shield')}<span><strong>${title}</strong><small>${desc}</small></span></div>`).join('')}</section>
-        <section class="ref-card ref-session-history"><div class="ref-card-head"><span class="ref-section-label">${icon('handshake')} HISTÓRICO</span><h2>Últimas sessões</h2></div><div class="ref-history-empty">Nenhuma sessão realizada nesta carreira.</div></section>
+        <section class="ref-card ref-session-history"><div class="ref-card-head"><span class="ref-section-label">${icon('clock')} HISTÓRICO</span><h2>Últimas sessões <small>${history.length}</small></h2></div>
+          <div class="ref-history-list">${history.length ? history.map((h) => {
+            const counts = {};
+            (h.plan || []).forEach((a) => { counts[a] = (counts[a] || 0) + 1; });
+            const summary = Object.entries(counts).map(([a, n]) => `${n}× ${G.TRAIN_ACTIVITIES[a]?.label || a}`).join(', ');
+            return `<div class="ref-history-row">
+              <span class="rh-week">S${h.week} · T${h.season}</span>
+              <span class="rh-info"><strong>Foco: ${esc(G.TRAINING_FOCUS[h.focus]?.label || h.focus)}${h.injury ? ` · 🤕 ${esc(h.injury)}` : ''}</strong><small>${esc(summary)}</small></span>
+              <span class="rh-gains"><em class="${h.gains?.cond >= 0 ? 'pos' : 'neg'}">C ${fmtSigned(h.gains?.cond || 0)}</em><em class="${h.gains?.ritmo >= 0 ? 'pos' : 'neg'}">R ${fmtSigned(h.gains?.ritmo || 0)}</em></span>
+            </div>`;
+          }).join('') : '<div class="ref-history-empty">Nenhuma sessão registrada ainda. Monte o plano acima e aplique o primeiro treino da carreira.</div>'}</div>
+        </section>
       </section>
     </div>`;
   },
   mount(el) {
     const s = S();
-    const tr = s.training || (s.training = { focus: 'fisico', done: false });
+    const tr = s.training || (s.training = { focus: 'fisico', done: false, plan: G.defaultTrainPlan(), history: [] });
+    if (!Array.isArray(tr.plan) || tr.plan.length !== 7) tr.plan = G.defaultTrainPlan();
+    if (!Array.isArray(tr.history)) tr.history = [];
     el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
     el.querySelector('[data-ref-squad]')?.addEventListener('click', () => go('squad'));
     el.querySelector('[data-focus-select]')?.addEventListener('change', (e) => { tr.focus = e.target.value; autosave(); renderRoute(); });
+    el.querySelectorAll('[data-day-act]').forEach((sel) => sel.addEventListener('change', () => {
+      tr.plan[Number(sel.dataset.dayAct)].activity = sel.value;
+      autosave(); renderRoute();
+    }));
+    el.querySelectorAll('[data-day-int]').forEach((sel) => sel.addEventListener('change', () => {
+      tr.plan[Number(sel.dataset.dayInt)].intensity = sel.value;
+      autosave(); renderRoute();
+    }));
     el.querySelector('[data-train]')?.addEventListener('click', () => {
       const r = G.doTraining(s, tr.focus);
       if (r.ok) {
         const g = r.gains || {};
-        toast(`✅ Treino concluído! +${g.fitness} físico, +${g.form} forma, +${g.ovr} overall.`);
+        toast(`✅ Semana treinada! Plano: ${g.cond >= 0 ? '+' : ''}${g.cond} condição, ${g.ritmo >= 0 ? '+' : ''}${g.ritmo} ritmo, +${g.chem} entrosamento.${g.injury ? ` 🤕 ${g.injury} no DM (1 sem.)` : ''}`);
       } else toast(r.msg || 'Treino indisponível.', 'error');
       autosave(); renderRoute();
     });
@@ -965,54 +1114,146 @@ export const trainingScreen = {
 };
 
 // ============================================================
-// CAIXA DE ENTRADA
+// CENTRAL DE MENSAGENS — caixa de entrada reinventada
+// Categorias com contadores, filtros, mensagens expansíveis
+// (estilo conversa) e ações contextuais reais por tipo.
 // ============================================================
+const inboxCatOf = (type) => (
+  ['bid', 'offerAccepted', 'offerCounter', 'offerRejected'].includes(type) ? 'mercado'
+    : type === 'jobOffer' ? 'carreira'
+      : type === 'contract' ? 'elenco' : 'clube'
+);
+const INBOX_CATS = {
+  mercado: { label: 'Mercado', icon: 'cart', who: 'Empresários & clubes' },
+  carreira: { label: 'Carreira', icon: 'star', who: 'Diretorias interessadas' },
+  elenco: { label: 'Elenco', icon: 'users', who: 'Comissão técnica' },
+  clube: { label: 'Clube', icon: 'building', who: 'Administração' },
+};
+let inboxFilter = 'all';
+let inboxOpenId = null;
+
 export const inboxScreen = {
   html() {
     const s = S();
+    const unread = s.inbox.filter((i) => !i.read).length;
+    const counts = { all: s.inbox.length, unread };
+    for (const cat of Object.keys(INBOX_CATS)) counts[cat] = s.inbox.filter((i) => inboxCatOf(i.type) === cat).length;
+    const list = s.inbox.filter((i) => {
+      if (inboxFilter === 'all') return true;
+      if (inboxFilter === 'unread') return !i.read;
+      return inboxCatOf(i.type) === inboxFilter;
+    });
+    const chip = (key, label, ico) => `<button class="ibf-chip ${inboxFilter === key ? 'active' : ''}" data-f="${key}">${ico ? icon(ico) : ''}${label}<b>${counts[key] || 0}</b></button>`;
+
     return `
-    <div class="stack" style="max-width:720px;margin:0 auto">
-      <div class="card" style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:1.1rem">${icon('mail')} Caixa de entrada</b>
-        <button class="btn small ghost" data-clear>Limpar lidas</button>
-      </div>
-      ${s.inbox.length ? s.inbox.map((i) => {
-        const p = i.playerId ? s.db.players[i.playerId] : null;
-        let actions = '';
-        if (i.type === 'bid' && p) {
-          actions = `<div class="inbox-actions">
-            <button class="btn small primary" data-bid="${i.offerId}:accept">Vender</button>
-            <button class="btn small" data-bid="${i.offerId}:counter">Negociar +15%</button>
-            <button class="btn small danger" data-bid="${i.offerId}:reject">Recusar</button></div>`;
-        } else if (i.type === 'offerAccepted') {
-          actions = `<div class="inbox-actions"><button class="btn small primary" data-confirm="${i.offerId}">✅ Confirmar contratação</button></div>`;
-        } else if (i.type === 'offerCounter') {
-          actions = `<div class="inbox-actions"><button class="btn small primary" data-goto-market>Aceitar ${esc(i.counter ? 'e reenviar' : '')}</button></div>`;
-        }
-        return `<div class="inbox-item ${i.read ? '' : 'unread'}">
-          <div class="it-title">${esc(i.title)}</div>
-          <div class="it-text">${esc(i.text)}</div>
-          <div class="tiny muted" style="margin-top:6px">Semana ${i.week} • Temporada ${s.season}</div>
-          ${actions}
-        </div>`;
-      }).join('') : `<div class="card empty">${icon('mail')}<div>Caixa vazia. Propostas e respostas aparecem aqui.</div></div>`}
+    <div class="ibx">
+      <header class="ibx-header">
+        <div class="ibx-title">
+          <span class="ref-eyebrow">CENTRAL DO CLUBE</span>
+          <h1>${icon('mail')} Mensagens <em class="ibx-count">${unread ? `${unread} nova(s)` : 'em dia'}</em></h1>
+        </div>
+        <div class="ibx-tools">
+          <button class="btn small ghost" data-readall>${icon('check')} Marcar tudo como lido</button>
+          <button class="btn small ghost" data-clear>${icon('x')} Limpar lidas</button>
+        </div>
+      </header>
+
+      <nav class="ibx-filters">
+        ${chip('all', 'Todas', 'mail')}${chip('unread', 'Não lidas', 'bell')}
+        ${Object.entries(INBOX_CATS).map(([k, c]) => chip(k, c.label, c.icon)).join('')}
+      </nav>
+
+      <section class="ibx-list">
+        ${list.length ? list.map((i) => {
+          const cat = inboxCatOf(i.type);
+          const meta = INBOX_CATS[cat];
+          const open = inboxOpenId === i.id;
+          const p = i.playerId ? s.db.players[i.playerId] : null;
+          const hasActions = (i.type === 'bid' && p) || i.type === 'offerAccepted' || i.type === 'offerCounter' || i.type === 'jobOffer';
+          return `
+          <article class="ibx-item cat-${cat} ${i.read ? '' : 'unread'} ${open ? 'open' : ''}" data-msg="${i.id}">
+            <span class="ibx-ico">${icon(meta.icon)}</span>
+            <div class="ibx-main">
+              <div class="ibx-head">
+                <strong>${esc(i.title)}</strong>
+                <span class="ibx-meta"><i class="ibx-cat">${esc(meta.label)}</i><i class="ibx-dot" title="Não lida"></i><time>S${i.week} · T${s.season}</time></span>
+              </div>
+              <p>${esc(i.text)}</p>
+              <div class="ibx-extra">
+                <div class="ibx-who">${icon(meta.icon)} ${esc(meta.who)}${p ? ` · <b>${esc(p.name)}</b> (${p.pos} · OVR ${p.ovr})` : ''}</div>
+                <div class="inbox-actions">
+                  ${i.type === 'bid' && p ? `
+                    <button class="btn small primary" data-bid="${i.offerId}:accept">Vender ${icon('check')}</button>
+                    <button class="btn small" data-bid="${i.offerId}:counter">Negociar +15%</button>
+                    <button class="btn small danger" data-bid="${i.offerId}:reject">Recusar</button>` : ''}
+                  ${i.type === 'offerAccepted' ? `<button class="btn small primary" data-confirm="${i.offerId}">${icon('check')} Confirmar contratação</button>` : ''}
+                  ${i.type === 'offerCounter' ? `<button class="btn small primary" data-goto-market>Aceitar contraproposta no Mercado</button>` : ''}
+                  ${i.type === 'jobOffer' ? `
+                    <button class="btn small primary" data-job="${i.id}:1">${icon('check')} Aceitar e assumir o clube</button>
+                    <button class="btn small danger" data-job="${i.id}:0">Recusar</button>` : ''}
+                  ${p ? `<button class="btn small ghost" data-player="${p.id}">${icon('users')} Ver jogador</button>` : ''}
+                  ${!hasActions ? `<button class="btn small ghost" data-del="${i.id}">${icon('x')} Excluir mensagem</button>` : ''}
+                </div>
+              </div>
+            </div>
+            <span class="ibx-chev">›</span>
+          </article>`;
+        }).join('') : `
+        <div class="card empty">${icon('mail')}
+          <div style="font-weight:700;margin:6px 0 2px">${inboxFilter === 'all' ? 'Caixa vazia por aqui.' : 'Nada nesta categoria.'}</div>
+          <div class="tiny muted">Propostas de transferência, ofertas de emprego e avisos da diretoria aparecem aqui.</div>
+        </div>`}
+      </section>
     </div>`;
   },
   mount(el) {
     const s = S();
-    el.querySelectorAll('[data-bid]').forEach((b) => b.onclick = () => {
+    // Filtros
+    el.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { inboxFilter = b.dataset.f; renderRoute(); });
+    // Expandir/recolher (estilo conversa)
+    el.querySelectorAll('[data-msg]').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return; // ações não colapsam
+        inboxOpenId = inboxOpenId === card.dataset.msg ? null : card.dataset.msg;
+        renderRoute();
+      });
+    });
+    // Ações de mercado
+    el.querySelectorAll('[data-bid]').forEach((b) => b.onclick = (e) => {
+      e.stopPropagation();
       const [id, act] = b.dataset.bid.split(':');
       G.respondBid(s, id, act);
+      toast(act === 'accept' ? '💰 Jogador vendido!' : act === 'counter' ? '🔁 Contraproposta enviada.' : 'Proposta recusada.');
       autosave(); renderRoute();
     });
-    el.querySelectorAll('[data-confirm]').forEach((b) => b.onclick = () => {
+    el.querySelectorAll('[data-confirm]').forEach((b) => b.onclick = (e) => {
+      e.stopPropagation();
       const r = G.confirmBuy(s, b.dataset.confirm);
       toast(r.ok ? '✅ Reforço confirmado!' : (r.msg || 'Falhou'), r.ok ? 'ok' : 'error');
       autosave(); renderRoute();
     });
-    el.querySelector('[data-goto-market]')?.addEventListener('click', () => go('market'));
-    el.querySelector('[data-clear]').onclick = () => { s.inbox = s.inbox.filter((i) => !i.read); autosave(); renderRoute(); };
-    // marca como lidas
-    setTimeout(() => { s.inbox.forEach((i) => { i.read = true; }); }, 600);
+    el.querySelectorAll('[data-goto-market]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); mkt.tab = 'pending'; go('market'); }));
+    // Proposta de emprego — trocar de clube de verdade!
+    el.querySelectorAll('[data-job]').forEach((b) => b.onclick = (e) => {
+      e.stopPropagation();
+      const [id, accept] = b.dataset.job.split(':');
+      const r = G.respondJobOffer(s, id, accept === '1');
+      if (r.ok && r.club) toast(`🧳 Você é o novo treinador do ${esc(r.club)}!`);
+      else if (r.ok) toast('Proposta recusada. Você segue no cargo.');
+      else toast(r.msg || 'Falhou.', 'error');
+      autosave(); renderRoute();
+    });
+    el.querySelectorAll('[data-player]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); go(`player/${b.dataset.player}`); });
+    el.querySelectorAll('[data-del]').forEach((b) => b.onclick = (e) => {
+      e.stopPropagation();
+      s.inbox = s.inbox.filter((i) => i.id !== b.dataset.del);
+      if (inboxOpenId === b.dataset.del) inboxOpenId = null;
+      autosave(); renderRoute();
+    });
+    // Ferramentas
+    el.querySelector('[data-readall]').onclick = () => { s.inbox.forEach((i) => { i.read = true; }); autosave(); renderRoute(); };
+    el.querySelector('[data-clear]').onclick = () => { s.inbox = s.inbox.filter((i) => !i.read); inboxOpenId = null; autosave(); renderRoute(); };
+    // Marca como lidas automaticamente ao visualizar (o selo some da topbar)
+    setTimeout(() => { s.inbox.forEach((i) => { i.read = true; }); }, 900);
   },
 };

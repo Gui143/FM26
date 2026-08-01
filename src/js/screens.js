@@ -203,27 +203,62 @@ export const homeScreen = {
     const inboxMeta = inbox?.text || 'Comissão técnica';
     const shortcutItems = [
       ['squad', 'users', 'Elenco'], ['tactics', 'clipboard', 'Tática'],
-      ['calendar', 'calendar', 'Calendário'], ['manager', 'chart', 'Treinador'],
-      ['table', 'table', 'Classificação'], ['cups', 'trophy', 'Competições'],
-      ['inbox', 'mail', 'Mensagens'], ['finances', 'money', 'Finanças'],
-      ['youth', 'globe', 'Scouting'], ['market', 'cart', 'Mercado'],
-      ['training', 'whistle', 'Treinamento'], ['manager', 'sprout', 'Evolução'],
-      ['youth', 'sprout', 'Base'], ['finances', 'handshake', 'Comissão'],
-      ['club', 'building', 'Infraestrutura'], ['inbox', 'medical', 'DM'],
-      ['manager', 'star', 'Meu cargo'], ['stats', 'trophy', 'Meu legado'],
-      ['credits', 'info', 'Manual Oficial'], ['inbox', 'mail', 'Feedback'],
+      ['calendar', 'calendar', 'Calendário'], ['table', 'table', 'Classificação'],
+      ['cups', 'trophy', 'Copas'], ['market', 'cart', 'Mercado'],
+      ['training', 'whistle', 'Treinos'], ['inbox', 'mail', 'Mensagens'],
+      ['finances', 'money', 'Finanças'], ['club', 'building', 'Clube'],
+      ['youth', 'sprout', 'Base'], ['manager', 'chart', 'Treinador'],
+      ['stats', 'star', 'Estatísticas'], ['ranking', 'globe', 'Ranking'],
+      ['friendlies', 'handshake', 'Amistosos'], ['saves', 'save', 'Saves'],
     ];
     const condition = [
       ['Condição física', avgFitness, 'var(--accent)'],
       ['Moral', avgMorale, 'var(--blue)'],
       ['Ritmo de jogo', avgForm, 'var(--ref-accent)'],
     ];
+    // Disponibilidade real do elenco
+    const injured = squad.filter((p) => p.injuredWeeks > 0);
+    const suspended = squad.filter((p) => p.suspended > 0);
+    const outCount = injured.length + suspended.length;
+    const availabilityText = outCount
+      ? `${injured.length ? `${injured.length} lesionado(s)` : ''}${injured.length && suspended.length ? ' · ' : ''}${suspended.length ? `${suspended.length} suspenso(s)` : ''}`
+      : 'Nenhum desfalque registrado.';
+    // Objetivos dinâmicos da diretoria (liga, entrosamento e juventude)
+    const myLeagueComp = s.competitions.find((c) => c.type === 'league' && c.teams.includes(s.clubId));
+    let myPos = null, leagueSize = 0;
+    if (myLeagueComp) {
+      const tbl = G.leagueTable(s, myLeagueComp);
+      myPos = tbl.findIndex((r) => r.clubId === s.clubId) + 1;
+      leagueSize = tbl.length;
+    }
+    const goalPos = club.rep >= 85 ? 4 : club.rep >= 75 ? 8 : 12;
+    const objPos = {
+      title: `Terminar a liga entre os ${goalPos} primeiros`,
+      status: myPos ? (myPos <= goalPos ? 'No caminho certo' : 'Abaixo da meta') : 'Sem jogos ainda',
+      good: myPos ? myPos <= goalPos : true,
+      meta: myPos ? `Posição atual: ${myPos}º de ${leagueSize}` : 'A temporada mal começou',
+    };
+    const chem = Math.round(s.chemistry || 70);
+    const objChem = {
+      title: 'Construir uma identidade de jogo (entrosamento 85+)',
+      status: chem >= 85 ? 'Cumprido' : chem >= 74 ? 'Em andamento' : 'Longe do ideal',
+      good: chem >= 74,
+      meta: `Entrosamento atual: ${chem}`,
+    };
+    const youngGames = squad.filter((p) => p.age <= 21).reduce((x, p) => x + p.stats.games, 0);
+    const objYouth = {
+      title: 'Valorizar atletas da base (40 jogos sub-21)',
+      status: youngGames >= 40 ? 'Cumprido' : youngGames >= 15 ? 'Em andamento' : 'Atenção da diretoria',
+      good: youngGames >= 15,
+      meta: `${youngGames}/40 jogos de jovens na temporada`,
+    };
+    const objectives = [objPos, objChem, objYouth];
 
     return `
     <div class="ref-home">
       <header class="ref-home-hero">
         <div class="ref-home-identity">
-          ${crest(club, 92)}
+          ${crest(club, 76)}
           <div class="ref-home-heading">
             <div class="ref-eyebrow">TEMPORADA ${s.year}</div>
             <h1>Central do treinador.</h1>
@@ -252,9 +287,9 @@ export const homeScreen = {
             <div class="ref-next-body">
               <div class="ref-next-date"><b>${nextDate.weekday}</b><strong>${nextDate.day} DE<br>${nextDate.month}</strong><small>18:00</small></div>
               <div class="ref-matchup">
-                <div class="ref-team">${crest(nextHome, 88)}<strong>${esc(nextHome.name)}</strong></div>
+                <div class="ref-team">${crest(nextHome, 68)}<strong>${esc(nextHome.name)}</strong></div>
                 <span class="ref-vs">×</span>
-                <div class="ref-team">${crest(nextAway, 88)}<strong>${esc(nextAway.name)}</strong></div>
+                <div class="ref-team">${crest(nextAway, 68)}<strong>${esc(nextAway.name)}</strong></div>
               </div>
               <div class="ref-venue"><b>${nextIsHome ? 'EM CASA' : 'FORA DE CASA'}</b><span>${esc(nextHome.stadium || club.stadium)}</span><small>${esc(nextIsHome ? club.city : nextHome.city || '')}</small></div>
             </div>` : `<div class="ref-empty">${icon('calendar')}<span>Todas as partidas da temporada foram jogadas.</span></div>`}
@@ -266,11 +301,9 @@ export const homeScreen = {
               <div class="ref-list-item ref-action" data-ref-route="inbox"><span class="ref-dot"></span><span><strong>${esc(inboxTitle)}</strong><small>${esc(inboxMeta)}</small></span><b>›</b></div>
             </section>
             <section class="ref-card ref-objectives-card">
-              <div class="ref-card-head"><span class="ref-section-label">${icon('target')} DIRETORIA</span><h2>Objetivos <small>Avaliação ›</small></h2></div>
+              <div class="ref-card-head"><span class="ref-section-label">${icon('target')} DIRETORIA</span><h2>Objetivos <small>Avaliação semanal</small></h2></div>
               <div class="ref-objectives">
-                <div>${icon('check')}<span><strong>Montar uma equipe competitiva</strong><small>Em andamento</small></span></div>
-                <div>${icon('check')}<span><strong>Valorizar atletas jovens</strong><small>Em andamento</small></span></div>
-                <div>${icon('check')}<span><strong>Construir uma identidade de jogo reconhecível</strong><small>Em andamento</small></span></div>
+                ${objectives.map((o) => `<div>${icon(o.good ? 'check' : 'clock')}<span><strong>${esc(o.title)}</strong><small class="${o.good ? 'obj-ok' : 'obj-warn'}">${esc(o.status)} · ${esc(o.meta)}</small></span></div>`).join('')}
               </div>
             </section>
           </div>
@@ -280,7 +313,7 @@ export const homeScreen = {
               <div class="ref-card-head"><span class="ref-section-label">${icon('medical')} VESTIÁRIO</span><h2>Condição do elenco <small class="ref-link" data-ref-route="squad">Ver elenco ›</small></h2></div>
               <div class="ref-condition-body">
                 ${condition.map(([label, value, color]) => `<div class="ref-condition"><div><strong>${label}</strong><b>${value}%</b></div><div class="ref-progress"><i style="width:${value}%;background:${color}"></i></div></div>`).join('')}
-                <div class="ref-availability">${icon('pulse')}<span><strong>Elenco disponível</strong><small>Nenhum desfalque registrado.</small></span></div>
+                <div class="ref-availability">${icon('pulse')}<span><strong>Elenco disponível — ${squad.length - outCount}/${squad.length} atletas</strong><small>${esc(availabilityText)}${injured.length ? ` · DM: ${injured.slice(0, 3).map((p) => p.name.split(' ')[0]).join(', ')}${injured.length > 3 ? '…' : ''}` : ''}</small></span></div>
               </div>
             </section>
             <section class="ref-card ref-agenda-card">
@@ -289,7 +322,7 @@ export const homeScreen = {
                 ${future.slice(0, 4).map(({ comp, fixture }) => {
                   const date = refHomeFixtureDate(fixture, s.year);
                   const opponent = fixture.home === s.clubId ? s.db.clubs[fixture.away] : s.db.clubs[fixture.home];
-                  return `<div class="ref-agenda-item"><b>${date.day} DE<br>${date.month}</b><span>${crest(opponent, 42)}</span><strong>${esc(opponent.short || opponent.name)}<small>${fixture.home === s.clubId ? 'Casa' : 'Fora'} · ${esc(comp.short || comp.name)}</small></strong><em>${fixture.week === s.week ? '18:00' : '16:00'}</em></div>`;
+                  return `<div class="ref-agenda-item"><b>${date.day} DE<br>${date.month}</b><span>${crest(opponent, 34)}</span><strong>${esc(opponent.short || opponent.name)}<small>${fixture.home === s.clubId ? 'Casa' : 'Fora'} · ${esc(comp.short || comp.name)}</small></strong><em>${fixture.week === s.week ? '18:00' : '16:00'}</em></div>`;
                 }).join('') || '<div class="ref-empty-small">Nenhum jogo agendado.</div>'}
               </div>
             </section>
@@ -307,9 +340,9 @@ export const homeScreen = {
             <div class="ref-shortcuts-grid">${shortcutItems.map(([route, ico, label]) => `<button class="ref-shortcut" data-ref-route="${route}">${icon(ico)}<span>${label}</span></button>`).join('')}</div>
           </section>
           <section class="ref-card ref-coach-card">
-            <div class="ref-card-head"><span class="ref-section-label">${icon('trophy')} SEU TREINADOR</span><h2>${esc(s.manager.name)} <small class="ref-link">Evoluir ›</small></h2></div>
-            <div class="ref-coach-score"><strong>${Math.round(s.manager.rep)}</strong><span><b>GERAL</b>Iniciante</span></div>
-            <div class="ref-coach-meta"><span>IDADE<strong>35 anos</strong></span><span>LICENÇA<strong>Licença Nacional C</strong></span><span>NÍVEL<strong>${s.manager.level}</strong></span></div>
+            <div class="ref-card-head"><span class="ref-section-label">${icon('trophy')} SEU TREINADOR</span><h2>${esc(s.manager.name)} <small class="ref-link" data-ref-route="manager">Evoluir ›</small></h2></div>
+            <div class="ref-coach-score"><strong>${Math.round(s.manager.rep)}</strong><span><b>REPUTAÇÃO</b>${s.manager.rep >= 80 ? 'Ídolo mundial' : s.manager.rep >= 68 ? 'Respeitado' : s.manager.rep >= 55 ? 'Promissor' : 'Iniciante'}</span></div>
+            <div class="ref-coach-meta"><span>IDADE<strong>${34 + s.season} anos</strong></span><span>LICENÇA<strong>${s.manager.level >= 8 ? 'Licença PRO' : s.manager.level >= 5 ? 'Licença Nacional A' : s.manager.level >= 3 ? 'Licença Nacional B' : 'Licença Nacional C'}</strong></span><span>NÍVEL<strong>${s.manager.level}</strong></span></div>
             <button class="ref-side-link" data-ref-route="manager">Árvore, atributos e licenças <b>→</b></button>
           </section>
           <section class="ref-card ref-finance-card">
@@ -584,7 +617,7 @@ export const squadScreen = {
           <thead><tr><th>Jogador</th><th>Posição</th><th>Idade</th><th>GER</th><th>POT</th><th>Condição</th><th>Moral</th><th>Hierarquia</th><th>Mercado</th><th>Valor</th><th>Salário</th></tr></thead>
           <tbody>${players.map((p) => `
             <tr data-pid="${p.id}" class="${p.injuredWeeks > 0 || p.suspended > 0 ? 'is-unavailable' : ''}">
-              <td><div class="ref-player-cell">${avatar(p, 58)}<span><strong>${esc(p.name)}</strong><small>${icon('users')} Nº ${p.number} · ${esc(statusLabel(p))}</small></span></div></td>
+              <td><div class="ref-player-cell">${avatar(p, 46)}<span><strong>${esc(p.name)}</strong><small>${icon('users')} Nº ${p.number} · ${esc(statusLabel(p))}</small></span></div></td>
               <td class="ref-position-cell">${esc(positionLabel(p.pos))}</td>
               <td>${p.age}</td>
               <td><strong class="ref-overall">${p.ovr}</strong></td>
@@ -597,6 +630,13 @@ export const squadScreen = {
               <td><span class="ref-salary">${money(p.salary * 4)}</span><small>/mês</small></td>
             </tr>`).join('') || `<tr><td colspan="11" class="ref-table-empty">Nenhum jogador encontrado nos filtros atuais.</td></tr>`}</tbody>
         </table></div>
+        <div class="ref-squad-cards">${players.map((p) => `
+          <button class="sq-card ${p.injuredWeeks > 0 || p.suspended > 0 ? 'is-unavailable' : ''}" data-pid="${p.id}">
+            ${avatar(p, 44)}
+            <span class="sq-card-main"><strong>${esc(p.name)}</strong><small>${esc(positionLabel(p.pos))} · ${p.age} anos · Nº ${p.number}</small></span>
+            <span class="sq-card-nums"><b class="sq-ovr">${p.ovr}</b><b class="sq-pot">${p.pot}</b></span>
+            <span class="sq-card-foot"><i><b style="width:${p.fitness}%"></b></i><small>COND ${p.fitness}</small><em>${money(p.value)}</em></span>
+          </button>`).join('') || '<div class="ref-table-empty">Nenhum jogador encontrado nos filtros atuais.</div>'}</div>
         <div class="ref-squad-summary">${players.length} de ${playerCount} atletas · clique em um jogador para abrir o perfil</div>
       </section>
     </div>`;
@@ -606,7 +646,16 @@ export const squadScreen = {
     el.querySelector('#sq-sort').onchange = (e) => { squadFilter.sort = e.target.value; renderRoute(); };
     el.querySelector('#sq-situation').onchange = (e) => { squadFilter.situation = e.target.value; renderRoute(); };
     el.querySelector('#sq-age').onchange = (e) => { squadFilter.age = e.target.value; renderRoute(); };
-    el.querySelector('#sq-q').onchange = (e) => { squadFilter.q = e.target.value.trim(); renderRoute(); };
+    const q = el.querySelector('#sq-q');
+    let qTimer = null;
+    q.addEventListener('input', () => {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => {
+        squadFilter.q = q.value.trim();
+        renderRoute();
+        setTimeout(() => { const nq = document.querySelector('#sq-q'); if (nq) { nq.focus(); nq.setSelectionRange(nq.value.length, nq.value.length); } }, 30);
+      }, 260);
+    });
     el.querySelectorAll('[data-pid]').forEach((r) => r.onclick = () => go(`player/${r.dataset.pid}`));
   },
 };

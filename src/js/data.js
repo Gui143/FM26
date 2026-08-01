@@ -1,0 +1,348 @@
+// ============================================================
+// data.js — Banco de dados estático do jogo
+// Países, ligas, clubes, nomes, formações, patrocinadores, i18n
+// ============================================================
+
+export const DB_VERSION = 1;
+
+// -------------------- PAÍSES / CONFEDERAÇÕES --------------------
+export const COUNTRIES = [
+  { id: 'br', name: 'Brasil', confed: 'america' },
+  { id: 'ar', name: 'Argentina', confed: 'america' },
+  { id: 'en', name: 'Inglaterra', confed: 'europa' },
+  { id: 'es', name: 'Espanha', confed: 'europa' },
+  { id: 'it', name: 'Itália', confed: 'europa' },
+  { id: 'de', name: 'Alemanha', confed: 'europa' },
+  { id: 'fr', name: 'França', confed: 'europa' },
+  { id: 'pt', name: 'Portugal', confed: 'europa' },
+  { id: 'nl', name: 'Holanda', confed: 'europa' },
+];
+
+// -------------------- LIGAS --------------------
+// tier 1 = primeira divisão; tier 2 = segunda (com acesso/rebaixamento)
+export const LEAGUES = [
+  { id: 'br1', country: 'br', name: 'Campeonato Brasileiro Série A', tier: 1, teams: 20, relegation: 4 },
+  { id: 'br2', country: 'br', name: 'Campeonato Brasileiro Série B', tier: 2, teams: 20 },
+  { id: 'ar1', country: 'ar', name: 'Liga Profesional Argentina', tier: 1, teams: 20 },
+  { id: 'en1', country: 'en', name: 'Premier League', tier: 1, teams: 20 },
+  { id: 'es1', country: 'es', name: 'La Liga', tier: 1, teams: 20 },
+  { id: 'it1', country: 'it', name: 'Serie A Italiana', tier: 1, teams: 20 },
+  { id: 'de1', country: 'de', name: 'Bundesliga', tier: 1, teams: 18 },
+  { id: 'fr1', country: 'fr', name: 'Ligue 1', tier: 1, teams: 18 },
+  { id: 'pt1', country: 'pt', name: 'Liga Portugal', tier: 1, teams: 18 },
+  { id: 'nl1', country: 'nl', name: 'Eredivisie', tier: 1, teams: 18 },
+];
+
+// -------------------- CLUBES --------------------
+// Formato: [nome, abrev, cidade, cor1, cor2, reputação(1-99), estádio, capacidade]
+// Os escudos são gerados proceduralmente em SVG (ver gen.js) a partir das cores/abrev.
+export const CLUBS = {
+  br1: [
+    ['Flamengo', 'FLA', 'Rio de Janeiro', '#c1121f', '#111111', 93, 'Maracanã', 78],
+    ['Palmeiras', 'PAL', 'São Paulo', '#006437', '#ffffff', 91, 'Allianz Parque', 43],
+    ['São Paulo', 'SAO', 'São Paulo', '#e30613', '#111111', 88, 'Morumbis', 66],
+    ['Corinthians', 'COR', 'São Paulo', '#111111', '#ffffff', 89, 'Neo Química Arena', 49],
+    ['Fluminense', 'FLU', 'Rio de Janeiro', '#7a003c', '#006437', 86, 'Maracanã', 78],
+    ['Botafogo', 'BOT', 'Rio de Janeiro', '#111111', '#ffffff', 85, 'Nilton Santos', 46],
+    ['Atlético Mineiro', 'CAM', 'Belo Horizonte', '#111111', '#ffffff', 86, 'Arena MRV', 46],
+    ['Grêmio', 'GRE', 'Porto Alegre', '#0d80bf', '#111111', 86, 'Arena do Grêmio', 55],
+    ['Internacional', 'INT', 'Porto Alegre', '#d40000', '#ffffff', 85, 'Beira-Rio', 50],
+    ['Cruzeiro', 'CRU', 'Belo Horizonte', '#003aaf', '#ffffff', 85, 'Mineirão', 61],
+    ['Athletico Paranaense', 'CAP', 'Curitiba', '#d40000', '#111111', 82, 'Ligga Arena', 42],
+    ['Fortaleza', 'FOR', 'Fortaleza', '#1c4f9c', '#e30613', 79, 'Castelão', 63],
+    ['Red Bull Bragantino', 'RBB', 'Bragança Paulista', '#e30613', '#ffffff', 78, 'Nabi Abi Chedid', 17],
+    ['Santos', 'SAN', 'Santos', '#ffffff', '#111111', 84, 'Vila Belmiro', 16],
+    ['Vasco da Gama', 'VAS', 'Rio de Janeiro', '#111111', '#ffffff', 83, 'São Januário', 21],
+    ['Bahia', 'BAH', 'Salvador', '#003aaf', '#e30613', 80, 'Arena Fonte Nova', 47],
+    ['Cuiabá', 'CUI', 'Cuiabá', '#086b33', '#f5d100', 70, 'Arena Pantanal', 44],
+    ['Juventude', 'JUV', 'Caxias do Sul', '#006437', '#ffffff', 68, 'Alfredo Jaconi', 19],
+    ['Vitória', 'VIT', 'Salvador', '#e30613', '#111111', 74, 'Barradão', 34],
+    ['Ceará', 'CEA', 'Fortaleza', '#111111', '#ffffff', 72, 'Castelão', 63],
+  ],
+  br2: [
+    ['Coritiba', 'CFC', 'Curitiba', '#006437', '#ffffff', 74, 'Couto Pereira', 40],
+    ['Sport Recife', 'SPO', 'Recife', '#e30613', '#111111', 75, 'Ilha do Retiro', 32],
+    ['América Mineiro', 'AME', 'Belo Horizonte', '#006437', '#ffffff', 72, 'Independência', 23],
+    ['Goiás', 'GOI', 'Goiânia', '#006437', '#ffffff', 72, 'Serrinha', 14],
+    ['Ponte Preta', 'PON', 'Campinas', '#111111', '#ffffff', 70, 'Moisés Lucarelli', 19],
+    ['Guarani', 'GUA', 'Campinas', '#006437', '#ffffff', 70, 'Brinco de Ouro', 29],
+    ['CRB', 'CRB', 'Maceió', '#e30613', '#ffffff', 66, 'Rei Pelé', 17],
+    ['Vila Nova', 'VIL', 'Goiânia', '#e30613', '#ffffff', 68, 'Onésio Brasileiro Alvarenga', 8],
+    ['Chapecoense', 'CHA', 'Chapecó', '#008f4c', '#ffffff', 70, 'Arena Condá', 20],
+    ['Avaí', 'AVA', 'Florianópolis', '#0068b7', '#ffffff', 68, 'Ressacada', 17],
+    ['Criciúma', 'CRI', 'Criciúma', '#f5d100', '#111111', 68, 'Heriberto Hülse', 19],
+    ['Mirassol', 'MIR', 'Mirassol', '#006437', '#f5d100', 67, 'José Maria de Campos Maia', 15],
+    ['Novorizontino', 'NOV', 'Novo Horizonte', '#f5d100', '#111111', 66, 'Jorge Ismael de Biasi', 16],
+    ['Paysandu', 'PAY', 'Belém', '#0d80bf', '#ffffff', 70, 'Curuzu', 16],
+    ['Botafogo-SP', 'BSP', 'Ribeirão Preto', '#e30613', '#111111', 64, 'Santa Cruz', 29],
+    ['Operário Ferroviário', 'OPE', 'Ponta Grossa', '#111111', '#ffffff', 62, 'Germano Krüger', 10],
+    ['Ituano', 'ITU', 'Itu', '#e30613', '#111111', 62, 'Novelli Júnior', 18],
+    ['ABC', 'ABC', 'Natal', '#111111', '#ffffff', 63, 'Frasqueirão', 15],
+    ['Londrina', 'LON', 'Londrina', '#0d80bf', '#ffffff', 63, 'Estádio do Café', 30],
+    ['Sampaio Corrêa', 'SAM', 'São Luís', '#e30613', '#f5d100', 62, 'Castelão (MA)', 40],
+  ],
+  ar1: [
+    ['Boca Juniors', 'BOC', 'Buenos Aires', '#003aaf', '#f5d100', 90, 'La Bombonera', 54],
+    ['River Plate', 'RIV', 'Buenos Aires', '#e30613', '#ffffff', 90, 'Monumental de Núñez', 84],
+    ['Racing', 'RAC', 'Avellaneda', '#0d80bf', '#ffffff', 80, 'El Cilindro', 55],
+    ['Independiente', 'IND', 'Avellaneda', '#e30613', '#ffffff', 80, 'Libertadores de América', 48],
+    ['San Lorenzo', 'SLO', 'Buenos Aires', '#5b2a86', '#e30613', 78, 'Nuevo Gasómetro', 47],
+    ['Estudiantes', 'EST', 'La Plata', '#e30613', '#ffffff', 78, 'Jorge Luis Hirschi', 30],
+    ['Vélez Sarsfield', 'VEL', 'Buenos Aires', '#003aaf', '#ffffff', 77, 'José Amalfitani', 49],
+    ["Newell's Old Boys", 'NOB', 'Rosario', '#e30613', '#111111', 74, 'Marcelo Bielsa', 42],
+    ['Rosario Central', 'ROS', 'Rosario', '#003aaf', '#f5d100', 74, 'Gigante de Arroyito', 41],
+    ['Talleres', 'TAL', 'Córdoba', '#003aaf', '#ffffff', 74, 'Mario Alberto Kempes', 57],
+    ['Lanús', 'LAN', 'Lanús', '#7a003c', '#ffffff', 72, 'La Fortaleza', 47],
+    ['Banfield', 'BAN', 'Banfield', '#006437', '#ffffff', 68, 'Florencio Sola', 34],
+    ['Defensa y Justicia', 'DYJ', 'Florencio Varela', '#006437', '#f5d100', 70, 'Norberto Tomaghello', 12],
+    ['Argentinos Juniors', 'ARG', 'Buenos Aires', '#e30613', '#ffffff', 69, 'Diego Armando Maradona', 25],
+    ['Huracán', 'HUR', 'Buenos Aires', '#e30613', '#ffffff', 69, 'Tomás Adolfo Ducó', 48],
+    ['Gimnasia LP', 'GIM', 'La Plata', '#003aaf', '#ffffff', 68, 'Juan Carmelo Zerillo', 24],
+    ['Platense', 'PLA', 'Vicente López', '#7a003c', '#ffffff', 63, 'Ciudad de Vicente López', 28],
+    ['Tigre', 'TIG', 'Victoria', '#003aaf', '#e30613', 64, 'José Dellagiovanna', 26],
+    ['Belgrano', 'BEL', 'Córdoba', '#0d80bf', '#111111', 67, 'Julio César Villagra', 30],
+    ['Instituto', 'INS', 'Córdoba', '#e30613', '#ffffff', 62, 'Juan Domingo Perón', 26],
+  ],
+  en1: [
+    ['Manchester City', 'MCI', 'Manchester', '#6cabdd', '#ffffff', 95, 'Etihad Stadium', 53],
+    ['Liverpool', 'LIV', 'Liverpool', '#c1121f', '#ffffff', 93, 'Anfield', 61],
+    ['Arsenal', 'ARS', 'Londres', '#e30613', '#ffffff', 92, 'Emirates Stadium', 60],
+    ['Manchester United', 'MUN', 'Manchester', '#c1121f', '#f5d100', 90, 'Old Trafford', 74],
+    ['Chelsea', 'CHE', 'Londres', '#003aaf', '#ffffff', 89, 'Stamford Bridge', 40],
+    ['Tottenham Hotspur', 'TOT', 'Londres', '#ffffff', '#111111', 87, 'Tottenham Hotspur Stadium', 62],
+    ['Newcastle United', 'NEW', 'Newcastle', '#111111', '#ffffff', 84, "St James' Park", 52],
+    ['Aston Villa', 'AVL', 'Birmingham', '#5b2a86', '#7ab8e0', 83, 'Villa Park', 42],
+    ['West Ham United', 'WHU', 'Londres', '#7a003c', '#7ab8e0', 80, 'London Stadium', 62],
+    ['Brighton', 'BHA', 'Brighton', '#003aaf', '#ffffff', 79, 'Amex Stadium', 31],
+    ['Everton', 'EVE', 'Liverpool', '#003aaf', '#ffffff', 79, 'Goodison Park', 39],
+    ['Crystal Palace', 'CRY', 'Londres', '#003aaf', '#e30613', 76, 'Selhurst Park', 25],
+    ['Fulham', 'FUL', 'Londres', '#ffffff', '#e30613', 75, 'Craven Cottage', 24],
+    ['Wolverhampton', 'WOL', 'Wolverhampton', '#f5a800', '#111111', 75, 'Molineux Stadium', 31],
+    ['Brentford', 'BRE', 'Londres', '#e30613', '#111111', 74, 'Gtech Community Stadium', 17],
+    ['Bournemouth', 'BOU', 'Bournemouth', '#e30613', '#111111', 73, 'Vitality Stadium', 11],
+    ['Nottingham Forest', 'NFO', 'Nottingham', '#c1121f', '#ffffff', 75, 'City Ground', 30],
+    ['Leicester City', 'LEI', 'Leicester', '#003aaf', '#f5d100', 74, 'King Power Stadium', 32],
+    ['Leeds United', 'LEE', 'Leeds', '#f5d100', '#003aaf', 74, 'Elland Road', 37],
+    ['Sunderland', 'SUN', 'Sunderland', '#e30613', '#ffffff', 73, 'Stadium of Light', 48],
+  ],
+  es1: [
+    ['Real Madrid', 'RMA', 'Madri', '#ffffff', '#f5d100', 97, 'Santiago Bernabéu', 81],
+    ['Barcelona', 'BAR', 'Barcelona', '#a50044', '#003aaf', 95, 'Camp Nou', 99],
+    ['Atlético de Madrid', 'ATM', 'Madri', '#e30613', '#ffffff', 91, 'Cívitas Metropolitano', 70],
+    ['Sevilla', 'SEV', 'Sevilha', '#e30613', '#ffffff', 84, 'Ramón Sánchez-Pizjuán', 43],
+    ['Real Betis', 'BET', 'Sevilha', '#006437', '#ffffff', 80, 'Benito Villamarín', 60],
+    ['Villarreal', 'VIL', 'Villarreal', '#f5d100', '#003aaf', 82, 'La Cerámica', 23],
+    ['Athletic Club', 'ATH', 'Bilbao', '#e30613', '#ffffff', 82, 'San Mamés', 53],
+    ['Real Sociedad', 'RSO', 'San Sebastián', '#003aaf', '#ffffff', 81, 'Reale Arena', 39],
+    ['Valencia', 'VAL', 'Valência', '#f5d100', '#111111', 79, 'Mestalla', 49],
+    ['Celta de Vigo', 'CEL', 'Vigo', '#7ab8e0', '#ffffff', 75, 'Balaídos', 29],
+    ['Getafe', 'GET', 'Getafe', '#003aaf', '#ffffff', 72, 'Coliseum', 16],
+    ['Osasuna', 'OSA', 'Pamplona', '#e30613', '#003aaf', 73, 'El Sadar', 23],
+    ['Girona', 'GIR', 'Girona', '#e30613', '#ffffff', 76, 'Montilivi', 14],
+    ['Rayo Vallecano', 'RAY', 'Madri', '#e30613', '#ffffff', 70, 'Vallecas', 14],
+    ['Mallorca', 'MAL', 'Palma', '#e30613', '#f5d100', 70, 'Son Moix', 23],
+    ['Alavés', 'ALA', 'Vitoria-Gasteiz', '#003aaf', '#ffffff', 69, 'Mendizorroza', 19],
+    ['Espanyol', 'ESP', 'Barcelona', '#003aaf', '#ffffff', 71, 'RCDE Stadium', 40],
+    ['Levante', 'LEV', 'Valência', '#e30613', '#003aaf', 67, 'Ciutat de València', 26],
+    ['Real Oviedo', 'OVI', 'Oviedo', '#003aaf', '#ffffff', 65, 'Carlos Tartiere', 30],
+    ['Elche', 'ELC', 'Elche', '#006437', '#ffffff', 66, 'Martínez Valero', 33],
+  ],
+  it1: [
+    ['Inter', 'INT', 'Milão', '#003aaf', '#111111', 92, 'San Siro', 75],
+    ['Milan', 'MIL', 'Milão', '#e30613', '#111111', 91, 'San Siro', 75],
+    ['Juventus', 'JUV', 'Turim', '#111111', '#ffffff', 91, 'Allianz Stadium', 41],
+    ['Napoli', 'NAP', 'Nápoles', '#0d80bf', '#ffffff', 89, 'Diego Armando Maradona', 54],
+    ['Roma', 'ROM', 'Roma', '#8e1f2f', '#f5a800', 86, 'Estádio Olímpico', 70],
+    ['Lazio', 'LAZ', 'Roma', '#7ab8e0', '#ffffff', 84, 'Estádio Olímpico', 70],
+    ['Atalanta', 'ATA', 'Bérgamo', '#003aaf', '#111111', 85, 'Gewiss Stadium', 25],
+    ['Fiorentina', 'FIO', 'Florença', '#5b2a86', '#ffffff', 81, 'Artemio Franchi', 43],
+    ['Bologna', 'BOL', 'Bolonha', '#8e1f2f', '#003aaf', 78, "Renato Dall'Ara", 36],
+    ['Torino', 'TOR', 'Turim', '#7a003c', '#f5d100', 74, 'Olímpico Grande Torino', 27],
+    ['Genoa', 'GEN', 'Gênova', '#e30613', '#003aaf', 73, 'Luigi Ferraris', 33],
+    ['Sampdoria', 'SMP', 'Gênova', '#003aaf', '#e30613', 72, 'Luigi Ferraris', 33],
+    ['Udinese', 'UDI', 'Údine', '#111111', '#ffffff', 71, 'Bluenergy Stadium', 25],
+    ['Monza', 'MON', 'Monza', '#e30613', '#ffffff', 70, 'U-Power Stadium', 18],
+    ['Lecce', 'LEC', 'Lecce', '#f5d100', '#e30613', 68, 'Via del Mare', 31],
+    ['Cagliari', 'CAG', 'Cagliari', '#8e1f2f', '#003aaf', 69, 'Unipol Domus', 16],
+    ['Hellas Verona', 'VER', 'Verona', '#f5d100', '#003aaf', 69, "Marcantonio Bentegodi", 39],
+    ['Parma', 'PAR', 'Parma', '#f5d100', '#003aaf', 71, 'Ennio Tardini', 27],
+    ['Como', 'COM', 'Como', '#003aaf', '#ffffff', 68, 'Giuseppe Sinigaglia', 13],
+    ['Sassuolo', 'SAS', 'Sassuolo', '#006437', '#111111', 70, 'Mapei Stadium', 21],
+  ],
+  de1: [
+    ['Bayern München', 'BAY', 'Munique', '#c1121f', '#ffffff', 96, 'Allianz Arena', 75],
+    ['Borussia Dortmund', 'BVB', 'Dortmund', '#f5d100', '#111111', 90, 'Signal Iduna Park', 81],
+    ['Bayer Leverkusen', 'B04', 'Leverkusen', '#e30613', '#111111', 87, 'BayArena', 30],
+    ['RB Leipzig', 'RBL', 'Leipzig', '#e30613', '#ffffff', 86, 'Red Bull Arena', 47],
+    ['Eintracht Frankfurt', 'SGE', 'Frankfurt', '#e30613', '#111111', 81, 'Deutsche Bank Park', 51],
+    ['VfL Wolfsburg', 'WOB', 'Wolfsburg', '#006437', '#ffffff', 76, 'Volkswagen Arena', 30],
+    ["Borussia M'gladbach", 'BMG', "Mönchengladbach", '#006437', '#111111', 76, 'Borussia-Park', 54],
+    ['VfB Stuttgart', 'VFB', 'Stuttgart', '#e30613', '#ffffff', 79, 'MHPArena', 60],
+    ['SC Freiburg', 'SCF', 'Friburgo', '#e30613', '#ffffff', 76, 'Europa-Park Stadion', 34],
+    ['Union Berlin', 'FCU', 'Berlim', '#e30613', '#f5d100', 75, 'An der Alten Försterei', 22],
+    ['Werder Bremen', 'SVW', 'Bremen', '#006437', '#ffffff', 74, 'Weserstadion', 42],
+    ['Mainz 05', 'M05', 'Mainz', '#e30613', '#ffffff', 71, 'Mewa Arena', 33],
+    ['Hoffenheim', 'TSG', 'Sinsheim', '#003aaf', '#ffffff', 71, 'PreZero Arena', 30],
+    ['FC Köln', 'KOE', 'Colônia', '#e30613', '#ffffff', 72, 'RheinEnergieStadion', 50],
+    ['Hamburger SV', 'HSV', 'Hamburgo', '#003aaf', '#ffffff', 74, 'Volksparkstadion', 57],
+    ['FC St. Pauli', 'STP', 'Hamburgo', '#6b4423', '#ffffff', 67, 'Millerntor-Stadion', 29],
+    ['FC Augsburg', 'FCA', 'Augsburg', '#e30613', '#006437', 69, 'WWK Arena', 30],
+    ['Heidenheim', 'HEI', 'Heidenheim', '#e30613', '#003aaf', 64, 'Voith-Arena', 15],
+  ],
+  fr1: [
+    ['Paris Saint-Germain', 'PSG', 'Paris', '#003aaf', '#e30613', 93, 'Parc des Princes', 48],
+    ['Olympique Marseille', 'OM', 'Marselha', '#7ab8e0', '#ffffff', 85, 'Orange Vélodrome', 67],
+    ['AS Monaco', 'ASM', 'Mônaco', '#e30613', '#ffffff', 84, 'Stade Louis-II', 18],
+    ['Lille', 'LIL', 'Lille', '#e30613', '#003aaf', 82, 'Stade Pierre-Mauroy', 50],
+    ['Lyon', 'OL', 'Lyon', '#ffffff', '#e30613', 82, 'Groupama Stadium', 59],
+    ['Nice', 'NCE', 'Nice', '#e30613', '#111111', 76, 'Allianz Riviera', 36],
+    ['Rennes', 'REN', 'Rennes', '#e30613', '#111111', 76, 'Roazhon Park', 29],
+    ['Lens', 'RCL', 'Lens', '#e30613', '#f5d100', 77, 'Stade Bollaert-Delelis', 38],
+    ['Strasbourg', 'STR', 'Estrasburgo', '#003aaf', '#ffffff', 73, 'Stade de la Meinau', 26],
+    ['Nantes', 'NAN', 'Nantes', '#f5d100', '#006437', 70, 'Stade de la Beaujoire', 35],
+    ['Toulouse', 'TOU', 'Toulouse', '#5b2a86', '#ffffff', 71, 'Stadium de Toulouse', 33],
+    ['Montpellier', 'MON', 'Montpellier', '#003aaf', '#e30613', 68, 'Stade de la Mosson', 32],
+    ['Brest', 'BRE', 'Brest', '#e30613', '#ffffff', 70, 'Stade Francis-Le Blé', 15],
+    ['Reims', 'REI', 'Reims', '#e30613', '#ffffff', 69, 'Stade Auguste-Delaune', 21],
+    ['Auxerre', 'AUX', 'Auxerre', '#003aaf', '#ffffff', 68, "Stade de l'Abbé-Deschamps", 21],
+    ['Angers', 'ANG', 'Angers', '#111111', '#ffffff', 64, 'Stade Raymond Kopa', 18],
+    ['Le Havre', 'HAC', 'Le Havre', '#003aaf', '#7ab8e0', 64, 'Stade Océane', 25],
+    ['Lorient', 'LOR', 'Lorient', '#f5a800', '#111111', 66, 'Stade du Moustoir', 18],
+  ],
+  pt1: [
+    ['Benfica', 'BEN', 'Lisboa', '#e30613', '#ffffff', 89, 'Estádio da Luz', 64],
+    ['Porto', 'POR', 'Porto', '#003aaf', '#ffffff', 88, 'Estádio do Dragão', 50],
+    ['Sporting CP', 'SCP', 'Lisboa', '#006437', '#ffffff', 87, 'Estádio José Alvalade', 50],
+    ['Braga', 'BRA', 'Braga', '#e30613', '#ffffff', 79, 'Estádio Municipal de Braga', 30],
+    ['Vitória Guimarães', 'VSC', 'Guimarães', '#111111', '#ffffff', 73, 'Estádio D. Afonso Henriques', 30],
+    ['Boavista', 'BOA', 'Porto', '#111111', '#ffffff', 67, 'Estádio do Bessa', 28],
+    ['Gil Vicente', 'GIL', 'Barcelos', '#e30613', '#003aaf', 64, 'Estádio Cidade de Barcelos', 12],
+    ['Famalicão', 'FAM', 'Vila Nova de Famalicão', '#003aaf', '#ffffff', 66, 'Estádio Municipal 22 de Junho', 5],
+    ['Estoril', 'EST', 'Estoril', '#f5d100', '#003aaf', 64, 'Estádio António Coimbra da Mota', 8],
+    ['Casa Pia', 'CAS', 'Lisboa', '#111111', '#ffffff', 63, 'Estádio Municipal de Rio Maior', 7],
+    ['Rio Ave', 'RIO', 'Vila do Conde', '#006437', '#ffffff', 65, 'Estádio dos Arcos', 9],
+    ['Arouca', 'ARO', 'Arouca', '#f5d100', '#003aaf', 63, 'Estádio Municipal de Arouca', 5],
+    ['Moreirense', 'MOR', 'Moreira de Cónegos', '#006437', '#ffffff', 62, 'Parque Joaquim de Almeida Freitas', 6],
+    ['Nacional', 'NAC', 'Funchal', '#111111', '#ffffff', 62, 'Estádio da Madeira', 5],
+    ['Santa Clara', 'STC', 'Ponta Delgada', '#e30613', '#ffffff', 63, 'Estádio de São Miguel', 13],
+    ['Farense', 'FAR', 'Faro', '#111111', '#f5d100', 60, 'Estádio de São Luís', 7],
+    ['Estrela Amadora', 'EAM', 'Amadora', '#006437', '#e30613', 59, 'Estádio José Gomes', 9],
+    ['AVS', 'AVS', 'Vila das Aves', '#e30613', '#f5d100', 58, 'Estádio do CD Aves', 8],
+  ],
+  nl1: [
+    ['Ajax', 'AJA', 'Amsterdã', '#e30613', '#ffffff', 88, 'Johan Cruyff Arena', 55],
+    ['PSV Eindhoven', 'PSV', 'Eindhoven', '#e30613', '#ffffff', 87, 'Philips Stadion', 35],
+    ['Feyenoord', 'FEY', 'Roterdã', '#e30613', '#111111', 86, 'De Kuip', 51],
+    ['AZ Alkmaar', 'AZ', 'Alkmaar', '#e30613', '#111111', 79, 'AFAS Stadion', 19],
+    ['FC Twente', 'TWE', 'Enschede', '#e30613', '#ffffff', 75, 'De Grolsch Veste', 30],
+    ['Utrecht', 'UTR', 'Utrecht', '#e30613', '#ffffff', 71, 'Stadion Galgenwaard', 23],
+    ['Heerenveen', 'HEE', 'Heerenveen', '#003aaf', '#ffffff', 68, 'Abe Lenstra Stadion', 27],
+    ['NEC Nijmegen', 'NEC', 'Nijmegen', '#e30613', '#006437', 68, 'Goffertstadion', 12],
+    ['Sparta Rotterdam', 'SPA', 'Roterdã', '#e30613', '#ffffff', 67, 'Sparta Stadion Het Kasteel', 11],
+    ['Go Ahead Eagles', 'GAE', 'Deventer', '#e30613', '#f5d100', 66, 'De Adelaarshorst', 10],
+    ['Groningen', 'GRO', 'Groningen', '#006437', '#ffffff', 67, 'Euroborg', 22],
+    ['Willem II', 'WIL', 'Tilburg', '#e30613', '#003aaf', 66, 'Koning Willem II Stadion', 14],
+    ['Fortuna Sittard', 'FOR', 'Sittard', '#f5d100', '#006437', 63, 'Fortuna Sittard Stadion', 12],
+    ['Almere City', 'ALM', 'Almere', '#e30613', '#111111', 62, 'Yanmar Stadion', 4],
+    ['NAC Breda', 'NAC', 'Breda', '#f5d100', '#111111', 63, 'Rat Verlegh Stadion', 19],
+    ['PEC Zwolle', 'ZWO', 'Zwolle', '#003aaf', '#ffffff', 64, 'MAC³PARK Stadion', 14],
+    ['Heracles', 'HER', 'Almelo', '#111111', '#ffffff', 62, 'Erve Asito', 12],
+    ['Excelsior', 'EXC', 'Roterdã', '#e30613', '#111111', 61, 'Van Donge & De Roo Stadion', 4],
+  ],
+};
+
+// -------------------- NOMES DE JOGADORES (geração procedural) --------------------
+export const NAME_POOLS = {
+  br: {
+    first: ['Gabriel','Lucas','Matheus','Pedro','Vinícius','Rafael','Bruno','Thiago','Felipe','Rodrigo','Gustavo','Diego','André','Caio','Eduardo','Fernando','Guilherme','Henrique','Igor','João','Kauã','Leonardo','Marcos','Nathan','Otávio','Paulo','Renan','Samuel','Victor','Wesley','Yuri','Arthur','Danilo','Everton','Fábio','Hugo','Igor','Jean','Kléber','Leandro','Murilo','Nicolas','Pablo','Ricardo','Sérgio','Talles','Uillian','Vanderlei','Willian','Xavier','Adriano','Alex','Antony','Breno','Carlos','Daniel','Ederson','Fabinho','Gerson','Hernani','Iago','Júnior','Luan','Marlon','Neymar','Oscar','Patrick','Richarlison','Savio','Tetê','Vanderson','Werton','Zé'],
+    last: ['Silva','Santos','Oliveira','Souza','Rodrigues','Ferreira','Alves','Pereira','Lima','Gomes','Costa','Ribeiro','Martins','Carvalho','Rocha','Almeida','Nascimento','Araújo','Melo','Barbosa','Cardoso','Correia','Dias','Teixeira','Fernandes','Freitas','Moreira','Nogueira','Pinto','Ramos','Cavalcante','Duarte','Farias','Macedo','Moraes','Nunes','Peixoto','Reis','Sales','Vieira','Andrade','Batista','Campos','Cunha','Figueiredo','Lopes','Miranda','Monteiro','Pires','Tavares','Viana','Assis','Borges','Castro','Dantas','Esteves','Fonseca','Guimarães','Leite','Maia','Neves','Paiva','Queiroz','Siqueira','Toledo','Vasconcelos','Braga','Xavier','Aguiar','Barros','Coelho'],
+  },
+  hisp: {
+    first: ['Alejandro','Bruno','Carlos','Damián','Diego','Emiliano','Enzo','Facundo','Federico','Franco','Gonzalo','Ignacio','Joaquín','Julián','Lautaro','Lisandro','Luciano','Marcos','Mateo','Matías','Maximiliano','Nicolás','Pablo','Pedro','Santiago','Sebastián','Thiago','Tomás','Valentín','Exequiel','Agustín','Alexis','Andrés','Ángel','Cristian','Ezequiel','Germán','Hernán','Iván','Javier','Kevin','Leandro','Manuel','Marcelo','Mauricio','Nahuel','Óscar','Ramiro','Rodrigo','Rubén'],
+    last: ['González','Rodríguez','Fernández','López','Martínez','Pérez','García','Romero','Sosa','Álvarez','Torres','Ruiz','Ramírez','Flores','Benítez','Acosta','Medina','Herrera','Suárez','Aguirre','Giménez','Pereyra','Rojas','Castillo','Vega','Campos','Fuentes','Cabrera','Morales','Navarro','Ortiz','Vargas','Castro','Paredes','Mercado','Quiroga','Figueroa','Palacios','Ledesma','Arce'],
+  },
+  en: {
+    first: ['Jack','Harry','Oliver','George','Charlie','Jacob','Alfie','Leo','Oscar','Henry','Archie','Joshua','Ethan','Daniel','Samuel','James','William','Thomas','Benjamin','Lucas','Mason','Finley','Harrison','Jude','Cole','Declan','Phil','Bukayo','Marcus','Trent','Jordan','Aaron','Callum','Reece','Conor','Mason','Jarrod','Ivan','Ollie','Eberechi','Kobbie','Lewis','Curtis','Anthony','Dominic','Kieran','Tyrone','Ezri','Ben','Luke'],
+    last: ['Smith','Jones','Williams','Taylor','Brown','Davies','Wilson','Evans','Thomas','Johnson','Roberts','Walker','Wright','Robinson','Thompson','Hughes','White','Edwards','Green','Hall','Lewis','Harris','Clarke','Patel','Jackson','Wood','Turner','Martin','Cooper','Hill','Ward','Morris','Moore','Clark','King','Baker','Young','Allen','Mitchell','Phillips','Campbell','Parker','Bell','Graham','Kelly','Howard','Rice','Saka','Foden','Palmer'],
+  },
+  it: {
+    first: ['Alessandro','Andrea','Antonio','Carlo','Daniele','Davide','Domenico','Edoardo','Emanuele','Federico','Filippo','Francesco','Gabriele','Giacomo','Giorgio','Giovanni','Giuseppe','Lorenzo','Luca','Marco','Matteo','Mattia','Michele','Nicola','Nicolò','Riccardo','Salvatore','Simone','Stefano','Tommaso','Vincenzo','Alessio','Bruno','Cesare','Claudio','Elia','Fabio','Gianluca','Ivan','Loris','Manuel','Massimo','Milo','Paolo','Pietro','Renato','Samuele','Tiziano','Umberto','Valerio'],
+    last: ['Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Colombo','Ricci','Marino','Greco','Bruno','Gallo','Conti','De Luca','Costa','Giordano','Mancini','Rizzo','Lombardi','Moretti','Barbieri','Fontana','Santoro','Mariani','Rinaldi','Caruso','Ferraro','Fabbri','Valentini','Basile','Serra','Vitale','Pellegrini','Bellini','Monti','Palumbo','Sorrentino','Leone','D’Angelo','Marchetti','Battaglia','Neri','Franco','Martini','Ferretti','Parisi','Testa','Grassi','Riva','Caputo'],
+  },
+  de: {
+    first: ['Ben','Finn','Jonas','Leon','Luca','Lukas','Maximilian','Moritz','Niklas','Noah','Paul','Philipp','Tim','Tom','Felix','Jan','Julian','Kai','Kevin','Marco','Marius','Nico','Sebastian','Simon','Timo','Tobias','Yannick','Dominik','Erik','Florian','Henrik','Jamal','Joshua','Karim','Leroy','Mats','Max','Niklas','Robin','Serge','Sven','Thilo','Tony','Tristan','Wout','Sepp','Xaver','Malik','Emre','Antonio'],
+    last: ['Müller','Schmidt','Schneider','Fischer','Weber','Meyer','Wagner','Becker','Hoffmann','Schulz','Koch','Bauer','Richter','Klein','Wolf','Neumann','Schwarz','Zimmermann','Braun','Krüger','Hartmann','Lange','Schmitt','Werner','Krause','Meier','Lehmann','Schmid','Schulze','Maier','Köhler','Herrmann','Walter','König','Mayer','Huber','Kaiser','Fuchs','Peters','Lang','Scholz','Brandt','Haas','Vogel','Jung','Hahn','Keller','Busch','Berger','Kramer'],
+  },
+  fr: {
+    first: ['Adrien','Alexandre','Antoine','Aurélien','Benjamin','Brice','Clément','Corentin','Dimitri','Enzo','Florian','Hugo','Jordan','Jules','Kylian','Léo','Loïc','Louis','Lucas','Mathis','Maxence','Moussa','Nabil','Nathan','Nicolas','Olivier','Paul','Pierre','Quentin','Randal','Romain','Samuel','Sofiane','Théo','Thomas','Valentin','Wissam','Yacine','Boubacar','Dayot','Eduardo','Ferland','Gautier','Ismaël','Jonathan','Kingsley','Leny','Maghnes','Youssouf','Warren'],
+    last: ['Martin','Bernard','Dubois','Thomas','Robert','Richard','Petit','Durand','Leroy','Moreau','Simon','Laurent','Lefèvre','Michel','David','Bertrand','Roux','Vincent','Fournier','Morel','Girard','André','Lefebvre','Mercier','Dupont','Lambert','Bonnet','Fontaine','Rousseau','Chevalier','Robin','Barbier','Gauthier','Perrin','Charpentier','Renard','Moulin','Collet','Benoit','Gros','Henry','Masson','Marchand','Duval','Denis','Dumont','Marie','Noël','Perrot','Camara'],
+  },
+};
+
+// Treinadores (gerados)
+export const COACH_NAMES = {
+  br: ['Manoel Ferreira','Rogério Alencar','Tite Ramalho','Dorival Prates','Abel Nogueira','Fernando Diniz Moreira','Renato Gaúcho Lima','Vanderlei Rosa','Cuca Mendes','Felipão Braga','Muricy Costa','Carille Souza','Odair Hellmann','Silvinho Castro','Zé Ricardo Pires'],
+  hisp: ['Marcelo Bielsa Ortega','Diego Simeone Vera','Jorge Sampaoli Ruiz','Marcelo Gallardo Peralta','Ramón Díaz Torres','Hernán Crespo Loza','Mauricio Pochettino Gil','Gerardo Martino Suárez','Edgardo Bauza Tapia','Gustavo Alfaro Mejía'],
+  en: ['Gareth Palmer','Eddie Howe-Jones','Sean Dyche Cooper','Mark Robins Taylor','Kieran McKenna Shaw','Russell Martin Lowe','Gary O’Neil Fraser','Rob Edwards Miles','Thomas Frank Sørensen','Oliver Glasner Maier'],
+  it: ['Carlo Mazzone Ferri','Roberto De Zerbi Vitali','Giancarlo Italiano Neri','Pierpaolo Inzaghi Renzi','Massimiliano Allegri Bassi','Sergio Conceição Alves','Eusebio Di Francesco Ricci','Vincenzo Montella Grasso','Maurizio Sarri Landi','Ivan Jurić Kos'],
+  de: ['Jürgen Klopp Steiner','Thomas Tuchel Brandt','Hansi Flick Lehmann','Julian Nagelsmann Roth','Xabi Alonso Vega','Edin Terzić Bozic','Sebastian Hoeneß Baum','Marco Rose Fischer','Niko Kovač Peric','Oliver Glasner Sommer'],
+  fr: ['Didier Deschamps Fabre','Christophe Galtier Roux','Bruno Génésio Blanc','Rudi Garcia Pons','Laurent Blanc Olivier','Luis Enrique Marco','Franck Haise Schmitt','Will Still Vandenbroeck','Pierre Sage Martin','Éric Roy Tessier'],
+};
+
+export const SPONSORS = ['VivaBank','AeroBrasil','NeoTech','BetMax','SolarEnergia','PrimeSeguros','UltraCell','NordBank','MaxPlay','VitaSaúde','PetroForte','GloboShop','AutoVia','TeleNorte','UniCafé','AstraGames'];
+export const BOOT_BRANDS = [];
+
+// -------------------- FORMAÇÕES / TÁTICAS --------------------
+export const FORMATIONS = [
+  { id: '4-4-2', d: 4, m: 4, a: 2 },
+  { id: '4-3-3', d: 4, m: 3, a: 3 },
+  { id: '4-2-3-1', d: 4, m: 5, a: 1 },
+  { id: '3-5-2', d: 3, m: 5, a: 2 },
+  { id: '3-4-3', d: 3, m: 4, a: 3 },
+  { id: '5-3-2', d: 5, m: 3, a: 2 },
+  { id: '4-5-1', d: 4, m: 5, a: 1 },
+  { id: '4-1-4-1', d: 4, m: 5, a: 1 },
+];
+export const MENTALITIES = ['Defensivo', 'Equilibrado', 'Ofensivo'];
+export const PRESSING = ['Baixa', 'Média', 'Alta'];
+export const LINES = ['Recuada', 'Normal', 'Adiantada'];
+export const STYLES = ['Posse de bola', 'Contra-ataque'];
+export const TEMPO = ['Lento', 'Normal', 'Rápido'];
+
+export const PERSONALITIES = ['Profissional', 'Líder', 'Ambicioso', 'Humilde', 'Pavio curto', 'Resiliente'];
+export const POSITIONS = { G: 'Goleiro', D: 'Defensor', M: 'Meio-campo', A: 'Atacante' };
+export const POS_ORDER = ['G', 'D', 'M', 'A'];
+
+// -------------------- i18n (rótulos principais) --------------------
+export const I18N = {
+  pt: {
+    home: 'Início', squad: 'Elenco', tactics: 'Táticas', play: 'Jogar', league: 'Liga', more: 'Mais',
+    next: 'Próxima partida', table: 'Tabela', fixtures: 'Calendário', market: 'Mercado', finances: 'Finanças',
+    club: 'Clube', youth: 'Base', manager: 'Treinador', stats: 'Estatísticas', ranking: 'Ranking', settings: 'Configurações',
+    saves: 'Saves', friendlies: 'Amistosos', custom: 'Criar Campeonato', credits: 'Créditos', cup: 'Copas',
+    newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save', editor: 'Editor',
+    teamOfWeek: 'Avançar', quick: 'Resultado rápido', live: 'Assistir', skip: 'Pular',
+  },
+  en: {
+    home: 'Home', squad: 'Squad', tactics: 'Tactics', play: 'Play', league: 'League', more: 'More',
+    next: 'Next match', table: 'Table', fixtures: 'Fixtures', market: 'Transfers', finances: 'Finances',
+    club: 'Club', youth: 'Academy', manager: 'Manager', stats: 'Stats', ranking: 'Ranking', settings: 'Settings',
+    saves: 'Saves', friendlies: 'Friendlies', custom: 'Custom Cup', credits: 'Credits', cup: 'Cups',
+    newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save', editor: 'Editor',
+    teamOfWeek: 'Advance', quick: 'Quick result', live: 'Watch', skip: 'Skip',
+  },
+};
+
+// Nacionalidades adicionais (nomes reais de seleções fora das 9 jogáveis)
+export const NAT_LABELS = {
+  bel: 'Bélgica', col: 'Colômbia', uru: 'Uruguai', chi: 'Chile', par: 'Paraguai', per: 'Peru',
+  ecu: 'Equador', ven: 'Venezuela', mex: 'México', usa: 'EUA', jpn: 'Japão', kor: 'Coreia do Sul',
+  cro: 'Croácia', srb: 'Sérvia', pol: 'Polônia', ukr: 'Ucrânia', tur: 'Turquia', sui: 'Suíça',
+  aut: 'Áustria', den: 'Dinamarca', nor: 'Noruega', swe: 'Suécia', sco: 'Escócia', wal: 'País de Gales',
+  gre: 'Grécia', gha: 'Gana', nga: 'Nigéria', sen: 'Senegal', mar: 'Marrocos', alg: 'Argélia',
+  egy: 'Egito', cmr: 'Camarões', civ: 'Costa do Marfim', mli: 'Mali', gui: 'Guiné', tog: 'Togo',
+  gab: 'Gabão', con: 'Congo', cod: 'RD Congo', can: 'Canadá', irl: 'Irlanda', rus: 'Rússia',
+  geo: 'Geórgia', alb: 'Albânia', ksa: 'Arábia Saudita', qat: 'Catar', aou: 'Austrália', aus: 'Austrália',
+};
+
+export const T = (lang, key) => (I18N[lang] && I18N[lang][key]) || I18N.pt[key] || key;

@@ -203,7 +203,7 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
     competitions: [],
     history: { champions: [], scorers: [], records: {} },
     friendlies: [],
-    settings: settings || { lang: 'pt', accent: 'verde', speed: 2, volume: 50, quality: 'alta' },
+    settings: settings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' },
   };
   // Escalação inicial
   const lineup = pickBestLineup(availablePlayers(db, clubId), state.tactics.formation);

@@ -710,7 +710,7 @@ function benchList(s) {
   for (const k of POS_ORDER) (s.tactics.lineup[k] || []).forEach((id) => used.add(id));
   const bench = G.clubPlayers(s.db, s.clubId).filter((p) => !used.has(p.id))
     .sort((a, b) => POS_ORDER.indexOf(a.pos) - POS_ORDER.indexOf(b.pos) || b.ovr - a.ovr).slice(0, 7);
-  return bench.map((p) => `<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid rgba(35,49,82,.5)">
+  return bench.map((p) => `<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)">
     ${avatar(p, 28)}<span style="flex:1;font-weight:600">${esc(p.name)}</span>${posBadge(p.pos)}${ovrBadge(p.ovr)}
   </div>`).join('') || '<div class="tiny muted">—</div>';
 }

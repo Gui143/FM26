@@ -11,7 +11,7 @@ const clubs = Object.values(db.clubs);
 const fla = clubs.find((c) => c.name === 'Flamengo');
 App.state = G.createNewGame(db, { clubId: fla.id, managerName: 'Teste' });
 App.storage = G.memoryStorage;
-App.bootSettings = { lang: 'pt', accent: 'verde', speed: 2, volume: 50, quality: 'alta' };
+App.bootSettings = { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
 App.revalue = (o, a, p) => 1000000;
 
 const p = Object.values(db.players).find((x) => x.clubId === fla.id);

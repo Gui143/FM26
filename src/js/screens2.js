@@ -7,7 +7,7 @@ import { App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, nu
 import * as G from './game.js';
 import { LEAGUES, COUNTRIES, POSITIONS, POS_ORDER } from './data.js';
 import { downloadFile, readUploadedFile, compressText, decompressText } from './saveio.js';
-import { resizeImage, advanceWeek, playBarHTML, playBarMount, countryName, leagueName } from './screens.js';
+import { resizeImage, advanceWeek, playBarHTML, playBarMount, countryName, leagueName, refDateInfo } from './screens.js';
 import { clamp } from './util.js';
 
 const S = () => {
@@ -28,72 +28,75 @@ const S = () => {
 // CALENDÁRIO
 // ============================================================
 let calWeek = null;
+let calMonth = 1;
 export const calendarScreen = {
   html() {
     const s = S();
-    if (!calWeek || calWeek < 1) calWeek = s.week;
-    const rows = [];
+    const next = G.nextUserFixture(s);
+    const club = s.db.clubs[s.clubId];
+    const monthDate = new Date(Date.UTC(s.year, calMonth, 1));
+    const daysInMonth = new Date(Date.UTC(s.year, calMonth + 1, 0)).getUTCDate();
+    const firstDay = monthDate.getUTCDay();
+    const base = Date.UTC(s.year, 0, 2);
+    const events = {};
     for (const comp of s.competitions) {
-      for (const f of comp.fixtures.filter((x) => x.week === calWeek)) {
-        if (f.home === s.clubId || f.away === s.clubId || comp.type === 'league' && comp.teams.includes(s.clubId) && comp.id.startsWith('L_')) {
-          rows.push({ comp, f, mine: f.home === s.clubId || f.away === s.clubId });
-        }
+      for (const fixture of comp.fixtures) {
+        if (fixture.home !== s.clubId && fixture.away !== s.clubId) continue;
+        const date = new Date(base + Math.max(0, fixture.week - 1) * 7 * 86400000);
+        if (date.getUTCFullYear() !== s.year || date.getUTCMonth() !== calMonth) continue;
+        const day = date.getUTCDate();
+        (events[day] = events[day] || []).push({ comp, fixture });
       }
     }
-    rows.sort((a, b) => (b.mine - a.mine));
-    const next = [];
-    for (let w = s.week; w <= s.week + 7; w++) {
-      for (const comp of s.competitions) {
-        for (const f of comp.fixtures.filter((x) => x.week === w && !x.played && (x.home === s.clubId || x.away === s.clubId))) {
-          next.push({ comp, f });
-        }
-      }
+    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    const cells = [];
+    for (let i = 0; i < firstDay; i++) cells.push('<div class="ref-calendar-day is-empty"></div>');
+    for (let day = 1; day <= daysInMonth; day++) {
+      const entries = events[day] || [];
+      cells.push(`<div class="ref-calendar-day ${entries.length ? 'has-event' : ''}"><b class="ref-calendar-number">${day}</b>${entries.map(({ comp, fixture }) => {
+        const opponent = s.db.clubs[fixture.home === s.clubId ? fixture.away : fixture.home];
+        return `<button class="ref-calendar-event" data-go-match><strong>${fixture.home === s.clubId ? 'CAS' : 'FOR'} · ${esc(opponent.short)}</strong><small>${icon('trophy')} ${fixture.played ? `${fixture.gh} × ${fixture.ga}` : `18:00 · ${esc(comp.short || comp.name)}`}</small></button>`;
+      }).join('')}</div>`);
     }
-    const nextMine = next[0];
+    while (cells.length % 7) cells.push('<div class="ref-calendar-day is-empty"></div>');
+    const nextDate = next ? refDateInfo(next.fixture.week, s.year) : null;
+    const nextHome = next ? s.db.clubs[next.fixture.home] : null;
+    const nextAway = next ? s.db.clubs[next.fixture.away] : null;
+    const nextIsHome = next?.fixture.home === s.clubId;
+
     return `
-    <div class="stack" style="max-width:820px;margin:0 auto">
-      <div class="card" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:10px">
-          <button class="btn small" data-w="-1">${icon('back')}</button>
-          <div style="text-align:center">
-            <div style="font-weight:900;font-size:1.25rem">${calWeek}</div>
-            <div class="tiny muted">Semana • ${s.year}</div>
-          </div>
-          <button class="btn small" data-w="1">${icon('play')}</button>
-        </div>
-        <span class="pill ${nextMine ? 'gold' : ''}">${nextMine ? `${esc(nextMine.comp.short)} • S${nextMine.f.week}` : 'Agenda livre'}</span>
-      </div>
-      ${nextMine ? `
-      <div class="card" style="cursor:pointer" data-go-match>
-        <div class="h-sec">Próxima partida — S${nextMine.f.week}</div>
-        <div class="live-score" style="margin-top:4px">
-          <div class="live-team">${crest(s.db.clubs[nextMine.f.home], 52)}<span>${esc(s.db.clubs[nextMine.f.home].short)}</span></div>
-          <div><div class="pill gold">${esc(nextMine.comp.name)}</div><div class="tiny muted" style="margin-top:6px">Rodada ${nextMine.f.round} • ${nextMine.f.home === s.clubId ? 'casa' : 'fora'}</div></div>
-          <div class="live-team">${crest(s.db.clubs[nextMine.f.away], 52)}<span>${esc(s.db.clubs[nextMine.f.away].short)}</span></div>
-        </div>
-      </div>` : ''}
-      <div class="card">
-        <div class="h-sec">Jogos da semana ${calWeek}</div>
-        ${rows.length ? rows.map(({ comp, f, mine }) => `
-          <div class="tie ${mine ? 'mine' : ''}" style="${mine ? 'border-color:var(--accent)' : ''}">
-            <div>
-              <span style="display:flex;align-items:center;gap:8px">${mine ? icon('star', 'ico fill') : ''}${clubCell(s, f.home)} <b style="margin:0 6px">×</b> ${clubCell(s, f.away)}</span>
-              <div class="tiny muted" style="margin-top:3px">${esc(comp.short)} • Rodada ${f.round}${mine ? ' • seu time' : ''}</div>
-            </div>
-            <div class="tscore">${f.played ? `<b>${f.gh} × ${f.ga}</b>${f.pen ? `<div class="tiny muted">pên ${f.pen.h}-${f.pen.a}</div>` : ''}` : `<span class="pill">a jogar</span>`}</div>
-          </div>`).join('') : `<div class="empty">${icon('calendar')}<div>Nenhum jogo nesta semana.</div></div>`}
-      </div>
-      <div class="card">
-        <div class="h-sec">Sua agenda — próximas semanas</div>
-        ${next.length ? next.map(({ comp, f }) => `
-          <div class="news-item"><span class="wk">S${f.week}</span><span><b>${esc(comp.name)}</b> — ${esc(s.db.clubs[f.home].short)} × ${esc(s.db.clubs[f.away].short)} ${f.home === s.clubId ? '<span class="pill gold">casa</span>' : '<span class="pill">fora</span>'}</span></div>`).join('') : '<div class="tiny muted">Agenda livre.</div>'}
-      </div>
-      <div class="card">${playBarHTML()}</div>
+    <div class="ref-calendar">
+      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('calendar')} CALENDÁRIO</span><span></span></header>
+      <section class="ref-calendar-hero">
+        <div class="ref-calendar-brand">${crest(club, 92)}<div><span class="ref-eyebrow">TEMPORADA ${s.year}</span><h1>Calendário.</h1><p>Jogos, mandos, competições e períodos de recuperação.</p></div></div>
+        <div class="ref-origin">${icon('calendar')}<span><b>ORIGEM</b><strong>Tabela oficial</strong></span></div>
+      </section>
+
+      <section class="ref-card ref-calendar-next ref-action" data-go-match tabindex="0">
+        <div><span class="ref-section-label">PRÓXIMO JOGO</span><h2>${nextDate ? `${nextDate.day} de ${nextDate.month.toLowerCase()} · 18:00` : 'Agenda livre'}</h2><p>${next ? `${icon('trophy')} ${esc(next.comp.name)} · ${next.fixture.round || 1}/${next.comp.fixtures.length || 1}` : 'Nenhum compromisso pendente.'}</p></div>
+        ${next ? `<div class="ref-calendar-matchup"><span>${crest(nextHome, 60)}<b>${esc(nextHome.short)}</b></span><strong>×</strong><span><b>${esc(nextAway.short)}</b>${crest(nextAway, 60)}</span></div><div class="ref-calendar-location"><b>${nextIsHome ? 'CASA' : 'FORA'}</b><strong>${esc(nextIsHome ? club.stadium : nextHome.stadium)}</strong></div>` : ''}
+      </section>
+
+      <section class="ref-calendar-filters"><div class="ref-calendar-tabs"><button class="active">Mês</button><button>Temporada</button></div><span>${icon('sliders')}</span><select><option>Todas as competições</option>${s.competitions.map((c) => `<option>${esc(c.name)}</option>`).join('')}</select></section>
+
+      <section class="ref-card ref-transfer-windows">
+        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} MERCADO DE TRANSFERÊNCIAS</span><h2>Janelas da temporada</h2><span class="ref-window-state">JANELA FECHADA</span></div>
+        <div class="ref-window-grid"><div><b>1ª JANELA</b><strong>02 de jan. <small>até</small> 20 de abr.</strong><em>PRÓXIMA</em></div><div><b>2ª JANELA</b><strong>10 de jul. <small>até</small> 02 de set.</strong><em>PRÓXIMA</em></div></div>
+        <div class="ref-window-foot"><span>▢ Dias destacados no calendário indicam mercado aberto.</span><span><b>Abertura</b> e fechamento aparecem marcados nos dias exatos.</span></div>
+      </section>
+
+      <section class="ref-card ref-month-card">
+        <div class="ref-month-head"><button class="ref-month-button" data-month="-1">${icon('back')}</button><h2>${monthNames[calMonth]} <b>${s.year}</b></h2><button class="ref-month-button" data-month="1">${icon('back')}</button></div>
+        <div class="ref-calendar-grid"><div class="ref-calendar-weekdays">${weekdays.map((d) => `<b>${d}</b>`).join('')}</div><div class="ref-calendar-cells">${cells.join('')}</div></div>
+      </section>
+      <div class="ref-calendar-action">${playBarHTML()}</div>
     </div>`;
   },
   mount(el) {
-    el.querySelectorAll('[data-w]').forEach((b) => b.onclick = () => { calWeek = Math.max(1, calWeek + Number(b.dataset.w)); renderRoute(); });
-    el.querySelector('[data-go-match]')?.addEventListener('click', () => go('match'));
+    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
+    el.querySelectorAll('[data-month]').forEach((b) => b.onclick = () => { calMonth = Math.max(0, Math.min(11, calMonth + Number(b.dataset.month))); renderRoute(); });
+    el.querySelectorAll('[data-go-match]').forEach((b) => b.onclick = () => go('match'));
     playBarMount(el);
   },
 };
@@ -894,65 +897,70 @@ export const trainingScreen = {
     const s = S();
     const tr = s.training || { focus: 'fisico', done: false };
     const squad = G.clubPlayers(s.db, s.clubId);
-    const avgFit = Math.round(squad.reduce((x, p) => x + p.fitness, 0) / squad.length);
-    const avgMor = Math.round(squad.reduce((x, p) => x + p.morale, 0) / squad.length);
-    const players = squad.slice().sort((a, b) => b.fitness - a.fitness);
+    const avgFit = Math.round(squad.reduce((x, p) => x + p.fitness, 0) / Math.max(1, squad.length));
+    const avgMor = Math.round(squad.reduce((x, p) => x + p.morale, 0) / Math.max(1, squad.length));
+    const avgForm = Math.round(squad.reduce((x, p) => x + p.form, 0) / Math.max(1, squad.length));
+    const tactical = Math.round((s.chemistry || 70) * 0.83);
+    const focus = G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico;
+    const dayActivities = ['descanso', 'tecnica', 'tecnica', 'tecnica', 'tecnica', 'tecnica', 'tecnica'];
+    const dayIntensity = ['Leve', 'Normal', 'Normal', 'Normal', 'Normal', 'Normal', 'Normal'];
+    const activityLabel = (key) => key === 'descanso' ? 'Recuperação' : G.TRAINING_FOCUS[key]?.label || 'Treino técnico';
+    const typeRows = [
+      ['Descanso', 'Recupera condição e reduz fadiga.'],
+      ['Recuperação', 'Trabalho leve para jogadores desgastados.'],
+      ['Treino físico', 'Aumenta capacidade física com desgaste elevado.'],
+      ['Treino técnico', 'Melhora ritmo, fundamentos e confiança.'],
+      ['Treino tático', 'Eleva familiaridade com o plano de jogo.'],
+      ['Preparação de jogo', 'Sessão específica para o próximo adversário.'],
+      ['Coesão de grupo', 'Fortalece moral, confiança e ambiente do elenco.'],
+      ['Desenvolvimento', 'Trabalha fundamentos individuais sem priorizar o resultado imediato.'],
+    ];
+
     return `
-    <div class="stack" style="max-width:820px;margin:0 auto">
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between">
-          <div>
-            <div class="h-sec" style="margin:0">Plano da semana — S${s.week}</div>
-            <div class="tiny muted">${tr.done ? 'Treino já realizado ✓ Novo plano na próxima semana.' : 'Escolha o foco e clique em Treinar.'}</div>
-          </div>
-          <span class="pill ${tr.done ? 'green' : 'gold'}">${tr.done ? '✅ Treino feito' : 'Treino pendente'}</span>
-        </div>
-        <div style="margin-top:14px">
-          <div class="h-sec">Foco do treino</div>
-          <div class="chips" style="flex-wrap:wrap">
-            ${Object.entries(G.TRAINING_FOCUS).map(([k, f]) => `<button class="chip ${tr.focus === k ? 'active' : ''}" data-focus="${k}" ${tr.done ? 'disabled' : ''}>${esc(f.label)}</button>`).join('')}
-          </div>
-          <div class="tiny muted" style="margin-top:8px">${esc((G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico).desc)}</div>
-        </div>
-        <button class="btn primary big block" data-train style="margin-top:16px" ${tr.done ? 'disabled' : ''}>
-          ${icon('whistle')} ${tr.done ? 'Treino realizado esta semana' : 'Realizar treino de ' + esc((G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico).label)}
-        </button>
-      </div>
-      <div class="grid cols-4">
-        <div class="card kpi"><div class="v">${avgFit}</div><div class="l">Físico médio</div></div>
-        <div class="card kpi"><div class="v">${avgMor}</div><div class="l">Moral média</div></div>
-        <div class="card kpi"><div class="v">${Math.round(s.chemistry || 70)}</div><div class="l">Entrosamento</div></div>
-        <div class="card kpi"><div class="v">${squad.length}</div><div class="l">Atletas</div></div>
-      </div>
-      <div class="card">
-        <div class="h-sec">Condição do elenco</div>
-        <div class="table-wrap"><table class="data" style="min-width:0">
-          <thead><tr><th></th><th>Jogador</th><th>Pos</th><th class="num">OVR</th><th style="min-width:120px">Físico</th><th style="min-width:120px">Forma</th></tr></thead>
-          <tbody>${players.map((p) => `<tr data-pid="${p.id}" style="${p.injuredWeeks > 0 ? 'opacity:.55' : ''}">
-            <td>${avatar(p, 28)}</td><td><b>${esc(p.name)}</b>${p.injuredWeeks > 0 ? '<div class="tiny muted">🤕 lesionado</div>' : ''}</td>
-            <td>${posBadge(p.pos)}</td><td class="num">${ovrBadge(p.ovr)}</td>
-            <td><div class="meter"><div class="bar"><i style="width:${p.fitness}%"></i></div><span class="val">${p.fitness}</span></div></td>
-            <td><div class="meter"><div class="bar"><i style="width:${p.form}%;background:linear-gradient(90deg,#38bdf8,#7dd3fc)"></i></div><span class="val">${p.form}</span></div></td>
-          </tr>`).join('')}</tbody></table></div>
-        <div class="tiny muted" style="margin-top:10px">💡 Treinos físicos e de descanso recuperam a condição; técnica eleva a forma (e pode desenvolver jovens); tática melhora o entrosamento. Treine 1x por semana.</div>
-      </div>
+    <div class="ref-training">
+      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à Central</span></button><span class="ref-page-nav-title">${icon('whistle')} CENTRO DE TREINAMENTO</span><button class="ref-view-squad" data-ref-squad>Ver elenco</button></header>
+      <section class="ref-training-hero"><div><h1>Prepare. Recupere. Evolua.</h1><p>Planeje cada sessão e encontre o equilíbrio entre desempenho, desgaste e risco.</p></div>${crest(s.db.clubs[s.clubId], 92)}</section>
+      <section class="ref-training-kpis">
+        <div><span>${icon('medical')}<b>CONDIÇÃO</b></span><strong>${avgFit}%</strong><i><b style="width:${avgFit}%"></b></i></div>
+        <div><span>${icon('fire')}<b>RITMO</b></span><strong>${avgForm}%</strong><i><b style="width:${avgForm}%"></b></i></div>
+        <div><span>${icon('star')}<b>MORAL</b></span><strong>${avgMor}%</strong><i><b style="width:${avgMor}%"></b></i></div>
+        <div><span>${icon('target')}<b>FAMILIARIDADE TÁTICA</b></span><strong>${tactical}%</strong><i><b style="width:${tactical}%"></b></i></div>
+      </section>
+      <section class="ref-training-recommendation">
+        <div class="ref-recommendation-copy"><span class="ref-section-label">${icon('star')} RECOMENDAÇÃO DA COMISSÃO</span><strong>${focus.label} · Normal</strong><small>${esc(focus.desc)}</small></div>
+        <label><span>Administração</span><select><option>Assistida</option><option>Manual</option></select></label>
+        <label><span>Prioridade</span><select data-focus-select>${Object.entries(G.TRAINING_FOCUS).map(([k, v]) => `<option value="${k}" ${tr.focus === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
+        <button class="ref-apply-training" data-train ${tr.done ? 'disabled' : ''}>${tr.done ? 'Treino aplicado' : 'Aplicar à semana'}</button>
+      </section>
+
+      <section class="ref-card ref-week-planner">
+        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} PRÓXIMOS SETE DIAS</span><h2>Planejamento da semana</h2><small>As sessões são aplicadas quando você avança o dia.</small></div>
+        <div class="ref-training-days">${dayActivities.map((activity, index) => {
+          const date = refDateInfo(s.week, s.year, index);
+          return `<article class="ref-training-day"><b>${date.weekday} · ${date.day} DE ${date.month}</b><strong>${activityLabel(activity)}</strong><label>Atividade<select><option>${activityLabel(activity)}</option><option>Treino físico</option><option>Treino tático</option><option>Recuperação</option></select></label><label>Intensidade<select><option>${dayIntensity[index]}</option><option>Leve</option><option>Alta</option></select></label><div class="ref-training-tags"><span>Condição ${index ? '-2' : '+4'}</span><span>Ritmo ${index ? '+4' : '+0'}</span><small>Risco ${index ? '4' : '1'}%</small></div><p>${index ? 'Melhora ritmo, fundamentos e confiança.' : 'Trabalho leve para jogadores desgastados.'}</p></article>`;
+        }).join('')}</div>
+      </section>
+
+      <section class="ref-training-bottom">
+        <section class="ref-card ref-session-types"><div class="ref-card-head"><span class="ref-section-label">${icon('pulse')} TIPOS DE SESSÃO</span><h2>Objetivo de cada atividade</h2></div>${typeRows.map(([title, desc]) => `<div class="ref-session-row">${icon('shield')}<span><strong>${title}</strong><small>${desc}</small></span></div>`).join('')}</section>
+        <section class="ref-card ref-session-history"><div class="ref-card-head"><span class="ref-section-label">${icon('handshake')} HISTÓRICO</span><h2>Últimas sessões</h2></div><div class="ref-history-empty">Nenhuma sessão realizada nesta carreira.</div></section>
+      </section>
     </div>`;
   },
   mount(el) {
     const s = S();
     const tr = s.training || (s.training = { focus: 'fisico', done: false });
-    el.querySelectorAll('[data-focus]').forEach((b) => b.onclick = () => { tr.focus = b.dataset.focus; autosave(); renderRoute(); });
+    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
+    el.querySelector('[data-ref-squad]')?.addEventListener('click', () => go('squad'));
+    el.querySelector('[data-focus-select]')?.addEventListener('change', (e) => { tr.focus = e.target.value; autosave(); renderRoute(); });
     el.querySelector('[data-train]')?.addEventListener('click', () => {
       const r = G.doTraining(s, tr.focus);
       if (r.ok) {
         const g = r.gains || {};
         toast(`✅ Treino concluído! +${g.fitness} físico, +${g.form} forma, +${g.ovr} overall.`);
-      } else {
-        toast(r.msg || 'Treino indisponível.', 'error');
-      }
+      } else toast(r.msg || 'Treino indisponível.', 'error');
       autosave(); renderRoute();
     });
-    el.querySelectorAll('[data-pid]').forEach((r) => r.onclick = () => go(`player/${r.dataset.pid}`));
   },
 };
 

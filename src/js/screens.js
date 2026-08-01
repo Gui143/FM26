@@ -143,72 +143,195 @@ export const newGameScreen = {
 // ============================================================
 // HOME
 // ============================================================
+export function refDateInfo(week, year = 2026, dayOffset = 0) {
+  const d = new Date(Date.UTC(year, 0, 2));
+  d.setUTCDate(d.getUTCDate() + Math.max(0, Number(week || 1) - 1) * 7 + Number(dayOffset || 0));
+  const weekdays = ['DOM.', 'SEG.', 'TER.', 'QUA.', 'QUI.', 'SEX.', 'SÁB.'];
+  const months = ['JAN.', 'FEV.', 'MAR.', 'ABR.', 'MAI.', 'JUN.', 'JUL.', 'AGO.', 'SET.', 'OUT.', 'NOV.', 'DEZ.'];
+  return {
+    date: d,
+    weekday: weekdays[d.getUTCDay()],
+    day: String(d.getUTCDate()).padStart(2, '0'),
+    month: months[d.getUTCMonth()],
+    short: `${String(d.getUTCDate()).padStart(2, '0')} DE ${months[d.getUTCMonth()]}`,
+  };
+}
+
+function refHomeFixtureDate(f, year) {
+  return refDateInfo(f?.week || 1, year);
+}
+
+// ============================================================
+// CENTRAL DO TREINADOR
+// ============================================================
 export const homeScreen = {
   html() {
     const s = S();
     const club = s.db.clubs[s.clubId];
     const next = G.nextUserFixture(s);
-    const nextOpp = next ? (next.fixture.home === s.clubId ? s.db.clubs[next.fixture.away] : s.db.clubs[next.fixture.home]) : null;
-    const leagueComp = s.competitions.find((c) => c.type === 'league' && c.teams.includes(s.clubId) && c.id.startsWith('L_'));
-    const table = leagueComp ? G.leagueTable(s, leagueComp) : [];
-    const myPos = table.findIndex((r) => r.clubId === s.clubId) + 1;
     const squad = G.clubPlayers(s.db, s.clubId);
-    const avgMorale = Math.round(squad.reduce((x, p) => x + p.morale, 0) / squad.length);
-    const top8 = table.filter((r, i) => i < 6 || r.clubId === s.clubId);
-    const news = s.news.slice(0, 7);
+    const avgMorale = Math.round(squad.reduce((x, p) => x + p.morale, 0) / Math.max(1, squad.length));
+    const avgFitness = Math.round(squad.reduce((x, p) => x + p.fitness, 0) / Math.max(1, squad.length));
+    const avgForm = Math.round(squad.reduce((x, p) => x + p.form, 0) / Math.max(1, squad.length));
+    const unread = s.inbox.filter((i) => !i.read).length;
+    const news = s.news.slice(0, 3);
+    const future = [];
+    for (const comp of s.competitions) {
+      for (const fixture of comp.fixtures) {
+        if (!fixture.played && (fixture.home === s.clubId || fixture.away === s.clubId)) future.push({ comp, fixture });
+      }
+    }
+    future.sort((a, b) => a.fixture.week - b.fixture.week);
+
+    let wins = 0, draws = 0, losses = 0;
+    for (const comp of s.competitions) {
+      for (const f of comp.fixtures) {
+        if (!f.played || (f.home !== s.clubId && f.away !== s.clubId)) continue;
+        const gf = f.home === s.clubId ? f.gh : f.ga;
+        const ga = f.home === s.clubId ? f.ga : f.gh;
+        if (gf > ga) wins++;
+        else if (gf === ga) draws++;
+        else losses++;
+      }
+    }
+    const nextDate = next ? refHomeFixtureDate(next.fixture, s.year) : null;
+    const nextHome = next ? s.db.clubs[next.fixture.home] : null;
+    const nextAway = next ? s.db.clubs[next.fixture.away] : null;
+    const nextIsHome = next?.fixture.home === s.clubId;
+    const inbox = s.inbox[0];
+    const inboxTitle = inbox?.title || 'Plano confirmado: Evento com patrocinadores';
+    const inboxMeta = inbox?.text || 'Comissão técnica';
+    const shortcutItems = [
+      ['squad', 'users', 'Elenco'], ['tactics', 'clipboard', 'Tática'],
+      ['calendar', 'calendar', 'Calendário'], ['manager', 'chart', 'Treinador'],
+      ['table', 'table', 'Classificação'], ['cups', 'trophy', 'Competições'],
+      ['inbox', 'mail', 'Mensagens'], ['finances', 'money', 'Finanças'],
+      ['youth', 'globe', 'Scouting'], ['market', 'cart', 'Mercado'],
+      ['training', 'whistle', 'Treinamento'], ['manager', 'sprout', 'Evolução'],
+      ['youth', 'sprout', 'Base'], ['finances', 'handshake', 'Comissão'],
+      ['club', 'building', 'Infraestrutura'], ['inbox', 'medical', 'DM'],
+      ['manager', 'star', 'Meu cargo'], ['stats', 'trophy', 'Meu legado'],
+      ['credits', 'info', 'Manual Oficial'], ['inbox', 'mail', 'Feedback'],
+    ];
+    const condition = [
+      ['Condição física', avgFitness, 'var(--accent)'],
+      ['Moral', avgMorale, 'var(--blue)'],
+      ['Ritmo de jogo', avgForm, 'var(--ref-accent)'],
+    ];
+
     return `
-    <div class="home-grid">
-      <div class="stack">
-        <div class="card">
-          <div class="h-sec">${t('next')}</div>
-          ${next ? `
-          <div class="live-score" style="cursor:pointer" data-go-match>
-            <div class="live-team">${crest(s.db.clubs[next.fixture.home], 52)}<span>${esc(s.db.clubs[next.fixture.home].short)}</span></div>
-            <div><div class="pill gold">Semana ${next.fixture.week}</div><div style="font-weight:900;font-size:1.1rem;margin-top:8px">${esc(next.comp.name)}</div><div class="tiny muted">Rodada ${next.fixture.round}</div></div>
-            <div class="live-team">${crest(s.db.clubs[next.fixture.away], 52)}<span>${esc(s.db.clubs[next.fixture.away].short)}</span></div>
-          </div>` : `<div class="empty">${icon('calendar')}<div>Todas as partidas da temporada foram jogadas.</div></div>`}
-          <div style="margin-top:14px">${playBarHTML()}</div>
-        </div>
-        <div class="grid cols-4">
-          <div class="card kpi"><div class="v">${myPos ? myPos + 'º' : '—'}</div><div class="l">Posição</div></div>
-          <div class="card kpi"><div class="v">${avgMorale}</div><div class="l">Moral</div></div>
-          <div class="card kpi"><div class="v">${squad.length}</div><div class="l">Jogadores</div></div>
-          <div class="card kpi"><div class="v" style="color:${s.finances.balance < 0 ? 'var(--red)' : 'inherit'}">${money(s.finances.balance)}</div><div class="l">Caixa</div></div>
-        </div>
-        <div class="card">
-          <div class="h-sec">Últimas notícias</div>
-          ${news.length ? news.map((n) => `<div class="news-item"><span class="wk">S${n.week}</span><span>${esc(n.text)}</span></div>`).join('') : '<div class="empty">Sem notícias.</div>'}
-        </div>
-      </div>
-      <div class="stack">
-        <div class="card">
-          <div class="h-sec">${leagueComp ? esc(leagueComp.name) : 'Liga'} <button class="btn small ghost" style="float:right" data-go="table">Completa</button></div>
-          <div class="table-wrap"><table class="data" style="min-width:0">
-            <thead><tr><th>#</th><th>Clube</th><th class="num">P</th><th class="num">V</th><th class="num">SG</th></tr></thead>
-            <tbody>${top8.map((r) => {
-              const i = table.indexOf(r);
-              return `<tr class="${r.clubId === s.clubId ? 'me' : i < 4 ? 'promo' : ''}"><td>${i + 1}</td><td>${clubCell(s, r.clubId)}</td><td class="num">${r.pts}</td><td class="num">${r.w}</td><td class="num">${r.gd}</td></tr>`;
-            }).join('')}</tbody></table></div>
-        </div>
-        <div class="card">
-          <div class="h-sec">Escuderia</div>
-          <div style="display:flex;gap:12px;align-items:center">
-            ${crest(club, 60)}
-            <div style="flex:1">
-              <div style="font-weight:900;font-size:1.1rem">${esc(club.name)}</div>
-              <div class="tiny muted">${esc(club.stadium)} (${num(club.capacity)}) • ${esc(club.city)}</div>
-              <div style="margin-top:8px">${meter('Entrosamento', Math.round(s.chemistry))}</div>
-              <div style="margin-top:6px">${meter('Treinador nv. ' + s.manager.level, s.manager.xp % 300, 300)}</div>
-            </div>
+    <div class="ref-home">
+      <header class="ref-home-hero">
+        <div class="ref-home-identity">
+          ${crest(club, 92)}
+          <div class="ref-home-heading">
+            <div class="ref-eyebrow">TEMPORADA ${s.year}</div>
+            <h1>Central do treinador.</h1>
+            <div class="ref-home-manager">${esc(s.manager.name)}</div>
           </div>
         </div>
+        <button class="ref-performance ref-action" data-ref-route="stats">
+          ${icon('trophy')}
+          <span><b>DESEMPENHO</b><strong>${wins}V · ${draws}E · ${losses}D</strong></span>
+        </button>
+      </header>
+
+      <button class="ref-tip ref-action" data-ref-route="inbox">
+        <span class="ref-tip-icon">${icon('star')}</span>
+        <span><b>DICA CONTEXTUAL</b><strong>${unread ? 'Decisão pendente' : 'Tudo em dia'}</strong><small>${unread ? `Há ${unread} mensagem(ns) não lida(s); algumas podem exigir resposta antes de avançar.` : 'Nenhuma decisão aguarda sua resposta.'}</small></span>
+      </button>
+
+      <div class="ref-home-layout">
+        <main class="ref-home-main">
+          <section class="ref-card ref-next-card ref-action" data-go-match tabindex="0">
+            <div class="ref-card-head ref-next-head">
+              <div><span class="ref-section-label">${icon('clock')} PRÓXIMO COMPROMISSO</span></div>
+              <span class="ref-next-competition">${next ? `${esc(next.comp.name)} · ${next.fixture.round || 1}/${next.comp.fixtures.length || 1}` : 'Sem próximo compromisso'}</span>
+            </div>
+            ${next ? `
+            <div class="ref-next-body">
+              <div class="ref-next-date"><b>${nextDate.weekday}</b><strong>${nextDate.day} DE<br>${nextDate.month}</strong><small>18:00</small></div>
+              <div class="ref-matchup">
+                <div class="ref-team">${crest(nextHome, 88)}<strong>${esc(nextHome.name)}</strong></div>
+                <span class="ref-vs">×</span>
+                <div class="ref-team">${crest(nextAway, 88)}<strong>${esc(nextAway.name)}</strong></div>
+              </div>
+              <div class="ref-venue"><b>${nextIsHome ? 'EM CASA' : 'FORA DE CASA'}</b><span>${esc(nextHome.stadium || club.stadium)}</span><small>${esc(nextIsHome ? club.city : nextHome.city || '')}</small></div>
+            </div>` : `<div class="ref-empty">${icon('calendar')}<span>Todas as partidas da temporada foram jogadas.</span></div>`}
+          </section>
+
+          <div class="ref-home-pair">
+            <section class="ref-card ref-inbox-card">
+              <div class="ref-card-head"><span class="ref-section-label">${icon('mail')} COMUNICAÇÃO</span><h2>Caixa de entrada <em>${unread || 1}</em></h2></div>
+              <div class="ref-list-item ref-action" data-ref-route="inbox"><span class="ref-dot"></span><span><strong>${esc(inboxTitle)}</strong><small>${esc(inboxMeta)}</small></span><b>›</b></div>
+            </section>
+            <section class="ref-card ref-objectives-card">
+              <div class="ref-card-head"><span class="ref-section-label">${icon('target')} DIRETORIA</span><h2>Objetivos <small>Avaliação ›</small></h2></div>
+              <div class="ref-objectives">
+                <div>${icon('check')}<span><strong>Montar uma equipe competitiva</strong><small>Em andamento</small></span></div>
+                <div>${icon('check')}<span><strong>Valorizar atletas jovens</strong><small>Em andamento</small></span></div>
+                <div>${icon('check')}<span><strong>Construir uma identidade de jogo reconhecível</strong><small>Em andamento</small></span></div>
+              </div>
+            </section>
+          </div>
+
+          <div class="ref-home-pair">
+            <section class="ref-card ref-condition-card">
+              <div class="ref-card-head"><span class="ref-section-label">${icon('medical')} VESTIÁRIO</span><h2>Condição do elenco <small class="ref-link" data-ref-route="squad">Ver elenco ›</small></h2></div>
+              <div class="ref-condition-body">
+                ${condition.map(([label, value, color]) => `<div class="ref-condition"><div><strong>${label}</strong><b>${value}%</b></div><div class="ref-progress"><i style="width:${value}%;background:${color}"></i></div></div>`).join('')}
+                <div class="ref-availability">${icon('pulse')}<span><strong>Elenco disponível</strong><small>Nenhum desfalque registrado.</small></span></div>
+              </div>
+            </section>
+            <section class="ref-card ref-agenda-card">
+              <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} AGENDA</span><h2>Próximos jogos <small class="ref-link" data-ref-route="calendar">Calendário ›</small></h2></div>
+              <div class="ref-agenda-list">
+                ${future.slice(0, 4).map(({ comp, fixture }) => {
+                  const date = refHomeFixtureDate(fixture, s.year);
+                  const opponent = fixture.home === s.clubId ? s.db.clubs[fixture.away] : s.db.clubs[fixture.home];
+                  return `<div class="ref-agenda-item"><b>${date.day} DE<br>${date.month}</b><span>${crest(opponent, 42)}</span><strong>${esc(opponent.short || opponent.name)}<small>${fixture.home === s.clubId ? 'Casa' : 'Fora'} · ${esc(comp.short || comp.name)}</small></strong><em>${fixture.week === s.week ? '18:00' : '16:00'}</em></div>`;
+                }).join('') || '<div class="ref-empty-small">Nenhum jogo agendado.</div>'}
+              </div>
+            </section>
+          </div>
+
+          <section class="ref-card ref-news-card">
+            <div class="ref-card-head"><span class="ref-section-label">${icon('clipboard')} NOTICIÁRIO</span><h2>Últimas notícias</h2></div>
+            <div class="ref-news-grid">${news.map((n) => `<article><b>clube</b><strong>${esc(n.text)}</strong></article>`).join('') || '<div class="ref-empty-small">Sem notícias.</div>'}</div>
+          </section>
+        </main>
+
+        <aside class="ref-home-side">
+          <section class="ref-card ref-shortcuts-card">
+            <div class="ref-card-head"><span class="ref-section-label">${icon('chart')} ATALHOS</span><h2>Gestão do clube</h2></div>
+            <div class="ref-shortcuts-grid">${shortcutItems.map(([route, ico, label]) => `<button class="ref-shortcut" data-ref-route="${route}">${icon(ico)}<span>${label}</span></button>`).join('')}</div>
+          </section>
+          <section class="ref-card ref-coach-card">
+            <div class="ref-card-head"><span class="ref-section-label">${icon('trophy')} SEU TREINADOR</span><h2>${esc(s.manager.name)} <small class="ref-link">Evoluir ›</small></h2></div>
+            <div class="ref-coach-score"><strong>${Math.round(s.manager.rep)}</strong><span><b>GERAL</b>Iniciante</span></div>
+            <div class="ref-coach-meta"><span>IDADE<strong>35 anos</strong></span><span>LICENÇA<strong>Licença Nacional C</strong></span><span>NÍVEL<strong>${s.manager.level}</strong></span></div>
+            <button class="ref-side-link" data-ref-route="manager">Árvore, atributos e licenças <b>→</b></button>
+          </section>
+          <section class="ref-card ref-finance-card">
+            <div class="ref-card-head"><span class="ref-section-label">${icon('money')} FINANÇA PESSOAL</span><h2>Seu salário, suas escolhas</h2></div>
+            <div class="ref-balance-label">SALDO PESSOAL</div><strong class="ref-balance">${money(s.finances.balance)}</strong><small>+ ${money(Math.round((club.sponsor?.value || 0) / 44))}/mês</small>
+            <p>Use o salário para comprar imóveis, viagens, equipe pessoal e melhorias para o treinador.</p>
+            <button class="ref-side-link" data-ref-route="finances">Ver loja e patrimônio <b>→</b></button>
+          </section>
+          <section class="ref-card ref-career-card">
+            <div class="ref-card-head"><span class="ref-section-label">${icon('clock')} FUTURO DA CARREIRA</span><h2>Avançar ou encerrar</h2></div>
+            <button disabled>${icon('play')}<span>Ir ao fim da temporada<small>Disponível após o último compromisso</small></span></button>
+            <button data-ref-route="stats">${icon('trophy')}<span>Pular para o fim da carreira<small>Simule o legado até a aposentadoria</small></span></button>
+            <button data-ref-route="manager">${icon('trophy')}<span>Aposentar treinador<small>Encerre agora e entre no Hall da Fama</small></span></button>
+          </section>
+        </aside>
       </div>
     </div>`;
   },
   mount(el) {
-    playBarMount(el);
+    el.querySelectorAll('[data-ref-route]').forEach((b) => b.onclick = () => go(b.dataset.refRoute));
     el.querySelector('[data-go-match]')?.addEventListener('click', () => go('match'));
-    el.querySelector('[data-go=table]')?.addEventListener('click', () => go('table'));
+    el.querySelector('[data-go-match]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go('match'); });
   },
 };
 
@@ -413,12 +536,20 @@ function runUserMatch(uf, animated) {
 // ============================================================
 // ELENCO
 // ============================================================
-const squadFilter = { pos: 'all', sort: 'ovr' };
+const squadFilter = { pos: 'all', sort: 'ovr', q: '', situation: 'all', age: 'all' };
 export const squadScreen = {
   html() {
     const s = S();
     let players = G.clubPlayers(s.db, s.clubId);
     if (squadFilter.pos !== 'all') players = players.filter((p) => p.pos === squadFilter.pos);
+    if (squadFilter.q) {
+      const q = squadFilter.q.toLowerCase();
+      players = players.filter((p) => p.name.toLowerCase().includes(q) || String(p.number).includes(q));
+    }
+    if (squadFilter.situation === 'available') players = players.filter((p) => p.injuredWeeks <= 0 && p.suspended <= 0);
+    if (squadFilter.situation === 'unavailable') players = players.filter((p) => p.injuredWeeks > 0 || p.suspended > 0);
+    if (squadFilter.age === 'young') players = players.filter((p) => p.age <= 23);
+    if (squadFilter.age === 'senior') players = players.filter((p) => p.age >= 30);
     const sortFns = {
       ovr: (a, b) => POS_ORDER.indexOf(a.pos) - POS_ORDER.indexOf(b.pos) || b.ovr - a.ovr,
       age: (a, b) => a.age - b.age,
@@ -428,50 +559,54 @@ export const squadScreen = {
       pot: (a, b) => b.pot - a.pot,
     };
     players.sort(sortFns[squadFilter.sort] || sortFns.ovr);
-    const wages = G.clubPlayers(s.db, s.clubId).reduce((x, p) => x + p.salary, 0);
-    const squadSize = G.clubPlayers(s.db, s.clubId).length;
-    const fitAvg = Math.round(G.clubPlayers(s.db, s.clubId).reduce((x, p) => x + p.fitness, 0) / squadSize);
+    const playerCount = G.clubPlayers(s.db, s.clubId).length;
+    const positionLabel = (pos) => POSITIONS[pos] || pos;
+    const statusLabel = (p) => p.injuredWeeks > 0 ? `Lesionado · ${p.injuredWeeks} sem.` : p.suspended > 0 ? 'Suspenso' : p.listed ? 'Na lista' : 'Titular';
+
     return `
-    <div class="stack">
-      <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-        <div class="seg" id="sq-pos">${['all', 'G', 'D', 'M', 'A'].map((p) => `<button class="chip ${squadFilter.pos === p ? 'active' : ''}" data-p="${p}">${p === 'all' ? 'Todos' : POSITIONS[p] + 's'}</button>`).join('')}</div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <span class="pill">${players.length} atletas</span>
-          <span class="pill">Físico ${fitAvg}</span>
-          <select class="input" id="sq-sort" style="min-height:40px;width:auto">
-            ${[['ovr', 'Posição/Overall'], ['pot', 'Potencial'], ['age', 'Idade'], ['value', 'Valor'], ['salary', 'Salário'], ['form', 'Forma']].map(([v, l]) => `<option value="${v}" ${squadFilter.sort === v ? 'selected' : ''}>${l}</option>`).join('')}
-          </select>
+    <div class="ref-squad">
+      <section class="ref-squad-filters">
+        <label class="ref-squad-search"><span>${icon('search')}</span><input id="sq-q" type="search" placeholder="Pesquisar jogador ou número..." value="${esc(squadFilter.q)}"></label>
+        <div class="ref-position-filters">
+          ${[['all', 'Todos'], ['G', 'Goleiros'], ['D', 'Defensores'], ['M', 'Meio-campistas'], ['A', 'Atacantes']].map(([p, label]) => `<button class="ref-position-chip ${squadFilter.pos === p ? 'active' : ''}" data-p="${p}">${label}</button>`).join('')}
         </div>
-      </div>
-      <div class="card" style="padding:12px">
-        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px">
-          ${players.map((p) => {
-            const status = p.injuredWeeks > 0 ? `<span class="pill red">🤕 ${p.injuredWeeks}sem</span>` : p.suspended > 0 ? '<span class="pill red">🟥 susp</span>' : p.listed ? '<span class="pill yellow">venda</span>' : p.contractYears <= 1 ? '<span class="pill yellow">fim contrato</span>' : '';
-            return `
-            <button class="club-card" data-pid="${p.id}" style="${p.injuredWeeks > 0 ? 'opacity:.6' : ''}">
-              ${avatar(p, 40)}
-              <div style="flex:1;min-width:0">
-                <div style="display:flex;align-items:center;gap:6px"><b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</b></div>
-                <div class="tiny muted" style="display:flex;align-items:center;gap:5px;margin-top:3px">${posBadge(p.pos)} Nº ${p.number} • ${p.age} anos</div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-                  <div class="meter" style="flex:1"><div class="bar"><i style="width:${p.form}%"></i></div></div>
-                  <span class="tiny muted">forma</span>
-                </div>
-              </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-                ${ovrBadge(p.ovr)}
-                ${status}
-              </div>
-            </button>`;
-          }).join('')}
+        <div class="ref-filter-controls">
+          <div class="ref-filter-title">${icon('sliders')} <strong>Filtros</strong></div>
+          <label class="ref-filter-field"><span>Situação</span><select id="sq-situation"><option value="all" ${squadFilter.situation === 'all' ? 'selected' : ''}>Todos</option><option value="available" ${squadFilter.situation === 'available' ? 'selected' : ''}>Disponíveis</option><option value="unavailable" ${squadFilter.situation === 'unavailable' ? 'selected' : ''}>Indisponíveis</option></select></label>
+          <label class="ref-filter-field"><span>Idade</span><select id="sq-age"><option value="all" ${squadFilter.age === 'all' ? 'selected' : ''}>Todas</option><option value="young" ${squadFilter.age === 'young' ? 'selected' : ''}>Até 23 anos</option><option value="senior" ${squadFilter.age === 'senior' ? 'selected' : ''}>30+ anos</option></select></label>
+          <label class="ref-filter-field"><span>Ordenar</span><select id="sq-sort"><option value="ovr" ${squadFilter.sort === 'ovr' ? 'selected' : ''}>Posição</option><option value="pot" ${squadFilter.sort === 'pot' ? 'selected' : ''}>Potencial</option><option value="age" ${squadFilter.sort === 'age' ? 'selected' : ''}>Idade</option><option value="value" ${squadFilter.sort === 'value' ? 'selected' : ''}>Valor</option><option value="salary" ${squadFilter.sort === 'salary' ? 'selected' : ''}>Salário</option><option value="form" ${squadFilter.sort === 'form' ? 'selected' : ''}>Forma</option></select></label>
         </div>
-      </div>
-      <div class="tiny muted" style="text-align:center">Folha salarial: ${money(wages)}/semana</div>
+      </section>
+
+      <section class="ref-squad-table-card">
+        <div class="ref-squad-table-wrap"><table class="ref-squad-data">
+          <colgroup><col class="col-player"><col class="col-position"><col class="col-age"><col class="col-ger"><col class="col-pot"><col class="col-condition"><col class="col-morale"><col class="col-hierarchy"><col class="col-market"><col class="col-value"><col class="col-salary"></colgroup>
+          <thead><tr><th>Jogador</th><th>Posição</th><th>Idade</th><th>GER</th><th>POT</th><th>Condição</th><th>Moral</th><th>Hierarquia</th><th>Mercado</th><th>Valor</th><th>Salário</th></tr></thead>
+          <tbody>${players.map((p) => `
+            <tr data-pid="${p.id}" class="${p.injuredWeeks > 0 || p.suspended > 0 ? 'is-unavailable' : ''}">
+              <td><div class="ref-player-cell">${avatar(p, 58)}<span><strong>${esc(p.name)}</strong><small>${icon('users')} Nº ${p.number} · ${esc(statusLabel(p))}</small></span></div></td>
+              <td class="ref-position-cell">${esc(positionLabel(p.pos))}</td>
+              <td>${p.age}</td>
+              <td><strong class="ref-overall">${p.ovr}</strong></td>
+              <td><strong class="ref-potential">${p.pot}</strong></td>
+              <td><div class="ref-condition-value"><span>${p.fitness}</span><i><b style="width:${p.fitness}%"></b></i></div></td>
+              <td><strong class="ref-morale">${p.morale}</strong></td>
+              <td><span class="ref-status-pill">${icon('users')} Integrante</span></td>
+              <td><span class="ref-market-pill">${icon('shield')} No elenco</span></td>
+              <td>${money(p.value)}</td>
+              <td><span class="ref-salary">${money(p.salary * 4)}</span><small>/mês</small></td>
+            </tr>`).join('') || `<tr><td colspan="11" class="ref-table-empty">Nenhum jogador encontrado nos filtros atuais.</td></tr>`}</tbody>
+        </table></div>
+        <div class="ref-squad-summary">${players.length} de ${playerCount} atletas · clique em um jogador para abrir o perfil</div>
+      </section>
     </div>`;
   },
   mount(el) {
-    el.querySelectorAll('#sq-pos [data-p]').forEach((b) => b.onclick = () => { squadFilter.pos = b.dataset.p; renderRoute(); });
+    el.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { squadFilter.pos = b.dataset.p; renderRoute(); });
     el.querySelector('#sq-sort').onchange = (e) => { squadFilter.sort = e.target.value; renderRoute(); };
+    el.querySelector('#sq-situation').onchange = (e) => { squadFilter.situation = e.target.value; renderRoute(); };
+    el.querySelector('#sq-age').onchange = (e) => { squadFilter.age = e.target.value; renderRoute(); };
+    el.querySelector('#sq-q').onchange = (e) => { squadFilter.q = e.target.value.trim(); renderRoute(); };
     el.querySelectorAll('[data-pid]').forEach((r) => r.onclick = () => go(`player/${r.dataset.pid}`));
   },
 };

@@ -44,6 +44,7 @@ export function userMatchSide(state, clubId) {
     const t = state.tactics;
     const byId = state.db.players;
     const lineup = { G: [], D: [], M: [], A: [] };
+    // remove lesionados/suspensos da escalação salva
     for (const k of ['G', 'D', 'M', 'A']) {
       lineup[k] = (t.lineup[k] || []).map((id) => byId[id]).filter((p) => p && p.injuredWeeks <= 0 && p.suspended <= 0);
     }
@@ -55,6 +56,7 @@ export function userMatchSide(state, clubId) {
     const byPos = { G: [], D: [], M: [], A: [] };
     avail.forEach((p) => byPos[p.pos].push(p));
     for (const k of ['G', 'D', 'M', 'A']) byPos[k].sort((a, b) => effOvr(b) - effOvr(a));
+    // remove lesionados/suspensos da escalação salva
     for (const k of ['G', 'D', 'M', 'A']) {
       let i = 0;
       while (lineup[k].length < need[k] && i < byPos[k].length) { lineup[k].push(byPos[k][i]); chosen.add(byPos[k][i].id); i++; }
@@ -213,6 +215,7 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
   state.tactics.corners = [...lineup.M, ...lineup.D].sort((a, b) => b.ovr - a.ovr)[0]?.id || null;
 
   generateSeason(state);
+  generateJobOffers(state);
   addNews(state, `Bem-vindo ao ${db.clubs[clubId].name}, ${managerName}! A temporada ${state.year} está começando.`, 'info');
   log(state, `Saldo inicial`, state.finances.balance);
   return state;
@@ -827,6 +830,7 @@ function endSeason(state, rng) {
   state.week = 1;
   for (const p of Object.values(db.players)) if (p.contractYears <= 0 && p.clubId) p.contractYears = 1; // segurança
   generateSeason(state);
+  generateJobOffers(state);
   addNews(state, `📅 A temporada ${state.year} começou! Boa sorte, ${state.manager.name}.`, 'info');
 }
 
@@ -950,6 +954,7 @@ export function confirmBuy(state, offerId) {
   if (!offer || offer.status !== 'accepted') return { ok: false };
   const p = state.db.players[offer.playerId];
   if (!p) return { ok: false };
+  if (state.settings && state.settings.infiniteMoney) { state.finances.balance = 999999999; }
   if (state.finances.balance < offer.fee) return { ok: false, msg: 'Caixa insuficiente.' };
   const agentFee = Math.round(offer.fee * 0.06); // empresário
   state.finances.balance -= offer.fee + agentFee;
@@ -1121,3 +1126,31 @@ export const memoryStorage = (() => {
   const m = new Map();
   return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) };
 })();
+
+// -------------------- Propostas de emprego (manager job offers) --------------------
+export function generateJobOffers(state) {
+  if (!state.jobOffers) state.jobOffers = [];
+  if (state.week % 8 !== 0) return;
+  const myRep = state.manager.rep || 50;
+  Object.values(state.db.clubs).forEach(club => {
+    if (club.id === state.clubId) return;
+    if (state.jobOffers.some(o => o.clubId === club.id)) return;
+    const repDiff = club.rep - myRep;
+    if (repDiff <= 12 && Math.random() < 0.35) {
+      state.jobOffers.push({
+        id: uid(),
+        clubId: club.id,
+        week: state.week,
+        salary: Math.round(club.rep * 1800),
+        accepted: false
+      });
+      addInbox(state, {
+        type: 'jobOffer',
+        title: `Oferta de emprego`,
+        text: `${club.name} quer que você assuma o comando! Salário semanal: ${money(state, Math.round(club.rep * 1800))}.`,
+        week: state.week,
+        clubId: club.id
+      });
+    }
+  });
+}

@@ -11,6 +11,7 @@ export function effOvr(p) {
   const fit = clamp(p.fitness, 40, 100) / 100;
   const mor = clamp(p.morale, 20, 100) / 100;
   const frm = clamp(p.form, 20, 100) / 100;
+  if (p.ovrFixed) return p.ovr;
   return Math.round(p.ovr * (0.68 + fit * 0.16 + mor * 0.08 + frm * 0.08));
 }
 

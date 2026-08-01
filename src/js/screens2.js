@@ -696,6 +696,13 @@ export const settingsScreen = {
           <button class="chip ${st.quality === 'alta' ? 'active' : ''}" data-set="quality:alta">Alta (animações)</button>
           <button class="chip ${st.quality === 'baixa' ? 'active' : ''}" data-set="quality:baixa">Baixa (desempenho)</button>
         </div></div>
+        <div class="field"><label>Dinheiro Infinito</label><div class="seg">
+          <button class="chip ${st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:true">Ligado</button>
+          <button class="chip ${!st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:false">Desligado</button>
+        </div></div>
+          <button class="chip ${st.quality === 'alta' ? 'active' : ''}" data-set="quality:alta">Alta (animações)</button>
+          <button class="chip ${st.quality === 'baixa' ? 'active' : ''}" data-set="quality:baixa">Baixa (desempenho)</button>
+        </div></div>
         <div class="tiny muted">As configurações são salvas automaticamente.</div>
         ${App.state ? '' : `<button class="btn ghost block" data-back>${icon('back')} Voltar ao menu</button>`}
       </div>

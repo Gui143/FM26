@@ -954,7 +954,7 @@ export function confirmBuy(state, offerId) {
   if (!offer || offer.status !== 'accepted') return { ok: false };
   const p = state.db.players[offer.playerId];
   if (!p) return { ok: false };
-  if (state.settings && state.settings.infiniteMoney) { state.finances.balance = 999999999; }
+  if (state.settings && state.settings.infiniteMoney) { state.finances.balance = (state.settings.infiniteMoneyValue || 999999999); }
   if (state.finances.balance < offer.fee) return { ok: false, msg: 'Caixa insuficiente.' };
   const agentFee = Math.round(offer.fee * 0.06); // empresário
   state.finances.balance -= offer.fee + agentFee;

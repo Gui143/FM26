@@ -43,6 +43,11 @@ const P = {
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/>',
+  sliders: '<path d="M4 6h6M14 6h6M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>',
+  shield: '<path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6Z"/><path d="m9 12 2 2 4-4"/>',
+  pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3"/>',
 };
 export function icon(name, cls = 'ico') {
   return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[name] || P.info}</svg>`;
@@ -193,6 +198,12 @@ const NAV_MAIN = [
 ];
 
 function renderChrome(active) {
+  // A tela ativa também fica disponível como estado de apresentação para o CSS.
+  // Isso permite que as telas de referência usem uma moldura própria sem tocar
+  // na navegação ou no estado da partida.
+  document.body.dataset.screen = active;
+  const app = document.getElementById('app');
+  if (app) app.dataset.screen = active;
   const s = App.state;
   const club = s.db.clubs[s.clubId];
   const unread = s.inbox.filter((i) => !i.read).length;

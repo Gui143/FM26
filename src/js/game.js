@@ -203,7 +203,7 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
     competitions: [],
     history: { champions: [], scorers: [], records: {} },
     friendlies: [],
-    training: { focus: 'fisico', done: false },
+    training: { focus: 'fisico', done: false, plan: defaultTrainPlan(), history: [] },
     settings: settings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' },
   };
   // Escalação inicial
@@ -231,13 +231,58 @@ export const TRAINING_FOCUS = {
   descanso: { label: 'Descanso', desc: 'Recuperação total — físico e moral.' },
 };
 
+// Tipos de sessão do planejador semanal. Cada dia soma efeitos reais
+// (condição, ritmo, moral, entrosamento) e uma parcela de risco de lesão.
+export const TRAIN_ACTIVITIES = {
+  descanso:    { label: 'Descanso',           cond: 5, ritmo: 0, morale: 2, chem: 0, risk: 0, desc: 'Recupera condição e reduz fadiga.' },
+  recuperacao: { label: 'Recuperação',        cond: 3, ritmo: 0, morale: 1, chem: 0, risk: 0, desc: 'Trabalho leve para jogadores desgastados.' },
+  fisico:      { label: 'Treino físico',      cond: 2, ritmo: 1, morale: 0, chem: 0, risk: 1, desc: 'Aumenta capacidade física com desgaste elevado.' },
+  tecnica:     { label: 'Treino técnico',     cond: -1, ritmo: 4, morale: 0, chem: 0, risk: 0, desc: 'Melhora ritmo, fundamentos e confiança.' },
+  tatica:      { label: 'Treino tático',      cond: -1, ritmo: 1, morale: 0, chem: 2, risk: 0, desc: 'Eleva familiaridade com o plano de jogo.' },
+  preparacao:  { label: 'Preparação de jogo', cond: -1, ritmo: 2, morale: 1, chem: 1, risk: 0, desc: 'Sessão específica para o próximo adversário.' },
+  coesao:      { label: 'Coesão de grupo',    cond: 1, ritmo: 0, morale: 3, chem: 1, risk: 0, desc: 'Fortalece moral, confiança e ambiente do elenco.' },
+};
+
+// Plano padrão de 7 dias (seg → dom)
+export function defaultTrainPlan() {
+  return [
+    { activity: 'recuperacao', intensity: 'leve' },
+    { activity: 'tecnica', intensity: 'normal' },
+    { activity: 'tecnica', intensity: 'normal' },
+    { activity: 'tatica', intensity: 'normal' },
+    { activity: 'tecnica', intensity: 'normal' },
+    { activity: 'preparacao', intensity: 'normal' },
+    { activity: 'coesao', intensity: 'normal' },
+  ];
+}
+
+// Multiplicador de intensidade aplicado a cada sessão
+export function intensityMult(intensity) {
+  return intensity === 'alta' ? 1.35 : intensity === 'leve' ? 0.7 : 1;
+}
+
+// Soma os efeitos previstos do plano semanal (usado pela UI e pelo treino)
+export function planTotals(plan) {
+  const t = { cond: 0, ritmo: 0, morale: 0, chem: 0, risk: 0 };
+  for (const d of plan || []) {
+    const act = TRAIN_ACTIVITIES[d.activity] || TRAIN_ACTIVITIES.tecnica;
+    const mult = intensityMult(d.intensity);
+    t.cond += act.cond * mult;
+    t.ritmo += act.ritmo * mult;
+    t.morale += (act.morale || 0) * mult;
+    t.chem += (act.chem || 0) * mult;
+    t.risk += act.risk * mult;
+  }
+  return t;
+}
+
 export function doTraining(state, focus) {
   const tr = state.training || (state.training = { focus: 'fisico', done: false });
   if (tr.done) return { ok: false, msg: 'Você já realizou o treino desta semana.' };
   if (!TRAINING_FOCUS[focus]) focus = 'fisico';
   tr.focus = focus;
   const players = clubPlayers(state.db, state.clubId);
-  const g = { fitness: 0, form: 0, morale: 0, ovr: 0 };
+  const g = { fitness: 0, form: 0, morale: 0, ovr: 0, chem: 0, cond: 0, ritmo: 0, injury: null };
   for (const p of players) {
     switch (focus) {
       case 'fisico':
@@ -266,6 +311,30 @@ export function doTraining(state, focus) {
         break;
     }
   }
+  // Efeitos reais do planejamento dos 7 dias
+  const plan = Array.isArray(tr.plan) && tr.plan.length ? tr.plan : defaultTrainPlan();
+  const pg = planTotals(plan);
+  for (const p of players) {
+    p.fitness = clamp(Math.round(p.fitness + pg.cond), 30, 100);
+    p.form = clamp(Math.round(p.form + pg.ritmo), 20, 99);
+    p.morale = clamp(Math.round(p.morale + pg.morale), 25, 99);
+  }
+  state.chemistry = clamp((state.chemistry || 70) + pg.chem, 40, 98);
+  g.cond = Math.round(pg.cond); g.ritmo = Math.round(pg.ritmo);
+  g.morale += Math.round(pg.morale); g.chem = Math.round(pg.chem * 10) / 10;
+  // Risco de lesão proporcional à carga planejada
+  if (pg.risk > 0 && players.length && Math.random() < pg.risk / 100) {
+    const unlucky = players[Math.floor(Math.random() * players.length)];
+    if (unlucky.injuredWeeks <= 0) {
+      unlucky.injuredWeeks = 1;
+      g.injury = unlucky.name;
+      addNews(state, `🤕 ${unlucky.name} sentiu no treino e fica 1 semana no departamento médico.`, 'injury');
+    }
+  }
+  // Histórico de sessões
+  const hist = tr.history = Array.isArray(tr.history) ? tr.history : [];
+  hist.unshift({ week: state.week, season: state.season, focus, plan: plan.map((d) => d.activity), gains: { cond: g.cond, ritmo: g.ritmo, chem: g.chem }, injury: g.injury });
+  if (hist.length > 10) hist.pop();
   tr.done = true;
   addNews(state, `Treino de ${TRAINING_FOCUS[focus].label} concluído: +${g.fitness} físico, +${g.form} forma, +${g.ovr} overall.`, 'info');
   return { ok: true, focus, gains: g };
@@ -610,8 +679,14 @@ export function simWeek(state) {
   // 5) Avança semana
   state.week += 1;
 
-  // Libera novo treino semanal
-  state.training = { focus: (state.training || {}).focus || 'fisico', done: false };
+  // Libera novo treino semanal (mantém o planejador e o histórico)
+  const prevTr = state.training || {};
+  state.training = {
+    focus: prevTr.focus || 'fisico',
+    done: false,
+    plan: Array.isArray(prevTr.plan) ? prevTr.plan : defaultTrainPlan(),
+    history: Array.isArray(prevTr.history) ? prevTr.history : [],
+  };
 
   // Entrosamento evolui com estabilidade
   state.chemistry = clamp(state.chemistry + 0.5, 40, 98);
@@ -639,7 +714,7 @@ function finalizeFixture(state, comp, f, res) {
   // Artilharia da competição
   for (const g of res.goalScorers || []) {
     if (g.playerId) comp.scorers[g.playerId] = (comp.scorers[g.playerId] || 0) + 1;
-    if (g.assistId) comp.assists[g.assistId] = (comp.assists[g.playerId] || 0) + 1;
+    if (g.assistId) comp.assists[g.assistId] = (comp.assists[g.assistId] || 0) + 1;
   }
 }
 
@@ -1223,4 +1298,44 @@ export function generateJobOffers(state) {
       });
     }
   });
+}
+
+// Aceitar ou recusar uma proposta de emprego recebida na caixa de entrada.
+// Ao aceitar, o treinador troca de clube: nova escalação, entrosamento
+// reiniciado e pendências de leilão limpas.
+export function respondJobOffer(state, inboxId, accept) {
+  const item = state.inbox.find((i) => i.id === inboxId && i.type === 'jobOffer');
+  if (!item) return { ok: false, msg: 'Proposta não encontrada.' };
+  const club = state.db.clubs[item.clubId];
+  state.inbox = state.inbox.filter((i) => i.id !== inboxId);
+  if (state.jobOffers) state.jobOffers = state.jobOffers.filter((o) => o.clubId !== item.clubId);
+  if (!club) return { ok: false, msg: 'Clube indisponível.' };
+  if (!accept) {
+    addNews(state, `🧳 Você recusou a proposta do ${club.name} e segue no cargo atual.`, 'info');
+    return { ok: true, rejected: true };
+  }
+  const oldName = state.db.clubs[state.clubId] ? state.db.clubs[state.clubId].name : '—';
+  state.clubId = club.id;
+  state.chemistry = 62;
+  state.manager.rep = clamp((state.manager.rep || 50) + 1.5, 30, 99);
+  // Escalação automática do novo clube
+  const lineup = pickBestLineup(availablePlayers(state.db, club.id), state.tactics.formation);
+  state.tactics.lineup = {};
+  for (const k of ['G', 'D', 'M', 'A']) state.tactics.lineup[k] = lineup[k].map((p) => p.id);
+  state.tactics.captain = lineup.D[0]?.id || lineup.M[0]?.id || lineup.G[0]?.id || null;
+  state.tactics.penalties = lineup.A[0]?.id || lineup.M[0]?.id || null;
+  state.tactics.corners = lineup.M[0]?.id || lineup.D[0]?.id || null;
+  // Limpa leilões antigos (eram por jogadores do clube anterior)
+  state.market.offers = [];
+  // Remove outras propostas de emprego pendentes
+  state.inbox = state.inbox.filter((i) => i.type !== 'jobOffer');
+  state.jobOffers = [];
+  addNews(state, `🧳 BOMBA! ${state.manager.name} deixa o ${oldName} e assume o ${club.name}!`, 'star');
+  addInbox(state, {
+    type: 'info',
+    title: `Bem-vindo ao ${club.short}, treinador!`,
+    text: `A diretoria do ${club.name} confirma sua chegada. Monte seu plano de jogo, ajuste a tática e conquiste o grupo.`,
+    week: state.week,
+  });
+  return { ok: true, club: club.name };
 }

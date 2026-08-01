@@ -959,3 +959,319 @@ body[data-screen='calendar'] #screen {
   .ref-calendar-event strong { font-size: .63rem; }
   .ref-calendar-event small { font-size: .56rem; }
 }
+
+/* ============================================================
+   MODO COMPACTO — densidade reduzida em TODO o app
+   (mobile first; as regras abaixo vencem as anteriores por
+   estarem depois na cascata, com a mesma especificidade)
+   ============================================================ */
+html { font-size: 13.5px; }
+@media (min-width: 960px) { html { font-size: 14.5px; } }
+
+:root { --tabbar: 56px; --tb: 52px; --sb: 216px; }
+
+/* Botões / inputs / chips mais enxutos */
+.btn { min-height: 42px; padding: 0 16px; gap: 7px; font-size: .92rem; }
+.btn.big { min-height: 48px; font-size: .98rem; }
+.btn.small { min-height: 32px; padding: 0 11px; font-size: .8rem; }
+.btn .ico { width: 18px; height: 18px; }
+.chip { min-height: 34px; padding: 6px 12px; font-size: .8rem; }
+.input, select.input, textarea.input { min-height: 42px; }
+.field { margin-bottom: 11px; }
+.icon-btn { width: 38px; height: 38px; }
+.pill { padding: 3px 9px; }
+
+/* Cards e ritmo vertical */
+.card { padding: 14px; }
+.card + .card, .stack > * + * { margin-top: 10px; }
+.grid { gap: 10px; }
+.kpi { padding: 10px 6px; }
+.h-sec { margin-bottom: 9px; }
+#screen { padding: 12px 12px 26px; }
+
+/* Topbar / sidebar / tabbar */
+#topbar { padding: 8px 12px; }
+#topbar .topbar-club .club-logo, #topbar .topbar-club > svg { width: 30px; height: 30px; }
+.topbar-club .cname { font-size: .9rem; }
+.topbar-club .cmeta { font-size: .68rem; }
+.topbar-money { font-size: .82rem; padding: 5px 11px; }
+.tab { font-size: .6rem; }
+.tab .ico { width: 20px; height: 20px; }
+.tab.play .playpill { width: 46px; height: 46px; margin-top: -18px; }
+.nav-item { padding: 8px 12px; gap: 9px; font-size: .88rem; }
+#sidebar .sb-logo img { width: 26px; height: 26px; }
+.nav-grid .nav-item { padding: 12px 6px; }
+
+/* Tabelas genéricas */
+table.data th, table.data td { padding: 8px 10px; }
+
+/* Menu principal */
+.menu-wrap { max-width: 420px; }
+.menu-logo img { width: 64px; height: 64px; }
+.menu-title { font-size: 2rem; }
+.menu-sub { margin: 10px 0 22px; font-size: .88rem; }
+.menu-buttons { gap: 10px; }
+
+/* Modal / feed */
+.modal { padding: 16px; }
+.feed-item { padding: 9px 11px; }
+.live-goals { font-size: 1.9rem; }
+
+/* -------------------- Densidade das telas de referência -------------------- */
+.ref-home { padding: 0 8px 40px; }
+.ref-home-hero { min-height: 108px; padding: 12px 8px; gap: 14px; }
+.ref-home-identity { gap: 14px; }
+.ref-home-identity > .club-logo, .ref-home-identity > svg { width: 64px; height: 64px; }
+.ref-home-heading h1 { font-size: clamp(1.55rem, 3vw, 2.35rem); margin: 3px 0 5px; }
+.ref-home-manager { font-size: .95rem; }
+.ref-performance { min-width: 185px; padding: 12px 14px; gap: 10px; border-radius: 14px; }
+.ref-performance .ico { width: 21px; height: 21px; }
+.ref-performance strong { font-size: .95rem; }
+.ref-tip { padding: 13px 16px; gap: 12px; border-radius: 14px; }
+.ref-tip .ico, .ref-tip-icon .ico { width: 20px; height: 20px; }
+.ref-home-layout { grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; margin-top: 18px; }
+.ref-home-main, .ref-home-pair, .ref-home-side { gap: 14px; }
+.ref-card-head { padding: 14px 18px 10px; }
+.ref-card-head h2 { font-size: 1.12rem; }
+.ref-next-card, .ref-inbox-card, .ref-objectives-card, .ref-condition-card,
+.ref-agenda-card, .ref-news-card, .ref-coach-card, .ref-finance-card, .ref-career-card { min-height: 0; }
+.ref-next-head { min-height: 0; }
+.ref-next-competition { font-size: .85rem; }
+.ref-next-body { min-height: 0; grid-template-columns: 120px minmax(220px, 1fr) 160px; padding: 16px 18px; gap: 14px; }
+.ref-next-date strong { font-size: 1.65rem; margin: 6px 0; }
+.ref-next-date small { font-size: .85rem; }
+.ref-matchup { gap: clamp(12px, 2vw, 36px); }
+.ref-team { min-width: 90px; }
+.ref-team .club-logo, .ref-team svg { width: 60px; height: 60px; }
+.ref-team strong { font-size: 1rem; }
+.ref-vs { font-size: 1.6rem; }
+.ref-venue span { font-size: .86rem; }
+.ref-venue small { font-size: .78rem; }
+.ref-empty { min-height: 150px; }
+.ref-empty-small { padding: 18px 16px; }
+.ref-list-item { padding: 12px 16px; gap: 8px; }
+.ref-list-item strong { font-size: .92rem; }
+.ref-list-item small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ref-objectives { padding: 2px 16px 10px; }
+.ref-objectives > div { padding: 11px 0; gap: 9px; }
+.ref-objectives strong { font-size: .9rem; }
+.obj-ok { color: #5dd39e !important; }
+.obj-warn { color: #f0b35c !important; }
+.ref-condition-body { padding: 12px 18px 16px; }
+.ref-condition { margin-bottom: 12px; }
+.ref-availability { margin-top: 12px; padding: 11px 13px; }
+.ref-agenda-item { min-height: 60px; grid-template-columns: 58px 40px minmax(0, 1fr) auto; padding: 7px 14px; gap: 8px; }
+.ref-agenda-item .club-logo, .ref-agenda-item > span > svg { width: 32px; height: 32px; }
+.ref-agenda-item > strong { font-size: .88rem; }
+.ref-news-grid { min-height: 0; }
+.ref-news-grid article { gap: 10px; padding: 16px 16px 14px; }
+.ref-news-grid article strong { font-size: 1rem; }
+.ref-shortcuts-grid { padding: 12px 12px 14px; gap: 6px; }
+.ref-shortcut { min-height: 46px; }
+.ref-coach-score { padding: 14px 18px 8px; gap: 12px; }
+.ref-coach-score > strong { width: 62px; height: 62px; font-size: 2.1rem; border-radius: 14px; }
+.ref-coach-meta span { min-height: 54px; padding: 10px 4px; gap: 5px; }
+.ref-side-link { width: calc(100% - 24px); margin: 12px; min-height: 42px; padding: 0 14px; }
+.ref-balance-label { padding: 14px 18px 2px; }
+.ref-balance { padding: 0 18px; }
+.ref-finance-card > small { padding: 4px 18px 0; }
+.ref-finance-card > p { min-height: 0; padding: 10px 18px 4px; }
+.ref-career-card > button { padding: 11px 16px; gap: 10px; }
+
+/* Elenco compacto */
+.ref-squad { padding: 16px 10px 40px; }
+.ref-squad-filters { min-height: 0; grid-template-columns: minmax(240px, 1fr) minmax(200px, .9fr) minmax(420px, 2fr); gap: 14px; padding: 16px 18px; border-radius: 16px; }
+.ref-filter-controls { padding-top: 14px; grid-template-columns: 70px repeat(3, minmax(105px, 1fr)); gap: 9px; }
+.ref-filter-controls::before { display: none; }
+.ref-filter-field select { min-height: 40px; }
+.ref-position-chip { min-height: 38px; padding: 0 12px; font-size: .92rem; }
+.ref-squad-table-card { margin-top: 14px; border-radius: 16px; }
+.ref-squad-data { min-width: 980px; }
+.ref-squad-data thead th { height: 52px; padding: 0 12px; }
+.ref-squad-data tbody tr { height: 88px; }
+.ref-squad-data td { padding: 10px 12px; }
+.ref-player-cell { gap: 11px; }
+.ref-player-cell .face, .ref-player-cell > svg { width: 44px; height: 44px; }
+.ref-player-cell strong { font-size: 1.02rem; }
+.ref-overall { font-size: 1.3rem; }
+.ref-condition-value > i { width: 78px; }
+.ref-status-pill, .ref-market-pill { min-height: 32px; min-width: 0; padding: 0 9px; }
+.ref-squad-summary { padding: 10px 14px; }
+
+/* Treinos compacto */
+.ref-training { padding: 0 14px 40px; }
+.ref-page-nav { height: 62px; }
+.ref-calendar > .ref-page-nav { height: 62px; }
+.ref-training-hero { min-height: 96px; padding: 12px 2px 8px; }
+.ref-training-hero > .club-logo, .ref-training-hero > svg { width: 60px; height: 60px; }
+.ref-training-kpis { gap: 10px; }
+.ref-training-kpis > div { min-height: 0; padding: 12px 14px 10px; border-radius: 13px; }
+.ref-training-kpis span .ico { width: 20px; height: 20px; }
+.ref-training-recommendation { min-height: 0; padding: 12px 14px; gap: 9px; margin-top: 12px; border-radius: 14px; }
+.ref-training-recommendation select, .ref-training-day select { min-height: 38px; }
+.ref-apply-training { min-height: 40px; }
+.ref-week-planner { margin-top: 12px; }
+.ref-week-planner > .ref-card-head { min-height: 0; }
+.ref-week-planner > .ref-card-head > small { position: static; display: block; margin-top: 4px; }
+.ref-training-days { grid-template-columns: repeat(7, minmax(124px, 1fr)); }
+.ref-training-day { min-height: 0; padding: 11px 10px; }
+.ref-training-day > strong { margin: 7px 0 12px; }
+.ref-training-bottom { gap: 14px; margin-top: 12px; }
+.ref-session-types, .ref-session-history { min-height: 0; }
+.ref-session-row { min-height: 0; padding: 8px 14px; gap: 10px; }
+.ref-history-empty { min-height: 200px; padding: 20px; text-align: center; }
+.ref-focus-effect { font-size: .78rem; color: #c7ccc7; font-style: normal; font-weight: 600; line-height: 1.4; }
+.ref-week-forecast { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 11px 16px; border-top: 1px solid var(--ref-line-soft); }
+.ref-week-forecast > span { display: inline-flex; align-items: center; gap: 7px; color: var(--ref-accent); font-size: .68rem; font-weight: 900; letter-spacing: .06em; }
+.ref-week-forecast > span .ico { width: 15px; height: 15px; }
+.ref-week-forecast em { font-style: normal; font-size: .7rem; font-weight: 800; padding: 4px 9px; border-radius: 8px; border: 1px solid var(--ref-line); color: #c7ccc7; }
+.ref-week-forecast em.pos, .rh-gains em.pos { color: #4ade80 !important; }
+.ref-week-forecast em.neg, .rh-gains em.neg { color: #fca5a5 !important; }
+.rf-done { font-style: normal; color: var(--ref-muted); font-size: .68rem; margin-left: auto; }
+.ref-history-list { max-height: 420px; overflow-y: auto; }
+.ref-history-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--ref-line-soft); }
+.rh-week { color: var(--ref-accent); font-size: .68rem; font-weight: 900; white-space: nowrap; }
+.rh-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rh-info strong { font-size: .8rem; }
+.rh-info small { color: var(--ref-muted); font-size: .66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rh-gains { display: flex; gap: 6px; }
+.rh-gains em { font-style: normal; font-size: .66rem; font-weight: 800; }
+
+/* Calendário compacto */
+.ref-calendar { padding: 0 12px 40px; }
+.ref-calendar-hero { min-height: 112px; padding: 10px 0; }
+.ref-calendar-brand { gap: 14px; }
+.ref-calendar-brand > .club-logo, .ref-calendar-brand > svg { width: 60px; height: 60px; }
+.ref-origin { min-width: 0; padding: 12px 14px; border-radius: 13px; }
+.ref-calendar-next { min-height: 0; padding: 13px 16px; gap: 12px; }
+.ref-calendar-next h2 { font-size: 1.3rem; margin-top: 5px; }
+.ref-calendar-matchup .club-logo, .ref-calendar-matchup > span > svg { width: 42px; height: 42px; }
+.ref-calendar-filters { min-height: 0; margin-top: 12px; padding: 8px 10px; border-radius: 13px; gap: 9px; }
+.ref-calendar-tabs button { min-height: 36px; padding: 0 14px; }
+.ref-calendar-filters select { min-height: 36px; width: 210px; }
+.ref-transfer-windows { margin-top: 12px; }
+.ref-window-state { position: static; display: inline-block; margin-top: 8px; }
+.ref-window-state.open { color: var(--ref-accent); border-color: color-mix(in srgb, var(--ref-accent) 55%, var(--ref-line)); }
+.ref-window-grid > div { min-height: 0; padding: 12px 16px 10px 32px; }
+.ref-window-grid > div::before { left: 13px; top: 13px; bottom: 13px; width: 8px; }
+.ref-window-grid em { position: static; display: inline-block; margin-top: 4px; }
+.ref-window-foot { min-height: 0; padding: 7px 14px; }
+.ref-month-card { margin-top: 12px; }
+.ref-month-head { height: 58px; gap: 16px; }
+.ref-month-head h2 { font-size: 1.3rem; }
+.ref-month-button { width: 36px; height: 36px; }
+.ref-calendar-weekdays { min-height: 38px; }
+.ref-calendar-day { min-height: 96px; padding: 9px 8px 7px; }
+.ref-calendar-day.open-window { background: color-mix(in srgb, var(--ref-accent) 3.5%, var(--ref-panel)); }
+.ref-calendar-event { margin-top: 12px; padding: 6px 7px; }
+.win-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; vertical-align: 2px; border-radius: 50%; background: var(--ref-accent); }
+
+/* Lista da temporada (calendário) */
+.ref-season-list { max-height: 540px; overflow-y: auto; }
+.ref-season-row { width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 14px; background: transparent; border: 0; border-bottom: 1px solid var(--ref-line-soft); color: #e8ede8; cursor: pointer; text-align: left; transition: background .12s; }
+.ref-season-row:last-child { border-bottom: 0; }
+.ref-season-row:hover { background: color-mix(in srgb, var(--ref-accent) 5%, transparent); }
+.rs-date { color: var(--ref-accent); font-size: .7rem; font-weight: 900; }
+.rs-opp { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rs-opp .club-logo, .rs-opp > svg { width: 30px; height: 30px; flex: none; }
+.rs-opp > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rs-opp strong { font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rs-opp small { color: var(--ref-muted); font-size: .66rem; }
+.rs-res { font-style: normal; font-weight: 900; font-size: .78rem; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--ref-line); color: #c7ccc7; white-space: nowrap; }
+.ref-season-row.win .rs-res { color: #4ade80; border-color: rgba(74, 222, 128, .4); }
+.ref-season-row.loss .rs-res { color: #fca5a5; border-color: rgba(252, 165, 165, .35); }
+.ref-season-row.now .rs-res { color: var(--ref-accent); border-color: color-mix(in srgb, var(--ref-accent) 55%, var(--ref-line)); animation: blink 1.6s infinite; }
+
+/* Modal de detalhes do jogo */
+.fx-modal { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 8px 4px; }
+.fx-team { display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
+.fx-team .club-logo, .fx-team > svg { width: 54px; height: 54px; }
+.fx-team strong { font-size: 1rem; }
+.fx-team small { color: var(--text-3); font-size: .66rem; }
+.fx-team.winner strong { color: var(--accent); }
+.fx-score { font-size: 1.7rem; font-weight: 900; color: var(--accent); text-align: center; display: flex; flex-direction: column; align-items: center; }
+.fx-score small { font-size: .66rem; color: var(--text-3); font-weight: 700; }
+.fx-res.win { color: #4ade80; }
+.fx-res.loss { color: #fca5a5; }
+
+/* ============================================================
+   CENTRAL DE MENSAGENS (tela reinventada)
+   ============================================================ */
+.ibx { max-width: 860px; margin: 0 auto; display: grid; gap: 12px; }
+.ibx-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.ibx-title h1 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 4px; font-size: 1.45rem; font-weight: 900; color: var(--text); }
+.ibx-title h1 .ico { width: 24px; height: 24px; color: var(--accent); }
+.ibx-count { font-size: .7rem; font-style: normal; font-weight: 800; padding: 4px 11px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.ibx-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.ibx-filters { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
+.ibx-filters::-webkit-scrollbar { height: 0; }
+.ibf-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text-2); font-weight: 700; font-size: .8rem; cursor: pointer; white-space: nowrap; transition: all .15s; }
+.ibf-chip .ico { width: 14px; height: 14px; }
+.ibf-chip b { padding: 2px 7px; border-radius: 999px; background: var(--panel-3); font-size: .68rem; }
+.ibf-chip:hover { border-color: var(--accent); color: var(--text); }
+.ibf-chip.active { background: var(--accent); border-color: var(--accent); color: #000; }
+.ibf-chip.active b { background: rgba(0, 0, 0, .22); }
+.ibx-list { display: grid; gap: 8px; }
+.ibx-item { display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; cursor: pointer; transition: border-color .15s, background .15s; animation: feedIn .2s ease; }
+.ibx-item:hover { border-color: var(--line-light); background: var(--panel-2); }
+.ibx-item.unread { border-left: 3px solid var(--accent); }
+.ibx-item.open { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.ibx-ico { flex: none; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 11px; background: var(--panel-3); color: var(--text-2); }
+.ibx-ico .ico { width: 18px; height: 18px; }
+.ibx-item.cat-mercado .ibx-ico { color: var(--accent); background: var(--accent-soft); }
+.ibx-item.cat-carreira .ibx-ico { color: var(--gold); background: rgba(245, 197, 66, .12); }
+.ibx-item.cat-elenco .ibx-ico { color: var(--blue); background: rgba(56, 189, 248, .12); }
+.ibx-item.cat-clube .ibx-ico { color: #4ade80; background: rgba(74, 222, 128, .1); }
+.ibx-main { flex: 1; min-width: 0; }
+.ibx-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ibx-head strong { font-size: .93rem; line-height: 1.25; }
+.ibx-meta { display: flex; align-items: center; gap: 7px; flex: none; }
+.ibx-cat { font-style: normal; font-size: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.ibx-meta time { font-size: .66rem; font-weight: 700; color: var(--text-3); }
+.ibx-dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.ibx-item.unread .ibx-dot { display: inline-block; }
+.ibx-main > p { margin-top: 4px; color: var(--text-2); font-size: .85rem; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ibx-item.open > .ibx-main > p { -webkit-line-clamp: unset; }
+.ibx-extra { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.ibx-item.open .ibx-extra { display: block; animation: feedIn .18s ease; }
+.ibx-chev { flex: none; margin-top: 2px; color: var(--text-3); font-size: 1.25rem; transform: rotate(90deg); transition: transform .15s, color .15s; }
+.ibx-item.open .ibx-chev { transform: rotate(-90deg); color: var(--accent); }
+.ibx-who { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; font-size: .72rem; color: var(--text-3); }
+.ibx-who .ico { width: 13px; height: 13px; }
+.ibx-who b { color: var(--text-2); }
+
+/* ============================================================
+   ELENCO — cards mobile (a tabela larga vira cards no celular)
+   ============================================================ */
+.ref-squad-cards { display: none; }
+@media (max-width: 900px) {
+  .ref-squad-table-wrap { display: none; }
+  .ref-squad-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; padding: 10px; }
+  .sq-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 2px 10px; align-items: center; padding: 11px 12px; border: 1px solid var(--ref-line); border-radius: 13px; background: rgba(18, 27, 21, .55); color: #eef2ee; cursor: pointer; text-align: left; transition: border-color .15s; }
+  .sq-card.is-unavailable { opacity: .62; }
+  .sq-card:hover { border-color: var(--ref-accent); }
+  .sq-card .face, .sq-card > svg { grid-row: 1 / 3; width: 44px; height: 44px; }
+  .sq-card-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .sq-card-main strong { font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sq-card-main small { color: #8c958e; font-size: .68rem; }
+  .sq-card-nums { grid-row: 1 / 3; display: flex; align-items: center; gap: 8px; }
+  .sq-ovr { font-size: 1.2rem; font-weight: 900; color: var(--ref-accent); }
+  .sq-pot { font-size: .95rem; font-weight: 800; color: #69a0ff; }
+  .sq-card-foot { grid-column: 2 / 3; display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .sq-card-foot i { flex: 1; max-width: 100px; height: 6px; display: block; border-radius: 4px; overflow: hidden; background: rgba(144, 161, 149, .15); }
+  .sq-card-foot i b { display: block; height: 100%; border-radius: inherit; background: var(--ref-accent); }
+  .sq-card-foot small { color: #8c958e; font-size: .6rem; font-weight: 800; }
+  .sq-card-foot em { margin-left: auto; font-style: normal; font-size: .7rem; font-weight: 700; color: #c7ccc7; }
+  .ref-squad-filters { grid-template-columns: 1fr; }
+  .ref-filter-controls { grid-template-columns: 1fr; }
+}
+
+/* Ajustes finos mobile */
+@media (max-width: 640px) {
+  .ref-next-body { grid-template-columns: 1fr; }
+  .ibx-header { align-items: flex-start; flex-direction: column; }
+  .ref-calendar-day { min-height: 88px; padding: 8px 4px 5px; }
+  .ref-calendar-event { margin-top: 8px; padding: 5px 4px; }
+  .ref-season-list { max-height: none; }
+  .rs-opp strong { font-size: .8rem; }
+}

@@ -31,7 +31,7 @@ def load_titles():
 def clubs_list():
     import subprocess
     out = subprocess.check_output(
-        ['node', '-e', "import('/home/user/futmanager/src/js/data.js').then(({CLUBS,LEAGUES})=>{const o=[];for(const l of LEAGUES){(CLUBS[l.id]||[]).forEach((r,i)=>o.push({id:l.id+'_'+i,name:r[0],league:l.id}))}console.log(JSON.stringify(o))})"]
+        ['node', '-e', "import('/home/user/FM26/src/js/data.js').then(({CLUBS,LEAGUES})=>{const o=[];for(const l of LEAGUES){(CLUBS[l.id]||[]).forEach((r,i)=>o.push({id:l.id+'_'+i,name:r[0],league:l.id}))}console.log(JSON.stringify(o))})"]
     ).decode()
     return json.loads(out)
 

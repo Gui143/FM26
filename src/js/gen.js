@@ -111,6 +111,17 @@ function genFromReal(rng, club, row, usedNames) {
   if (row.nat) p.country = row.nat; // nacionalidade real do atleta
   usedNames.add(row.n);
   if (row.face) p.face = row.face;
+  if (row.age) {
+    p.age = row.age;
+    let pot = p.ovr;
+    if (p.age <= 20) pot = clamp(p.ovr + rng.int(4, 22), p.ovr, 99);
+    else if (p.age <= 23) pot = clamp(p.ovr + rng.int(1, 12), p.ovr, 99);
+    else if (p.age <= 26) pot = clamp(p.ovr + rng.int(0, 5), p.ovr, 99);
+    p.pot = pot;
+    p.value = marketValue(p.ovr, p.age, p.pot);
+    p.salary = weeklyWage(p.value, p.ovr);
+    p.xp = rng.int(5, 60) + Math.max(0, (p.age - 20)) * 2;
+  }
   return p;
 }
 

@@ -10,7 +10,19 @@ import { downloadFile, readUploadedFile, compressText, decompressText } from './
 import { resizeImage, advanceWeek, playBarHTML, playBarMount, countryName, leagueName } from './screens.js';
 import { clamp } from './util.js';
 
-const S = () => App.state;
+const S = () => {
+  const s = App.state;
+  if (s && s.settings) {
+    const isInfinite = s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true';
+    if (isInfinite) {
+      const val = (s.settings.infiniteMoneyValue !== undefined) ? Number(s.settings.infiniteMoneyValue) : 999999999;
+      if (s.finances.balance !== val) {
+        s.finances.balance = val;
+      }
+    }
+  }
+  return s;
+};
 
 // ============================================================
 // CALENDÁRIO
@@ -387,8 +399,10 @@ export const youthScreen = {
   mount(el) {
     const s = S();
     el.querySelector('[data-scout]')?.addEventListener('click', () => {
+      G.enforceInfiniteMoney(s);
       if (s.finances.balance < 3e6) { toast('Caixa insuficiente.', 'error'); return; }
       s.finances.balance -= 3e6;
+      G.enforceInfiniteMoney(s);
       s.db.clubs[s.clubId].youthLevel = clamp(s.db.clubs[s.clubId].youthLevel + 3, 40, 99);
       s.scoutSeason = s.season;
       G.log(s, 'Investimento em olheiros', -3e6);
@@ -701,10 +715,8 @@ export const settingsScreen = {
           <button class="chip ${!st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:false">Desligado</button>
         </div></div>
         <div class="field" style="margin-top:6px"><label>Valor do dinheiro infinito (quando ligado)</label>
-          <input class="input" type="number" id="inf-val" value="${st.infiniteMoneyValue || 999999999}" min="1" step="1000000" style="width:220px"></div>
-          <button class="chip ${st.quality === 'alta' ? 'active' : ''}" data-set="quality:alta">Alta (animações)</button>
-          <button class="chip ${st.quality === 'baixa' ? 'active' : ''}" data-set="quality:baixa">Baixa (desempenho)</button>
-        </div></div>
+          <input class="input" type="number" id="inf-val" value="${st.infiniteMoneyValue || 999999999}" min="1" step="1000000" style="width:220px">
+        </div>
         <div class="tiny muted">As configurações são salvas automaticamente.</div>
         ${App.state ? '' : `<button class="btn ghost block" data-back>${icon('back')} Voltar ao menu</button>`}
       </div>
@@ -713,14 +725,26 @@ export const settingsScreen = {
   mount(el) {
     const st = S() ? S().settings : App.bootSettings;
     const persist = () => {
-      if (S()) autosave();
-      else { try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {} }
+      const s = S();
+      if (s) {
+        if (s.settings && (s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true')) {
+          s.finances.balance = Number(s.settings.infiniteMoneyValue) || 999999999;
+        }
+        autosave();
+      } else {
+        try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {}
+      }
       applySettingsToBody();
-      if (!S()) renderRoute();
+      if (!s) renderRoute();
     };
     el.querySelectorAll('[data-set]').forEach((b) => b.onclick = () => {
       const [k, v] = b.dataset.set.split(':');
-      st[k] = v; applySettingsToBody(); persist();
+      let val = v;
+      if (v === 'true') val = true;
+      else if (v === 'false') val = false;
+      st[k] = val;
+      applySettingsToBody();
+      persist();
       renderRoute();
     });
     el.querySelector('#set-speed').oninput = (e) => { st.speed = Number(e.target.value); persist(); renderRoute(); };
@@ -729,7 +753,15 @@ export const settingsScreen = {
     vol.onchange = () => tone(700, 0.15, 'triangle');
     const infVal = el.querySelector('#inf-val');
     if (infVal) {
-      infVal.oninput = () => { st.infiniteMoneyValue = Number(infVal.value) || 999999999; persist(); renderRoute(); };
+      infVal.oninput = () => {
+        st.infiniteMoneyValue = Number(infVal.value) || 0;
+        const s = S();
+        if (s && s.settings && (s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true')) {
+          s.finances.balance = st.infiniteMoneyValue;
+        }
+        if (s) autosave();
+        else { try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {} }
+      };
     }
     el.querySelector('[data-back]')?.addEventListener('click', () => go('menu'));
   },

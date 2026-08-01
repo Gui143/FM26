@@ -217,6 +217,7 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
   generateSeason(state);
   generateJobOffers(state);
   addNews(state, `Bem-vindo ao ${db.clubs[clubId].name}, ${managerName}! A temporada ${state.year} está começando.`, 'info');
+  enforceInfiniteMoney(state);
   log(state, `Saldo inicial`, state.finances.balance);
   return state;
 }
@@ -492,6 +493,7 @@ export function applyUserResult(state, compId, fixtureId, result) {
 
 // Simula todas as outras partidas da semana + atualizações semanais
 export function simWeek(state) {
+  enforceInfiniteMoney(state);
   const rng = makeRng(hashStr(`week_${state.week}_${state.season}_${state.db.seed}`) ^ (Date.now() % 1e6));
   // 1) Partidas sem o usuário
   for (const comp of state.competitions) {
@@ -566,6 +568,7 @@ export function simWeek(state) {
   const totalWeeks = Math.max(...state.competitions.filter((c) => c.type === 'league').map((c) => c.totalRounds), 20) + 2;
   if (state.week > totalWeeks) {
     endSeason(state, rng);
+    enforceInfiniteMoney(state);
     return { seasonEnded: true };
   }
   // Aviso de renovações
@@ -573,6 +576,7 @@ export function simWeek(state) {
   if (expiring.length && state.week % 6 === 0) {
     addInbox(state, { type: 'contract', title: 'Contratos terminando', text: `${expiring.length} jogador(es) com contrato acabando: ${expiring.slice(0, 4).map((p) => p.name).join(', ')}${expiring.length > 4 ? '…' : ''}. Renove na tela do jogador.`, week: state.week });
   }
+  enforceInfiniteMoney(state);
   return { seasonEnded: false };
 }
 
@@ -883,6 +887,7 @@ export function makeOffer(state, playerId, fee, wage) {
 export function renewContract(state, playerId) {
   const p = state.db.players[playerId];
   if (!p || p.clubId !== state.clubId) return { ok: false };
+  enforceInfiniteMoney(state);
   const raise = Math.round(p.salary * 1.12 / 100) * 100;
   const cost = raise * 26; // luva
   if (state.finances.balance < cost) return { ok: false, msg: 'Caixa insuficiente para a luva de renovação.' };
@@ -892,6 +897,7 @@ export function renewContract(state, playerId) {
   p.contractYears = 3;
   p.morale = clamp(p.morale + 5, 25, 99);
   addNews(state, `✍️ ${p.name} renovou contrato por 3 temporadas.`, 'market');
+  enforceInfiniteMoney(state);
   return { ok: true };
 }
 
@@ -954,7 +960,7 @@ export function confirmBuy(state, offerId) {
   if (!offer || offer.status !== 'accepted') return { ok: false };
   const p = state.db.players[offer.playerId];
   if (!p) return { ok: false };
-  if (state.settings && state.settings.infiniteMoney) { state.finances.balance = (state.settings.infiniteMoneyValue || 999999999); }
+  enforceInfiniteMoney(state);
   if (state.finances.balance < offer.fee) return { ok: false, msg: 'Caixa insuficiente.' };
   const agentFee = Math.round(offer.fee * 0.06); // empresário
   state.finances.balance -= offer.fee + agentFee;
@@ -970,6 +976,7 @@ export function confirmBuy(state, offerId) {
   state.market.pending = state.market.pending.filter((o) => !o.done);
   state.chemistry = clamp(state.chemistry - 1.5, 40, 98);
   addNews(state, `✅ CONTRATADO! ${p.name} é o novo reforço do ${state.db.clubs[state.clubId].name}!`, 'market');
+  enforceInfiniteMoney(state);
   return { ok: true };
 }
 
@@ -1004,12 +1011,14 @@ export function respondBid(state, offerId, action) {
 export function signFreeAgent(state, playerId) {
   const p = state.db.players[playerId];
   if (!p || !p.freeAgent) return { ok: false };
+  enforceInfiniteMoney(state);
   const signingBonus = Math.round(p.value * 0.05);
   if (state.finances.balance < signingBonus) return { ok: false, msg: 'Caixa insuficiente.' };
   state.finances.balance -= signingBonus;
   log(state, `Contratação sem custos de ${p.name} (luva)`, -signingBonus);
   p.freeAgent = false; p.clubId = state.clubId; p.contractYears = 2; p.morale = 75;
   addNews(state, `✅ ${p.name} assinou de graça com o ${state.db.clubs[state.clubId].name}.`, 'market');
+  enforceInfiniteMoney(state);
   return { ok: true };
 }
 
@@ -1080,6 +1089,15 @@ export function log(state, desc, value) {
   state.finances.ledger.unshift({ week: state.week, season: state.season, desc, value });
   if (state.finances.ledger.length > 120) state.finances.ledger.pop();
 }
+export function enforceInfiniteMoney(state) {
+  if (state && state.settings) {
+    const isInfinite = state.settings.infiniteMoney === true || state.settings.infiniteMoney === 'true';
+    if (isInfinite) {
+      state.finances.balance = (state.settings.infiniteMoneyValue !== undefined) ? Number(state.settings.infiniteMoneyValue) : 999999999;
+    }
+  }
+}
+
 function money(state, v) {
   const abs = Math.abs(v);
   if (abs >= 1e6) return `R$ ${(abs / 1e6).toFixed(2).replace('.', ',')} mi`;

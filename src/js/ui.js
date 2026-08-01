@@ -262,6 +262,6 @@ export function autosave() {
 
 export function applySettingsToBody() {
   const st = App.state?.settings || App.bootSettings || {};
-  document.body.dataset.accent = st.accent || 'verde';
+  document.body.dataset.accent = st.accent || 'laranja';
   document.body.dataset.quality = st.quality || 'alta';
 }

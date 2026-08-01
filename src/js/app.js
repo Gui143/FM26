@@ -43,8 +43,8 @@ registerScreens({
 
 // Configurações fora de partida (menu)
 try {
-  App.bootSettings = JSON.parse(App.storage.getItem('fm_boot_settings') || 'null') || { lang: 'pt', accent: 'verde', speed: 2, volume: 50, quality: 'alta' };
-} catch { App.bootSettings = { lang: 'pt', accent: 'verde', speed: 2, volume: 50, quality: 'alta' }; }
+  App.bootSettings = JSON.parse(App.storage.getItem('fm_boot_settings') || 'null') || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
+} catch { App.bootSettings = { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' }; }
 
 // Recalcula valor de mercado (usado pelo editor)
 App.revalue = marketValue;

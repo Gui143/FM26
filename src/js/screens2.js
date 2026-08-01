@@ -462,10 +462,10 @@ export const statsScreen = {
       <div class="card"><div class="seg" style="flex-wrap:wrap">${comps.map((c) => `<button class="chip ${c.id === statsComp ? 'active' : ''}" data-comp="${c.id}">${esc(c.short)}</button>`).join('')}</div></div>
       <div class="grid cols-2">
         <div class="card"><div class="h-sec">Artilharia ${comp ? '— ' + esc(comp.name) : ''}</div>
-          ${rows.map(([pid, g], i) => { const p = s.db.players[pid]; return `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid rgba(35,49,82,.5)"><span class="hall-num">${i + 1}</span>${p ? `${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''}</div></div><span style="font-weight:900;font-size:1.15rem">${g}</span>` : '—'}</div>`; }).join('') || '<div class="muted">Sem gols ainda.</div>'}
+          ${rows.map(([pid, g], i) => { const p = s.db.players[pid]; return `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${p ? `${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''}</div></div><span style="font-weight:900;font-size:1.15rem">${g}</span>` : '—'}</div>`; }).join('') || '<div class="muted">Sem gols ainda.</div>'}
         </div>
         <div class="card"><div class="h-sec">Assistências</div>
-          ${as.map(([pid, g], i) => { const p = s.db.players[pid]; return `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid rgba(35,49,82,.5)"><span class="hall-num">${i + 1}</span>${p ? `<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''}</div></div><span style="font-weight:900">${g}</span>` : '—'}</div>`; }).join('') || '<div class="muted">—</div>'}
+          ${as.map(([pid, g], i) => { const p = s.db.players[pid]; return `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${p ? `<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''}</div></div><span style="font-weight:900">${g}</span>` : '—'}</div>`; }).join('') || '<div class="muted">—</div>'}
         </div>
       </div>`;
     } else if (statsTab === 'history') {
@@ -480,15 +480,15 @@ export const statsScreen = {
     } else if (statsTab === 'records') {
       const recs = Object.entries(s.history.records);
       body = `<div class="card"><div class="h-sec">Recordes (artilharia em uma temporada)</div>
-        ${recs.map(([k, r]) => { const p = s.db.players[r.playerId]; return `<div class="hall-card" style="padding:10px 0;border-bottom:1px solid rgba(35,49,82,.5)">${icon('fire')}<div style="flex:1;margin-left:8px"><b>${esc(k.replace(/^L_|^C_|^CONT_/, ''))}</b><div class="tiny muted">${p ? esc(p.name) : '—'} em ${r.year}</div></div><span style="font-weight:900;color:var(--gold)">${r.goals} gols</span></div>`; }).join('') || '<div class="muted">Os recordes serão definidos ao fim da primeira temporada.</div>'}</div>`;
+        ${recs.map(([k, r]) => { const p = s.db.players[r.playerId]; return `<div class="hall-card" style="padding:10px 0;border-bottom:1px solid var(--line)">${icon('fire')}<div style="flex:1;margin-left:8px"><b>${esc(k.replace(/^L_|^C_|^CONT_/, ''))}</b><div class="tiny muted">${p ? esc(p.name) : '—'} em ${r.year}</div></div><span style="font-weight:900;color:var(--gold)">${r.goals} gols</span></div>`; }).join('') || '<div class="muted">Os recordes serão definidos ao fim da primeira temporada.</div>'}</div>`;
     } else {
       const topScorers = Object.values(s.db.players).sort((a, b) => b.career.goals - a.career.goals).slice(0, 10);
       const topAssists = Object.values(s.db.players).sort((a, b) => b.career.assists - a.career.assists).slice(0, 10);
       body = `<div class="grid cols-2">
         <div class="card"><div class="h-sec">⭐ Hall da Fama — Gols na carreira</div>
-          ${topScorers.map((p, i) => `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid rgba(35,49,82,.5)"><span class="hall-num">${i + 1}</span>${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''} • ${p.pos}</div></div><span style="font-weight:900">${p.career.goals}</span></div>`).join('')}</div>
+          ${topScorers.map((p, i) => `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''} • ${p.pos}</div></div><span style="font-weight:900">${p.career.goals}</span></div>`).join('')}</div>
         <div class="card"><div class="h-sec">🎯 Assistências na carreira</div>
-          ${topAssists.map((p, i) => `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid rgba(35,49,82,.5)"><span class="hall-num">${i + 1}</span>${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''} • ${p.pos}</div></div><span style="font-weight:900">${p.career.assists}</span></div>`).join('')}</div>
+          ${topAssists.map((p, i) => `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''} • ${p.pos}</div></div><span style="font-weight:900">${p.career.assists}</span></div>`).join('')}</div>
       </div>`;
     }
     return `
@@ -702,7 +702,7 @@ export const settingsScreen = {
           <button class="chip ${st.lang === 'en' ? 'active' : ''}" data-set="lang:en">English</button>
         </div></div>
         <div class="field"><label>Cor de destaque</label><div class="chips">
-          ${[['verde', '#22c55e'], ['azul', '#38bdf8'], ['roxo', '#a78bfa'], ['dourado', '#f5c542'], ['vermelho', '#fb7185']].map(([k, c]) => `<button class="chip ${st.accent === k ? 'active' : ''}" data-set="accent:${k}"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin-right:6px;vertical-align:-2px"></span>${k}</button>`).join('')}
+          ${[['laranja', '#ff7700'], ['verde', '#22c55e'], ['azul', '#38bdf8'], ['roxo', '#a78bfa'], ['dourado', '#f5c542'], ['vermelho', '#fb7185']].map(([k, c]) => `<button class="chip ${st.accent === k ? 'active' : ''}" data-set="accent:${k}"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin-right:6px;vertical-align:-2px"></span>${k}</button>`).join('')}
         </div></div>
         <div class="field"><label>Velocidade da simulação ao vivo: <b>${['Lenta', 'Normal', 'Rápida'][st.speed - 1]}</b></label><input class="input" type="range" min="1" max="3" id="set-speed" value="${st.speed}"></div>
         <div class="field"><label>Volume dos efeitos: <b id="vol-v">${st.volume}</b></label><input class="input" type="range" min="0" max="100" id="set-vol" value="${st.volume}"></div>

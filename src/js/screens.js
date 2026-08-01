@@ -8,7 +8,19 @@ import { simMatch } from './engine.js';
 import { FORMATIONS, MENTALITIES, PRESSING, LINES, STYLES, POSITIONS, POS_ORDER, LEAGUES, COUNTRIES, CLUBS, NAT_LABELS } from './data.js';
 import { clamp, makeRng } from './util.js';
 
-const S = () => App.state;
+const S = () => {
+  const s = App.state;
+  if (s && s.settings) {
+    const isInfinite = s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true';
+    if (isInfinite) {
+      const val = (s.settings.infiniteMoneyValue !== undefined) ? Number(s.settings.infiniteMoneyValue) : 999999999;
+      if (s.finances.balance !== val) {
+        s.finances.balance = val;
+      }
+    }
+  }
+  return s;
+};
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // Avança uma semana com spinner

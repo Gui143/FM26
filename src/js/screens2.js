@@ -700,6 +700,8 @@ export const settingsScreen = {
           <button class="chip ${st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:true">Ligado</button>
           <button class="chip ${!st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:false">Desligado</button>
         </div></div>
+        <div class="field" style="margin-top:6px"><label>Valor do dinheiro infinito (quando ligado)</label>
+          <input class="input" type="number" id="inf-val" value="${st.infiniteMoneyValue || 999999999}" min="1" step="1000000" style="width:220px"></div>
           <button class="chip ${st.quality === 'alta' ? 'active' : ''}" data-set="quality:alta">Alta (animações)</button>
           <button class="chip ${st.quality === 'baixa' ? 'active' : ''}" data-set="quality:baixa">Baixa (desempenho)</button>
         </div></div>
@@ -725,6 +727,10 @@ export const settingsScreen = {
     const vol = el.querySelector('#set-vol');
     vol.oninput = () => { st.volume = Number(vol.value); el.querySelector('#vol-v').textContent = vol.value; persist(); };
     vol.onchange = () => tone(700, 0.15, 'triangle');
+    const infVal = el.querySelector('#inf-val');
+    if (infVal) {
+      infVal.oninput = () => { st.infiniteMoneyValue = Number(infVal.value) || 999999999; persist(); renderRoute(); };
+    }
     el.querySelector('[data-back]')?.addEventListener('click', () => go('menu'));
   },
 };

@@ -49,31 +49,51 @@ export const calendarScreen = {
         }
       }
     }
+    const nextMine = next[0];
     return `
-    <div class="stack">
-      <div class="card" style="display:flex;align-items:center;gap:12px;justify-content:space-between">
-        <button class="btn small" data-w="-1">${icon('back')} Semana -</button>
-        <div style="font-weight:900;font-size:1.1rem">Semana ${calWeek} <span class="tiny muted">de ${s.year}</span></div>
-        <button class="btn small" data-w="1">Semana + ${icon('play')}</button>
+    <div class="stack" style="max-width:820px;margin:0 auto">
+      <div class="card" style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn small" data-w="-1">${icon('back')}</button>
+          <div style="text-align:center">
+            <div style="font-weight:900;font-size:1.25rem">${calWeek}</div>
+            <div class="tiny muted">Semana • ${s.year}</div>
+          </div>
+          <button class="btn small" data-w="1">${icon('play')}</button>
+        </div>
+        <span class="pill ${nextMine ? 'gold' : ''}">${nextMine ? `${esc(nextMine.comp.short)} • S${nextMine.f.week}` : 'Agenda livre'}</span>
       </div>
+      ${nextMine ? `
+      <div class="card" style="cursor:pointer" data-go-match>
+        <div class="h-sec">Próxima partida — S${nextMine.f.week}</div>
+        <div class="live-score" style="margin-top:4px">
+          <div class="live-team">${crest(s.db.clubs[nextMine.f.home], 52)}<span>${esc(s.db.clubs[nextMine.f.home].short)}</span></div>
+          <div><div class="pill gold">${esc(nextMine.comp.name)}</div><div class="tiny muted" style="margin-top:6px">Rodada ${nextMine.f.round} • ${nextMine.f.home === s.clubId ? 'casa' : 'fora'}</div></div>
+          <div class="live-team">${crest(s.db.clubs[nextMine.f.away], 52)}<span>${esc(s.db.clubs[nextMine.f.away].short)}</span></div>
+        </div>
+      </div>` : ''}
       <div class="card">
-        <div class="h-sec">Jogos da semana</div>
+        <div class="h-sec">Jogos da semana ${calWeek}</div>
         ${rows.length ? rows.map(({ comp, f, mine }) => `
-          <div class="tie" style="${mine ? 'border-color:var(--accent)' : ''}">
-            <div>${clubCell(s, f.home)} <b style="margin:0 6px">×</b> ${clubCell(s, f.away)}<div class="tiny muted">${esc(comp.short)} • R${f.round}</div></div>
-            <div class="tscore">${f.played ? `${f.gh} × ${f.ga}${f.pen ? `<div class="tiny muted">pên ${f.pen.h}-${f.pen.a}</div>` : ''}` : `<span class="pill">a jogar</span>`}</div>
-          </div>`).join('') : '<div class="empty">Nenhum jogo nesta semana.</div>'}
+          <div class="tie ${mine ? 'mine' : ''}" style="${mine ? 'border-color:var(--accent)' : ''}">
+            <div>
+              <span style="display:flex;align-items:center;gap:8px">${mine ? icon('star', 'ico fill') : ''}${clubCell(s, f.home)} <b style="margin:0 6px">×</b> ${clubCell(s, f.away)}</span>
+              <div class="tiny muted" style="margin-top:3px">${esc(comp.short)} • Rodada ${f.round}${mine ? ' • seu time' : ''}</div>
+            </div>
+            <div class="tscore">${f.played ? `<b>${f.gh} × ${f.ga}</b>${f.pen ? `<div class="tiny muted">pên ${f.pen.h}-${f.pen.a}</div>` : ''}` : `<span class="pill">a jogar</span>`}</div>
+          </div>`).join('') : `<div class="empty">${icon('calendar')}<div>Nenhum jogo nesta semana.</div></div>`}
       </div>
       <div class="card">
         <div class="h-sec">Sua agenda — próximas semanas</div>
         ${next.length ? next.map(({ comp, f }) => `
-          <div class="news-item"><span class="wk">S${f.week}</span><span><b>${esc(comp.name)}</b> — ${esc(s.db.clubs[f.home].short)} × ${esc(s.db.clubs[f.away].short)} ${f.home === s.clubId ? '(casa)' : '(fora)'}</span></div>`).join('') : '<div class="tiny muted">Agenda livre.</div>'}
+          <div class="news-item"><span class="wk">S${f.week}</span><span><b>${esc(comp.name)}</b> — ${esc(s.db.clubs[f.home].short)} × ${esc(s.db.clubs[f.away].short)} ${f.home === s.clubId ? '<span class="pill gold">casa</span>' : '<span class="pill">fora</span>'}</span></div>`).join('') : '<div class="tiny muted">Agenda livre.</div>'}
       </div>
       <div class="card">${playBarHTML()}</div>
     </div>`;
   },
   mount(el) {
     el.querySelectorAll('[data-w]').forEach((b) => b.onclick = () => { calWeek = Math.max(1, calWeek + Number(b.dataset.w)); renderRoute(); });
+    el.querySelector('[data-go-match]')?.addEventListener('click', () => go('match'));
     playBarMount(el);
   },
 };
@@ -864,6 +884,76 @@ export const creditsScreen = {
     </div>`;
   },
   mount(el) { el.querySelector('[data-back]').onclick = () => history.back(); },
+};
+
+// ============================================================
+// TREINOS
+// ============================================================
+export const trainingScreen = {
+  html() {
+    const s = S();
+    const tr = s.training || { focus: 'fisico', done: false };
+    const squad = G.clubPlayers(s.db, s.clubId);
+    const avgFit = Math.round(squad.reduce((x, p) => x + p.fitness, 0) / squad.length);
+    const avgMor = Math.round(squad.reduce((x, p) => x + p.morale, 0) / squad.length);
+    const players = squad.slice().sort((a, b) => b.fitness - a.fitness);
+    return `
+    <div class="stack" style="max-width:820px;margin:0 auto">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between">
+          <div>
+            <div class="h-sec" style="margin:0">Plano da semana — S${s.week}</div>
+            <div class="tiny muted">${tr.done ? 'Treino já realizado ✓ Novo plano na próxima semana.' : 'Escolha o foco e clique em Treinar.'}</div>
+          </div>
+          <span class="pill ${tr.done ? 'green' : 'gold'}">${tr.done ? '✅ Treino feito' : 'Treino pendente'}</span>
+        </div>
+        <div style="margin-top:14px">
+          <div class="h-sec">Foco do treino</div>
+          <div class="chips" style="flex-wrap:wrap">
+            ${Object.entries(G.TRAINING_FOCUS).map(([k, f]) => `<button class="chip ${tr.focus === k ? 'active' : ''}" data-focus="${k}" ${tr.done ? 'disabled' : ''}>${esc(f.label)}</button>`).join('')}
+          </div>
+          <div class="tiny muted" style="margin-top:8px">${esc((G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico).desc)}</div>
+        </div>
+        <button class="btn primary big block" data-train style="margin-top:16px" ${tr.done ? 'disabled' : ''}>
+          ${icon('whistle')} ${tr.done ? 'Treino realizado esta semana' : 'Realizar treino de ' + esc((G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico).label)}
+        </button>
+      </div>
+      <div class="grid cols-4">
+        <div class="card kpi"><div class="v">${avgFit}</div><div class="l">Físico médio</div></div>
+        <div class="card kpi"><div class="v">${avgMor}</div><div class="l">Moral média</div></div>
+        <div class="card kpi"><div class="v">${Math.round(s.chemistry || 70)}</div><div class="l">Entrosamento</div></div>
+        <div class="card kpi"><div class="v">${squad.length}</div><div class="l">Atletas</div></div>
+      </div>
+      <div class="card">
+        <div class="h-sec">Condição do elenco</div>
+        <div class="table-wrap"><table class="data" style="min-width:0">
+          <thead><tr><th></th><th>Jogador</th><th>Pos</th><th class="num">OVR</th><th style="min-width:120px">Físico</th><th style="min-width:120px">Forma</th></tr></thead>
+          <tbody>${players.map((p) => `<tr data-pid="${p.id}" style="${p.injuredWeeks > 0 ? 'opacity:.55' : ''}">
+            <td>${avatar(p, 28)}</td><td><b>${esc(p.name)}</b>${p.injuredWeeks > 0 ? '<div class="tiny muted">🤕 lesionado</div>' : ''}</td>
+            <td>${posBadge(p.pos)}</td><td class="num">${ovrBadge(p.ovr)}</td>
+            <td><div class="meter"><div class="bar"><i style="width:${p.fitness}%"></i></div><span class="val">${p.fitness}</span></div></td>
+            <td><div class="meter"><div class="bar"><i style="width:${p.form}%;background:linear-gradient(90deg,#38bdf8,#7dd3fc)"></i></div><span class="val">${p.form}</span></div></td>
+          </tr>`).join('')}</tbody></table></div>
+        <div class="tiny muted" style="margin-top:10px">💡 Treinos físicos e de descanso recuperam a condição; técnica eleva a forma (e pode desenvolver jovens); tática melhora o entrosamento. Treine 1x por semana.</div>
+      </div>
+    </div>`;
+  },
+  mount(el) {
+    const s = S();
+    const tr = s.training || (s.training = { focus: 'fisico', done: false });
+    el.querySelectorAll('[data-focus]').forEach((b) => b.onclick = () => { tr.focus = b.dataset.focus; autosave(); renderRoute(); });
+    el.querySelector('[data-train]')?.addEventListener('click', () => {
+      const r = G.doTraining(s, tr.focus);
+      if (r.ok) {
+        const g = r.gains || {};
+        toast(`✅ Treino concluído! +${g.fitness} físico, +${g.form} forma, +${g.ovr} overall.`);
+      } else {
+        toast(r.msg || 'Treino indisponível.', 'error');
+      }
+      autosave(); renderRoute();
+    });
+    el.querySelectorAll('[data-pid]').forEach((r) => r.onclick = () => go(`player/${r.dataset.pid}`));
+  },
 };
 
 // ============================================================

@@ -41,6 +41,7 @@ const checks = {
   saves: S2.savesScreen.html(),
   credits: S2.creditsScreen.html(),
   inbox: S2.inboxScreen.html(),
+  training: S2.trainingScreen.html(),
 };
 
 let ok = 0;

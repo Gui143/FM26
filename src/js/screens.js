@@ -429,37 +429,50 @@ export const squadScreen = {
     };
     players.sort(sortFns[squadFilter.sort] || sortFns.ovr);
     const wages = G.clubPlayers(s.db, s.clubId).reduce((x, p) => x + p.salary, 0);
+    const squadSize = G.clubPlayers(s.db, s.clubId).length;
+    const fitAvg = Math.round(G.clubPlayers(s.db, s.clubId).reduce((x, p) => x + p.fitness, 0) / squadSize);
     return `
     <div class="stack">
       <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div class="seg" id="sq-pos">${['all', 'G', 'D', 'M', 'A'].map((p) => `<button class="chip ${squadFilter.pos === p ? 'active' : ''}" data-p="${p}">${p === 'all' ? 'Todos' : POSITIONS[p] + 's'}</button>`).join('')}</div>
-        <div style="display:flex;gap:10px;align-items:center">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span class="pill">${players.length} atletas</span>
+          <span class="pill">Físico ${fitAvg}</span>
           <select class="input" id="sq-sort" style="min-height:40px;width:auto">
             ${[['ovr', 'Posição/Overall'], ['pot', 'Potencial'], ['age', 'Idade'], ['value', 'Valor'], ['salary', 'Salário'], ['form', 'Forma']].map(([v, l]) => `<option value="${v}" ${squadFilter.sort === v ? 'selected' : ''}>${l}</option>`).join('')}
           </select>
-          <span class="pill">Folha: ${money(wages)}/sem</span>
         </div>
       </div>
-      <div class="card">
-        <div class="table-wrap"><table class="data">
-          <thead><tr><th>#</th><th></th><th>Jogador</th><th>Pos</th><th class="num">Idade</th><th class="num">OVR</th><th class="num">POT</th><th class="num">Forma</th><th class="num">Moral</th><th class="num">Valor</th><th>Status</th></tr></thead>
-          <tbody>${players.map((p) => {
-            const status = p.injuredWeeks > 0 ? `<span class="pill red">🤕 ${p.injuredWeeks}sem</span>` : p.suspended > 0 ? '<span class="pill red">🟥 suspenso</span>' : p.listed ? '<span class="pill yellow">à venda</span>' : p.contractYears <= 1 ? '<span class="pill yellow">contrato no fim</span>' : '<span class="pill green">ok</span>';
-            return `<tr data-pid="${p.id}" style="${p.injuredWeeks > 0 ? 'opacity:.55' : ''}">
-              <td class="muted">${p.number}</td><td>${avatar(p, 30)}</td>
-              <td><b>${esc(p.name)}</b><div class="tiny muted">${esc(countryName(s, p.country))} • pé ${p.foot}</div></td>
-              <td>${posBadge(p.pos)}</td><td class="num">${p.age}</td>
-              <td class="num">${ovrBadge(p.ovr)}</td><td class="num">${ovrBadge(p.pot)}</td>
-              <td class="num">${formPill(p.form)}</td><td class="num">${p.morale}</td>
-              <td class="num">${money(p.value)}</td><td>${status}</td></tr>`;
-          }).join('')}</tbody></table></div>
+      <div class="card" style="padding:12px">
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px">
+          ${players.map((p) => {
+            const status = p.injuredWeeks > 0 ? `<span class="pill red">🤕 ${p.injuredWeeks}sem</span>` : p.suspended > 0 ? '<span class="pill red">🟥 susp</span>' : p.listed ? '<span class="pill yellow">venda</span>' : p.contractYears <= 1 ? '<span class="pill yellow">fim contrato</span>' : '';
+            return `
+            <button class="club-card" data-pid="${p.id}" style="${p.injuredWeeks > 0 ? 'opacity:.6' : ''}">
+              ${avatar(p, 40)}
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:6px"><b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</b></div>
+                <div class="tiny muted" style="display:flex;align-items:center;gap:5px;margin-top:3px">${posBadge(p.pos)} Nº ${p.number} • ${p.age} anos</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                  <div class="meter" style="flex:1"><div class="bar"><i style="width:${p.form}%"></i></div></div>
+                  <span class="tiny muted">forma</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                ${ovrBadge(p.ovr)}
+                ${status}
+              </div>
+            </button>`;
+          }).join('')}
+        </div>
       </div>
+      <div class="tiny muted" style="text-align:center">Folha salarial: ${money(wages)}/semana</div>
     </div>`;
   },
   mount(el) {
     el.querySelectorAll('#sq-pos [data-p]').forEach((b) => b.onclick = () => { squadFilter.pos = b.dataset.p; renderRoute(); });
     el.querySelector('#sq-sort').onchange = (e) => { squadFilter.sort = e.target.value; renderRoute(); };
-    el.querySelectorAll('tr[data-pid]').forEach((r) => r.onclick = () => go(`player/${r.dataset.pid}`));
+    el.querySelectorAll('[data-pid]').forEach((r) => r.onclick = () => go(`player/${r.dataset.pid}`));
   },
 };
 

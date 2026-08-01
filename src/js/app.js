@@ -8,7 +8,7 @@ import {
   calendarScreen, tableScreen, cupsScreen, marketScreen, financesScreen,
   clubScreen, youthScreen, managerScreen, statsScreen, rankingScreen,
   friendliesScreen, customScreen, editorScreen, settingsScreen, savesScreen,
-  creditsScreen, inboxScreen,
+  creditsScreen, inboxScreen, trainingScreen,
 } from './screens2.js';
 import { buildDatabase, marketValue } from './gen.js';
 import * as G from './game.js';
@@ -39,6 +39,7 @@ registerScreens({
   saves: savesScreen,
   credits: creditsScreen,
   inbox: inboxScreen,
+  training: trainingScreen,
 });
 
 // Configurações fora de partida (menu)

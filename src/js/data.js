@@ -318,7 +318,7 @@ export const I18N = {
   pt: {
     home: 'Início', squad: 'Elenco', tactics: 'Táticas', play: 'Jogar', league: 'Liga', more: 'Mais',
     next: 'Próxima partida', table: 'Tabela', fixtures: 'Calendário', market: 'Mercado', finances: 'Finanças',
-    club: 'Clube', youth: 'Base', manager: 'Treinador', stats: 'Estatísticas', ranking: 'Ranking', settings: 'Configurações',
+    club: 'Clube', youth: 'Base', manager: 'Treinador', training: 'Treinos', stats: 'Estatísticas', ranking: 'Ranking', settings: 'Configurações',
     saves: 'Saves', friendlies: 'Amistosos', custom: 'Criar Campeonato', credits: 'Créditos', cup: 'Copas',
     newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save', editor: 'Editor',
     teamOfWeek: 'Avançar', quick: 'Resultado rápido', live: 'Assistir', skip: 'Pular',
@@ -326,7 +326,7 @@ export const I18N = {
   en: {
     home: 'Home', squad: 'Squad', tactics: 'Tactics', play: 'Play', league: 'League', more: 'More',
     next: 'Next match', table: 'Table', fixtures: 'Fixtures', market: 'Transfers', finances: 'Finances',
-    club: 'Club', youth: 'Academy', manager: 'Manager', stats: 'Stats', ranking: 'Ranking', settings: 'Settings',
+    club: 'Club', youth: 'Academy', manager: 'Manager', training: 'Training', stats: 'Stats', ranking: 'Ranking', settings: 'Settings',
     saves: 'Saves', friendlies: 'Friendlies', custom: 'Custom Cup', credits: 'Credits', cup: 'Cups',
     newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save', editor: 'Editor',
     teamOfWeek: 'Advance', quick: 'Quick result', live: 'Watch', skip: 'Skip',

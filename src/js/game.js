@@ -203,6 +203,7 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
     competitions: [],
     history: { champions: [], scorers: [], records: {} },
     friendlies: [],
+    training: { focus: 'fisico', done: false },
     settings: settings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' },
   };
   // Escalação inicial
@@ -220,6 +221,54 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
   enforceInfiniteMoney(state);
   log(state, `Saldo inicial`, state.finances.balance);
   return state;
+}
+
+// -------------------- Treinos semanais --------------------
+export const TRAINING_FOCUS = {
+  fisico: { label: 'Físico', desc: 'Recupera condição física de todo o elenco.' },
+  tecnica: { label: 'Técnica', desc: 'Melhora a forma dos atletas e pode elevar jovens.' },
+  tatica: { label: 'Tática', desc: 'Aperta o entrosamento da equipe.' },
+  descanso: { label: 'Descanso', desc: 'Recuperação total — físico e moral.' },
+};
+
+export function doTraining(state, focus) {
+  const tr = state.training || (state.training = { focus: 'fisico', done: false });
+  if (tr.done) return { ok: false, msg: 'Você já realizou o treino desta semana.' };
+  if (!TRAINING_FOCUS[focus]) focus = 'fisico';
+  tr.focus = focus;
+  const players = clubPlayers(state.db, state.clubId);
+  const g = { fitness: 0, form: 0, morale: 0, ovr: 0 };
+  for (const p of players) {
+    switch (focus) {
+      case 'fisico':
+        g.fitness += p.fitness < 100 ? 1 : 0;
+        p.fitness = clamp(p.fitness + 14, 40, 100);
+        p.form = clamp(p.form + 2, 0, 100);
+        break;
+      case 'tecnica':
+        p.form = clamp(p.form + 6, 0, 100);
+        g.form += 1;
+        if (p.age <= 24 && p.ovr < p.pot && Math.random() < 0.5) {
+          p.ovr = clamp(p.ovr + 1, 40, Math.min(p.pot, 92));
+          g.ovr += 1;
+        }
+        break;
+      case 'tatica':
+        state.chemistry = clamp((state.chemistry || 70) + 1.5, 40, 98);
+        p.form = clamp(p.form + 3, 0, 100);
+        g.form += 1;
+        break;
+      case 'descanso':
+        p.fitness = clamp(p.fitness + 22, 40, 100);
+        g.fitness += 1;
+        p.morale = clamp(p.morale + 4, 20, 100);
+        g.morale += 1;
+        break;
+    }
+  }
+  tr.done = true;
+  addNews(state, `Treino de ${TRAINING_FOCUS[focus].label} concluído: +${g.fitness} físico, +${g.form} forma, +${g.ovr} overall.`, 'info');
+  return { ok: true, focus, gains: g };
 }
 
 // -------------------- Geração da temporada --------------------
@@ -560,6 +609,9 @@ export function simWeek(state) {
 
   // 5) Avança semana
   state.week += 1;
+
+  // Libera novo treino semanal
+  state.training = { focus: (state.training || {}).focus || 'fisico', done: false };
 
   // Entrosamento evolui com estabilidade
   state.chemistry = clamp(state.chemistry + 0.5, 40, 98);

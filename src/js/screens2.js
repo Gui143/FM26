@@ -3,7 +3,7 @@
 // clube, base, treinador, estatísticas, ranking, amistosos,
 // campeonato personalizado, editor, saves, config, créditos, inbox
 // ============================================================
-import { App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num, crest, avatar, ovrBadge, posBadge, clubCell, autosave, applySettingsToBody, renderRoute, tone } from './ui.js';
+import { App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num, crest, avatar, ovrBadge, posBadge, clubCell, autosave, applySettingsToBody, renderRoute, tone, compLogo, awardIcon } from './ui.js';
 import * as G from './game.js';
 import { LEAGUES, COUNTRIES, POSITIONS, POS_ORDER } from './data.js';
 import { downloadFile, readUploadedFile, compressText, decompressText } from './saveio.js';
@@ -130,7 +130,7 @@ export const calendarScreen = {
       <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('calendar')} CALENDÁRIO</span><span></span></header>
       <section class="ref-calendar-hero">
         <div class="ref-calendar-brand">${crest(club, 76)}<div><span class="ref-eyebrow">TEMPORADA ${s.year}</span><h1>Calendário.</h1><p>Jogos, mandos, competições e períodos de recuperação.</p></div></div>
-        <div class="ref-origin">${icon('calendar')}<span><b>ORIGEM</b><strong>Tabela oficial</strong></span></div>
+        <div class="ref-origin">${compLogo('br1', 40)}<span><b>ORIGEM</b><strong>Tabela oficial</strong></span></div>
       </section>
 
       <section class="ref-card ref-calendar-next ref-action" data-go-match tabindex="0">
@@ -551,27 +551,127 @@ export const managerScreen = {
     const s = S();
     const m = s.manager;
     const xpPct = (m.xp % 300) / 300 * 100;
+    const nextLevelXp = (Math.floor(m.xp / 300) + 1) * 300;
+
+    if (s.retired) {
+      return `
+      <div class="stack" style="max-width:800px;margin:0 auto">
+        <div class="card" style="text-align:center;padding:40px">
+          <div style="font-size:4rem">🏆</div>
+          <h1 style="font-size:2.2rem;margin:10px 0">Fim de Carreira</h1>
+          <p class="muted">Obrigado por sua contribuição ao futebol mundial.</p>
+          <div style="margin:30px 0;text-align:left;background:rgba(255,255,255,0.05);padding:20px;border-radius:12px">
+            <h2 style="margin-bottom:15px">Legado de ${esc(m.name)}</h2>
+            <div class="grid cols-2">
+              <div><b>Temporadas:</b> ${s.season}</div>
+              <div><b>Nível Final:</b> ${m.level}</div>
+              <div><b>Reputação:</b> ${Math.round(m.rep)}</div>
+              <div><b>Títulos:</b> ${m.titles.length}</div>
+            </div>
+            <div style="margin-top:20px">
+              <b>Sala de Troféus:</b>
+              <div class="chips" style="margin-top:10px">
+                ${m.titles.map(t => `<span class="pill gold">🏆 ${esc(t.comp)} (T${t.season})</span>`).join('') || 'Nenhum título conquistado.'}
+              </div>
+            </div>
+          </div>
+          <button class="btn primary big" onclick="location.reload()">Voltar ao Menu Principal</button>
+        </div>
+      </div>`;
+    }
+
+    const attrLabel = (k) => ({
+      tactics: 'Tática', training: 'Treino', management: 'Gestão',
+      discipline: 'Disciplina', motivation: 'Motivação',
+      adaptability: 'Adaptabilidade', determination: 'Determinação'
+    }[k] || k);
+
     return `
-    <div class="stack" style="max-width:760px;margin:0 auto">
-      <div class="card" style="text-align:center;padding:26px">
-        <div style="width:84px;height:84px;border-radius:50%;margin:0 auto 12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;color:#07130b">${esc(m.name.split(' ').map((w) => w[0]).slice(0, 2).join(''))}</div>
-        <div style="font-weight:900;font-size:1.4rem">${esc(m.name)}</div>
-        <div class="muted">${esc(s.db.clubs[s.clubId].name)} • ${esc(countryName(s, m.country))}</div>
-        <div class="pill gold" style="margin-top:10px">Nível ${m.level}</div>
-      </div>
-      <div class="card">
-        <div class="h-sec">Evolução</div>
-        <div class="meter"><span class="tiny muted" style="min-width:110px">Experiência</span><div class="bar"><i style="width:${xpPct}%"></i></div><span class="val">${m.xp}</span></div>
-        <div style="height:10px"></div>
-        <div class="meter"><span class="tiny muted" style="min-width:110px">Reputação</span><div class="bar"><i style="width:${m.rep}%"></i></div><span class="val">${Math.round(m.rep)}</span></div>
-        <div class="tiny muted" style="margin-top:10px">Ganhe XP vencendo partidas (30), empatando (12) e conquistando títulos (+120–250). A cada nível, a moral do elenco sobe.</div>
-      </div>
-      <div class="card">
-        <div class="h-sec">Conquistas (${m.titles.length})</div>
-        ${m.titles.length ? `<div class="chips" style="flex-wrap:wrap">${m.titles.map((t) => `<span class="pill gold">🏆 ${esc(t.comp)} — T${t.season}</span>`).join('')}</div>` : '<div class="muted">Ainda sem títulos. A sala de troféus espera por você.</div>'}
+    <div class="stack" style="max-width:900px;margin:0 auto">
+      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('chart')} PERFIL DO TREINADOR</span><span></span></header>
+
+      <div class="manager-layout" style="display:grid;grid-template-columns: 1fr 2fr;gap:20px;margin-top:20px">
+        <aside class="stack">
+          <div class="card" style="text-align:center;padding:26px">
+            <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:900;color:#07130b;border:4px solid rgba(255,255,255,0.1)">${esc(m.name.split(' ').map((w) => w[0]).slice(0, 2).join(''))}</div>
+            <div style="font-weight:900;font-size:1.6rem">${esc(m.name)}</div>
+            <div class="muted">${esc(s.db.clubs[s.clubId].name)} • ${esc(countryName(s, m.country))}</div>
+            <div class="pill gold" style="margin-top:10px;font-size:1.1rem;padding:6px 16px">Nível ${m.level}</div>
+            <div style="margin-top:15px">
+              <div class="tiny muted" style="margin-bottom:4px">Experiência (${m.xp} / ${nextLevelXp})</div>
+              <div class="ref-progress" style="height:8px"><i style="width:${xpPct}%;background:var(--accent)"></i></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="h-sec">Licença Atual</div>
+            <div style="font-weight:700;font-size:1.1rem;color:var(--accent)">${m.level >= 8 ? 'Licença PRO Continental' : m.level >= 5 ? 'Licença Nacional A' : m.level >= 3 ? 'Licença Nacional B' : 'Licença Nacional C'}</div>
+            <p class="tiny muted" style="margin-top:6px">Sua licença define sua reputação base e capacidade de treinar grandes clubes na Europa e América.</p>
+          </div>
+
+          <div class="card">
+            <div class="h-sec">Reputação Mundial</div>
+            <div class="meter"><div class="bar"><i style="width:${m.rep}%"></i></div><span class="val">${Math.round(m.rep)}</span></div>
+            <div class="tiny muted" style="margin-top:8px">${m.rep >= 80 ? 'Ídolo mundial' : m.rep >= 68 ? 'Respeitado' : m.rep >= 55 ? 'Promissor' : 'Iniciante'}</div>
+          </div>
+        </aside>
+
+        <main class="stack">
+          <div class="card">
+            <div class="h-sec">Atributos de Treinador</div>
+            <div class="grid cols-2" style="gap:15px">
+              ${Object.entries(m.attrs || { tactics: 10, training: 10, management: 10, discipline: 10, motivation: 10, adaptability: 10, determination: 10 }).map(([k, v]) => `
+                <div class="attr-row">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="tiny">${attrLabel(k)}</span><b class="tiny">${v}</b></div>
+                  <div class="ref-progress" style="height:6px"><i style="width:${v * 5}%;background:var(--blue)"></i></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="h-sec">Árvore de Habilidades</div>
+            <div class="skill-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px">
+              ${[
+      { id: 'off', n: 'Ataque Total', d: '+5% gols marcados', cost: 2 },
+      { id: 'def', n: 'Retranca', d: '-5% gols sofridos', cost: 2 },
+      { id: 'fit', n: 'Preparador Físico', d: '+10% recuperação', cost: 3 },
+      { id: 'scout', n: 'Olho Clínico', d: 'Ver potencial exato', cost: 3 },
+      { id: 'talk', n: 'Palestra Motivacional', d: '+5 moral pós-jogo', cost: 2 },
+      { id: 'youth', n: 'Mestre da Base', d: 'Melhores jovens', cost: 4 },
+      { id: 'money', n: 'Negociador', d: '-10% preço de compra', cost: 3 },
+      { id: 'loy', n: 'Liderança', d: '+5% lealdade', cost: 2 },
+    ].map(sk => {
+      const active = (m.skills || []).includes(sk.id);
+      return `
+                <button class="skill-card ${active ? 'active' : ''}" style="background:rgba(255,255,255,0.03);border:1px solid ${active ? 'var(--accent)' : 'rgba(255,255,255,0.1)'};padding:10px;border-radius:8px;text-align:left;cursor:pointer">
+                  <div style="font-weight:700;font-size:0.8rem;margin-bottom:4px;color:${active ? 'var(--accent)' : '#fff'}">${sk.n}</div>
+                  <div class="tiny muted" style="line-height:1.2">${sk.d}</div>
+                  <div style="margin-top:8px;font-size:0.7rem;font-weight:700">${active ? '✓ ATIVO' : `Custo: ${sk.cost} PT`}</div>
+                </button>`;
+    }).join('')}
+            </div>
+            <div class="tiny muted" style="margin-top:12px">Você ganha 1 Ponto de Habilidade a cada 2 níveis. Pontos atuais: ${Math.floor(m.level / 2) - (m.skills || []).length}</div>
+          </div>
+
+          <div class="card">
+            <div class="h-sec">Sala de Troféus (${m.titles.length})</div>
+            <div class="trophy-room" style="display:flex;gap:10px;flex-wrap:wrap">
+              ${m.titles.length ? m.titles.map((t) => `
+                <div class="pill gold" style="display:flex;align-items:center;gap:6px">
+                  ${icon('trophy', 'ico small')}
+                  <span><b>${esc(t.comp)}</b> <small>T${t.season}</small></span>
+                </div>
+              `).join('') : '<div class="muted">Sua estante de troféus ainda está vazia. Vença competições para enchê-la!</div>'}
+            </div>
+          </div>
+        </main>
       </div>
     </div>`;
   },
+  mount(el) {
+    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
+  }
 };
 
 // ============================================================
@@ -611,6 +711,38 @@ export const statsScreen = {
       const recs = Object.entries(s.history.records);
       body = `<div class="card"><div class="h-sec">Recordes (artilharia em uma temporada)</div>
         ${recs.map(([k, r]) => { const p = s.db.players[r.playerId]; return `<div class="hall-card" style="padding:10px 0;border-bottom:1px solid var(--line)">${icon('fire')}<div style="flex:1;margin-left:8px"><b>${esc(k.replace(/^L_|^C_|^CONT_/, ''))}</b><div class="tiny muted">${p ? esc(p.name) : '—'} em ${r.year}</div></div><span style="font-weight:900;color:var(--gold)">${r.goals} gols</span></div>`; }).join('') || '<div class="muted">Os recordes serão definidos ao fim da primeira temporada.</div>'}</div>`;
+    } else if (statsTab === 'awards') {
+      const awards = s.history.awards || [];
+      body = `
+      <div class="card"><div class="h-sec">Premiações Mundiais</div>
+        ${awards.slice().reverse().map(a => `
+          <div style="margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:15px">
+            <div class="pill gold">${a.year}</div>
+            <div class="grid cols-4" style="margin-top:15px;gap:20px">
+              <div style="text-align:center">
+                ${awardIcon('ballonDor', 60)}
+                <div style="font-weight:700;margin-top:8px">Bola de Ouro</div>
+                <div class="tiny muted">${s.db.players[a.ballonDor]?.name || '—'}</div>
+              </div>
+              <div style="text-align:center">
+                ${awardIcon('goldenShoe', 60)}
+                <div style="font-weight:700;margin-top:8px">Chuteira de Ouro</div>
+                <div class="tiny muted">${s.db.players[a.goldenShoe]?.name || '—'}</div>
+              </div>
+              <div style="text-align:center">
+                ${awardIcon('theBest', 60)}
+                <div style="font-weight:700;margin-top:8px">FIFA The Best</div>
+                <div class="tiny muted">${s.db.players[a.theBest]?.name || '—'}</div>
+              </div>
+              <div style="text-align:center">
+                ${awardIcon('puskas', 60)}
+                <div style="font-weight:700;margin-top:8px">Puskas</div>
+                <div class="tiny muted">${s.db.players[a.puskas]?.name || '—'}</div>
+              </div>
+            </div>
+          </div>
+        `).join('') || '<div class="muted">As premiações são entregues ao fim de cada temporada.</div>'}
+      </div>`;
     } else {
       const topScorers = Object.values(s.db.players).sort((a, b) => b.career.goals - a.career.goals).slice(0, 10);
       const topAssists = Object.values(s.db.players).sort((a, b) => b.career.assists - a.career.assists).slice(0, 10);
@@ -624,7 +756,7 @@ export const statsScreen = {
     return `
     <div class="stack">
       <div class="card"><div class="seg" id="stats-tabs">
-        ${[['scorers', 'Artilharia'], ['history', 'Histórico'], ['records', 'Recordes'], ['hall', 'Hall da Fama']].map(([k, l]) => `<button class="chip ${statsTab === k ? 'active' : ''}" data-st="${k}">${l}</button>`).join('')}
+        ${[['scorers', 'Artilharia'], ['history', 'Histórico'], ['records', 'Recordes'], ['awards', 'Premiações'], ['hall', 'Hall da Fama']].map(([k, l]) => `<button class="chip ${statsTab === k ? 'active' : ''}" data-st="${k}">${l}</button>`).join('')}
       </div></div>
       ${body}
     </div>`;

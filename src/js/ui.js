@@ -69,6 +69,60 @@ export function t(key) { return i18n(lang(), key); }
 export const esc = escapeHtml;
 export const money = fmtMoney;
 export const num = fmtNum;
+
+const COMP_LOGOS = {
+  'br1': 'https://logospng.org/logo-brasileirao/logo-brasileirao-serie-a-768.png',
+  'br2': 'https://seeklogo.com/images/B/brasileirao-serie-b-logo-955B77DBF5-seeklogo.com.png',
+  'br3': 'https://seeklogo.com/images/B/brasileirao-serie-c-logo-94B6984714-seeklogo.com.png',
+  'br4': 'https://seeklogo.com/images/B/brasileirao-serie-d-logo-04D7964E8C-seeklogo.com.png',
+  'ar1': 'https://seeklogo.com/images/L/liga-profesional-de-futbol-logo-4A1C0B52B7-seeklogo.com.png',
+  'en1': 'https://seeklogo.com/images/P/premier-league-new-logo-D1105979F2-seeklogo.com.png',
+  'es1': 'https://seeklogo.com/images/L/la-liga-2023-logo-C78D24E334-seeklogo.com.png',
+  'it1': 'https://seeklogo.com/images/S/serie-a-logo-7E6672322E-seeklogo.com.png',
+  'de1': 'https://seeklogo.com/images/B/bundesliga-logo-8408B73905-seeklogo.com.png',
+  'fr1': 'https://seeklogo.com/images/L/ligue-1-mcdonalds-logo-E79B5CD030-seeklogo.com.png',
+  'pt1': 'https://seeklogo.com/images/L/liga-portugal-logo-E4369B2A44-seeklogo.com.png',
+  'nl1': 'https://seeklogo.com/images/E/eredivisie-logo-955B1B7D50-seeklogo.com.png',
+  'CdB': 'https://logospng.org/wp-content/uploads/copa-do-brasil.png',
+  'LIB': 'https://logospng.org/wp-content/uploads/conmebol-libertadores.png',
+  'SUL': 'https://logospng.org/wp-content/uploads/conmebol-sudamericana.png',
+  'UCL': 'https://logospng.org/wp-content/uploads/uefa-champions-league.png',
+  'UEL': 'https://logospng.org/wp-content/uploads/uefa-europa-league.png',
+  'ECL': 'https://logospng.org/wp-content/uploads/uefa-conference-league.png',
+  'MUN': 'https://seeklogo.com/images/F/fifa-club-world-cup-logo-1E763A99B9-seeklogo.com.png',
+};
+
+const AWARD_ICONS = {
+  ballonDor: 'https://images.vexels.com/media/users/3/132104/isolated/preview/594a7054a323f46f481ad363cd845a74-icone-do-trofeu-bola-de-ouro.png',
+  goldenShoe: 'https://cdn-icons-png.flaticon.com/512/5166/5166649.png',
+  theBest: 'https://seeklogo.com/images/F/fifa-the-best-logo-50D5773193-seeklogo.com.png',
+  puskas: 'https://cdn-icons-png.flaticon.com/512/5166/5166649.png',
+};
+
+export const awardIcon = (id, size = 30) => {
+  const url = AWARD_ICONS[id];
+  if (url) return `<img src="${url}" width="${size}" height="${size}" style="object-fit:contain" alt="${id}">`;
+  return icon('star');
+};
+
+export const compLogo = (id, size = 30) => {
+  const url = COMP_LOGOS[id] || COMP_LOGOS[id.split('_')[1]];
+  if (url) return `<img src="${url}" width="${size}" height="${size}" style="object-fit:contain" alt="${id}">`;
+  return icon('trophy');
+};
+
+const NEWS_LOGOS = {
+  'GE': 'https://s.glbimg.com/es/ge/static/ge-logo.png',
+  'TNT': 'https://seeklogo.com/images/T/tnt-sports-logo-6B98B6D14C-seeklogo.com.png',
+  'CAZÉ': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/CazeTV_logo.png/640px-CazeTV_logo.png',
+};
+
+export const newsLogo = (source, size = 40) => {
+  const url = NEWS_LOGOS[source];
+  if (url) return `<img src="${url}" width="${size}" height="${size}" style="border-radius:4px;object-fit:contain" alt="${source}">`;
+  return icon('clipboard');
+};
+
 export const crest = (club, size = 40) => {
   if (club && club.id && LOGOS.has(club.id)) {
     return `<img class="club-logo" src="src/assets/logos/${club.id}.png" width="${size}" height="${size}" alt="${escapeHtml(club.short || club.name || '')}" loading="lazy">`;

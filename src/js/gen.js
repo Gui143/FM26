@@ -49,10 +49,8 @@ function genPlayer(rng, club, pos, usedNames) {
     country = rng.pick(others).id;
   }
   const rep = club.rep;
-  // Overall baseado na reputação do clube
-  let ovr = Math.round(rep - 16 + rng.f() * 20);
-  if (rng.chance(0.12)) ovr += rng.int(2, 6); // destaque do elenco
-  ovr = clamp(ovr, 45, 97);
+  
+  // Overall muito mais realista baseado na reputação do clube e idade
   const age = (() => {
     const r = rng.f();
     if (r < 0.16) return rng.int(17, 20);
@@ -60,10 +58,26 @@ function genPlayer(rng, club, pos, usedNames) {
     if (r < 0.88) return rng.int(29, 32);
     return rng.int(33, 37);
   })();
+
+  // Base OVR: Reputação do clube - offset. Muito mais preciso para realismo.
+  let baseOvr = (rep * 0.65) + 22 + rng.int(-3, 3);
+  
+  // Jovens começam com OVR menor mas POT maior
+  if (age <= 19) baseOvr -= 18;
+  else if (age <= 21) baseOvr -= 10;
+  else if (age <= 23) baseOvr -= 5;
+  
+  let ovr = clamp(Math.round(baseOvr), 40, 96);
+  
   let pot = ovr;
-  if (age <= 20) pot = clamp(ovr + rng.int(4, 22), ovr, 99);
-  else if (age <= 23) pot = clamp(ovr + rng.int(1, 12), ovr, 99);
-  else if (age <= 26) pot = clamp(ovr + rng.int(0, 5), ovr, 99);
+  if (age <= 20) pot = clamp(ovr + rng.int(10, 25), ovr, 99);
+  else if (age <= 23) pot = clamp(ovr + rng.int(4, 15), ovr, 99);
+  else if (age <= 26) pot = clamp(ovr + rng.int(0, 8), ovr, 99);
+  
+  // Casos especiais de "Gui Negão" e outros jovens artilheiros
+  // Se for muito jovem e estiver num clube gigante, o OVR inicial deve ser baixo (reserva)
+  if (age < 19 && rep > 80 && ovr > 68) ovr = rng.int(60, 67);
+
   const value = marketValue(ovr, age, pot);
   const height = pos === 'G' ? rng.int(186, 198) : pos === 'D' ? rng.int(180, 194) : pos === 'M' ? rng.int(170, 188) : rng.int(172, 192);
   const p = {
@@ -111,43 +125,52 @@ function genFromReal(rng, club, row, usedNames) {
   if (row.nat) p.country = row.nat; // nacionalidade real do atleta
   usedNames.add(row.n);
   if (row.face) p.face = row.face;
-  if (row.age) {
-    p.age = row.age;
-    let pot = p.ovr;
-    if (p.age <= 20) pot = clamp(p.ovr + rng.int(4, 22), p.ovr, 99);
-    else if (p.age <= 23) pot = clamp(p.ovr + rng.int(1, 12), p.ovr, 99);
-    else if (p.age <= 26) pot = clamp(p.ovr + rng.int(0, 5), p.ovr, 99);
-    p.pot = pot;
-    p.value = marketValue(p.ovr, p.age, p.pot);
-    p.salary = weeklyWage(p.value, p.ovr);
-    p.xp = rng.int(5, 60) + Math.max(0, (p.age - 20)) * 2;
+  
+  if (row.age) p.age = row.age;
+
+  // Ajuste fino de OVR realismo
+  // Gui Negão, etc: Jovens promissores em clubes grandes
+  if (p.age < 19 && club.rep > 85) {
+      p.ovr = clamp(p.ovr, 58, 66);
+      p.pot = clamp(p.pot, 82, 94);
   }
+  // Estrelas mundiais (Vini Jr, Haaland, etc seriam rep 95+)
+  if (club.rep >= 95 && p.age >= 23 && p.age <= 30) {
+      p.ovr = clamp(p.ovr, 86, 96);
+  }
+
+  p.value = marketValue(p.ovr, p.age, p.pot);
+  p.salary = weeklyWage(p.value, p.ovr);
+  p.xp = rng.int(5, 60) + Math.max(0, (p.age - 20)) * 2;
+  
   return p;
 }
 
 // Gera elenco completo de um clube
 function genSquad(rng, club, usedNames) {
   const real = REAL_SQUADS[club.id];
-  if (real && real.length >= 10) {
+  if (real && real.length > 0) {
     const squad = [];
     const count = { G: 0, D: 0, M: 0, A: 0 };
     for (const row of real) {
       const p = genFromReal(rng, club, row, usedNames);
+      p.fictional = false;
       count[p.pos]++; squad.push(p);
     }
-    // garante composição mínima com nomes fictícios complementares
-    const min = { G: 2, D: 6, M: 6, A: 4 };
-    for (const pos of Object.keys(min)) {
-      while (count[pos] < min[pos]) {
+    
+    // Garante apenas o mínimo absoluto se faltar gente para fechar 11 titulares + reservas
+    // Mas o usuário quer remover fictícios, então vamos tentar manter o mais real possível.
+    const minNeeded = 16;
+    if (squad.length < minNeeded) {
+      while (squad.length < minNeeded) {
+        const pos = rng.pick(['G', 'D', 'M', 'A']);
         const p = genPlayer(rng, club, pos, usedNames);
-        p.fictional = true; count[pos]++; squad.push(p);
+        p.fictional = true;
+        p.name = `Regen ${p.name.split(' ').slice(-1)[0]}`;
+        squad.push(p);
       }
     }
-    while (squad.length < 22) {
-      const pos = rng.pick(['D', 'M', 'A']);
-      const p = genPlayer(rng, club, pos, usedNames);
-      p.fictional = true; count[pos]++; squad.push(p);
-    }
+
     // numeração: preserva os números reais; demais recebem livres
     const used = new Set();
     for (const p of squad) { if (p._hasNum && !used.has(p.number)) used.add(p.number); else p.number = 0; }
@@ -161,10 +184,15 @@ function genSquad(rng, club, usedNames) {
     }
     return squad;
   }
-  const plan = [['G', 3], ['D', 8], ['M', 8], ['A', 5]];
+  // Se não tem real, gera o mínimo
+  const plan = [['G', 2], ['D', 5], ['M', 5], ['A', 3]];
   const squad = [];
   for (const [pos, count] of plan) {
-    for (let i = 0; i < count; i++) squad.push(genPlayer(rng, club, pos, usedNames));
+    for (let i = 0; i < count; i++) {
+        const p = genPlayer(rng, club, pos, usedNames);
+        p.fictional = true;
+        squad.push(p);
+    }
   }
   // Numeração por linha
   const nums = { G: [1, 12, 22], D: [2, 3, 4, 6, 13, 14, 15, 16], M: [5, 8, 10, 17, 18, 20, 21, 23], A: [7, 9, 11, 19, 27, 77] };

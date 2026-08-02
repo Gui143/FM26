@@ -634,6 +634,28 @@ export function applyUserResult(state, compId, fixtureId, result) {
   postMatchPlayerUpdates(state, f, result, true);
 }
 
+// Simula automaticamente todas as partidas pendentes do usuário na semana atual.
+// Usado ao avançar até o fim da temporada sem jogar manualmente, para que os
+// jogadores do clube do usuário também acumulem jogos/gols/assistências.
+export function playUserWeek(state) {
+  const fixtures = getUserFixtures(state);
+  for (const { comp, fixture: f } of fixtures) {
+    try {
+      const home = userMatchSide(state, f.home);
+      const away = userMatchSide(state, f.away);
+      home.name = state.db.clubs[f.home].name; home.short = state.db.clubs[f.home].short;
+      away.name = state.db.clubs[f.away].name; away.short = state.db.clubs[f.away].short;
+      const isLeg1 = f.leg === 1;
+      const knockoutFlag = comp.type === 'cup' && !comp.friendly && (f.knockout !== undefined ? f.knockout : true) && !isLeg1;
+      const res = quickSim(home, away, hashStr(`${state.season}_${f.id}`) % 2147483647, knockoutFlag, !!f.neutral);
+      if (f.leg === 2) leg2Decide(state, comp, f, res);
+      applyUserResult(state, comp.id, f.id, res);
+    } catch (e) {
+      console.error('Erro ao simular partida do usuário no avanço automático', f, e);
+    }
+  }
+}
+
 // Simula todas as outras partidas da semana + atualizações semanais
 export function simWeek(state) {
   try {

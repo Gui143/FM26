@@ -398,6 +398,7 @@ function simulateToSeasonEnd() {
   setTimeout(() => {
     let r = { seasonEnded: false };
     while (!r.seasonEnded) {
+      G.playUserWeek(S()); // garante que as partidas do usuário também sejam jogadas (estatísticas)
       r = G.simWeek(S());
     }
     autosave();
@@ -415,6 +416,7 @@ function simulateToCareerEnd() {
     for (let i = 0; i < 15; i++) {
       let r = { seasonEnded: false };
       while (!r.seasonEnded) {
+        G.playUserWeek(s); // garante que as partidas do usuário sejam jogadas (estatísticas)
         r = G.simWeek(s);
       }
     }

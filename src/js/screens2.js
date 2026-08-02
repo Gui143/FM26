@@ -213,7 +213,7 @@ export const tableScreen = {
     <div class="stack">
       <div class="card"><div class="seg" style="flex-wrap:wrap">${LEAGUES.map((l) => `<button class="chip ${showId === l.id ? 'active' : ''}" data-l="${l.id}">${esc(l.name)}</button>`).join('')}</div></div>
       <div class="card">
-        <div class="h-sec">${esc(league?.name || '')} — ${s.year}</div>
+        <div class="h-sec"><span style="display:inline-flex;align-items:center;gap:8px">${compLogo(showId, 30)} ${esc(league?.name || '')}</span> — ${s.year}</div>
         <div class="table-wrap"><table class="data">
           <thead><tr><th>#</th><th>Clube</th><th class="num">P</th><th class="num">J</th><th class="num">V</th><th class="num">E</th><th class="num">D</th><th class="num">GP</th><th class="num">GC</th><th class="num">SG</th></tr></thead>
           <tbody>${table.map((r, i) => `<tr class="${r.clubId === s.clubId ? 'me' : i < 4 ? 'promo' : rel && i >= table.length - rel ? 'releg' : ''}" data-club="${r.clubId}">

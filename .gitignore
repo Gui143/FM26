@@ -10,3 +10,9 @@ contact-sheet.png
 .env.*.local
 supabase-service-key.txt
 *.key
+
+# Java/Maven build output
+services/gemini-java/target/
+
+# Audio supplied separately after rights clearance
+public/audio/*.mp3

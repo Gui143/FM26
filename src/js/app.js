@@ -12,7 +12,8 @@ import {
 } from './screens2.js';
 import { createNewGame, writeSlot, readSlot } from './game.js';
 import { buildDatabase } from './gen.js';
-import { initSupabase, autoSaveToCloud, getCurrentUser } from './supabase.js';
+import { initSupabase, autoSaveToCloud, getCurrentUser, upsertPresence } from './supabase.js';
+import { unlockMusic, setMusicSettings } from './music.js';
 
 // Registro de rotas
 registerScreens({
@@ -38,12 +39,14 @@ registerScreens({
 
 // Configurações fora de partida (menu)
 try {
-  App.bootSettings = JSON.parse(App.storage.getItem('fm_boot_settings') || 'null') || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
-} catch { App.bootSettings = { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' }; }
+  App.bootSettings = JSON.parse(App.storage.getItem('fm_boot_settings') || 'null') || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, musicVolume: 35, musicMuted: false, quality: 'alta' };
+} catch { App.bootSettings = { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, musicVolume: 35, musicMuted: false, quality: 'alta' }; }
+App.bootSettings = { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, musicVolume: 35, musicMuted: false, quality: 'alta', ...App.bootSettings };
 
 function startGame(state) {
   App.state = state;
   applySettingsToBody();
+  setMusicSettings(state.settings || App.bootSettings);
   go('home');
   renderRoute();
 }
@@ -85,6 +88,10 @@ if (typeof window !== 'undefined' && typeof location !== 'undefined') {
 
   // Primeira renderização
   applySettingsToBody();
+  setMusicSettings(App.bootSettings);
+  const unlock = () => unlockMusic(App.state?.settings || App.bootSettings);
+  window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+  window.addEventListener('keydown', unlock, { once: true, passive: true });
   if (!location.hash) location.hash = '#/menu';
   renderRoute();
 }
@@ -100,6 +107,20 @@ if (typeof window !== 'undefined' && typeof location !== 'undefined') {
     console.warn('[FM26] Supabase offline mode');
   }
 })();
+
+// Presença continua enquanto a carreira está aberta, não só quando a tela
+// Rede Social está visível. O Supabase recebe apenas nome de jogo/contexto.
+if (typeof window !== 'undefined') {
+  window.setInterval(async () => {
+    try {
+      if (!App.state?.player?.hasCellphone) return;
+      const user = await getCurrentUser();
+      if (!user) return;
+      const club = App.state.db?.clubs?.[App.state.career?.clubId];
+      await upsertPresence(user.id, App.state.player.name, { club: club?.name, phase: App.state.player.phase });
+    } catch {}
+  }, 30000);
+}
 
 // Hook autosave na nuvem depois de ações importantes
 const _origAutosave = autosave;

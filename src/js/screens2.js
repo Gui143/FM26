@@ -15,7 +15,10 @@ import {
 } from './data.js';
 import { downloadFile, readUploadedFile, compressText, decompressText } from './saveio.js';
 import { advanceMonthUI, openPendingModal } from './screens.js';
-import { initSupabase, signUpWithEmail, signInWithEmail, getCurrentUser, saveGameToSupabase, autoSaveToCloud } from './supabase.js';
+import { initSupabase, signUpWithEmail, signInWithEmail, signOut, getCurrentUser, saveGameToSupabase, autoSaveToCloud, getSocialFeed, createSocialPost, upsertPresence, getOnlinePlayers, sendDirectMessage, getConversation } from './supabase.js';
+import { requestNpcReply } from './npc.js';
+import { setMusicSettings } from './music.js';
+import { BRASIL_2026_COMPETITIONS, SERIE_C_2026_FORMAT, SERIE_C_2026_STANDINGS, SERIE_D_2026_FORMAT, SERIE_D_2026_GROUPS, COMPETITION_SOURCES_2026 } from './competitions2026.js';
 
 const S = () => App.state;
 const fmt = (v) => Number(v).toLocaleString('pt-BR');
@@ -220,7 +223,7 @@ let carTab = 'stats';
 export const careerScreen = { /* mantém o original mas com botão voltar e melhorias */
   html() {
     const s = S();
-    const tabs = [['stats','📊 Stats'],['elenco','👥 Elenco'],['hist','📜 História'],['awards','🏆 Prêmios'],['nt','🦅 Seleção']];
+    const tabs = [['stats','📊 Stats'],['elenco','👥 Elenco'],['comp','🏟️ Competições'],['hist','📜 História'],['awards','🏆 Prêmios'],['nt','🦅 Seleção']];
     return `<div class="vc-screen">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <button class="btn ghost small" data-go="home">${icon('back')} Início</button>
@@ -254,31 +257,88 @@ function carBodyHTML(s, tab) {
     return `<div class="card"><div class="h-sec">${crest(club,32)} ${esc(club.name)} — Elenco</div>
       <div class="squad-grid">${squad.map(pl=>`<div class="squad-card">${avatar(pl,38)}<div class="sq-body"><div class="sq-name">${esc(pl.name)}</div><div class="tiny muted">${pl.pos} • ${pl.age}y • OVR ${pl.ovr}</div></div></div>`).join('')}</div></div>`;
   }
+  if (tab === 'comp') return competitionsHTML(s);
   return `<div class="card"><div class="muted">Selecione uma aba.</div></div>`;
 }
 
+function competitionsHTML(s) {
+  const active = G.myClub(s);
+  const currentRows = s.career.league ? Object.values(s.career.league.table).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga)) : [];
+  const currentTable = currentRows.length ? `<div class="h-sec" style="margin-top:16px">📊 TABELA DO SEU SAVE — ${esc(active?.league || 'competição')}</div><div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>Clube</th><th>J</th><th>PTS</th><th>SG</th></tr></thead><tbody>${currentRows.map((row, index) => { const club = s.db.clubs?.[row.clubId] || s.career.league.teams.find((team) => team.id === row.clubId); return `<tr class="${row.clubId === s.career.clubId ? 'mine' : ''}"><td>${index + 1}</td><td>${club ? esc(club.name) : esc(row.clubId)}</td><td>${row.played}</td><td><b>${row.pts}</b></td><td>${row.gf - row.ga}</td></tr>`; }).join('')}</tbody></table></div>` : '<div class="tiny muted">Você ainda não tem uma competição de clube ativa.</div>';
+  return `<div class="card competition-reference"><div class="h-sec">📚 FORMATO REAL — TEMPORADA 2026</div><p class="tiny muted" style="line-height:1.5">Os formatos abaixo foram conferidos nos documentos e tabelas oficiais. A tabela do save é simulada a partir das suas partidas; o snapshot oficial da Série C aparece como referência.</p><div class="competition-list">${BRASIL_2026_COMPETITIONS.map((competition) => `<article class="competition-item"><div><b>${esc(competition.name)}</b><span class="tiny muted">${esc(competition.format)}</span></div>${competition.id === 'br3' ? `<span class="pill gold">20 clubes</span>` : competition.id === 'br4' ? `<span class="pill gold">96 clubes</span>` : ''}</article>`).join('')}</div>
+    <div class="comp-detail"><b>${esc(SERIE_C_2026_FORMAT.name)}</b><p class="tiny muted">${esc(SERIE_C_2026_FORMAT.firstPhase)} ${esc(SERIE_C_2026_FORMAT.secondPhase)} ${esc(SERIE_C_2026_FORMAT.promotion)} ${esc(SERIE_C_2026_FORMAT.relegation)}</p><div class="table-scroll"><table class="standings-table"><thead><tr><th>#</th><th>Clube</th><th>J</th><th>PTS</th><th>SG</th></tr></thead><tbody>${SERIE_C_2026_STANDINGS.map((row, index) => `<tr><td>${index + 1}</td><td>${esc(row.name)}</td><td>${row.played}</td><td><b>${row.pts}</b></td><td>${row.gd}</td></tr>`).join('')}</tbody></table></div><div class="tiny muted" style="margin-top:8px">Fonte oficial: <a href="${COMPETITION_SOURCES_2026.cbfSerieC}" target="_blank" rel="noreferrer">CBF · Série C 2026</a></div></div>
+    <div class="comp-detail"><b>${esc(SERIE_D_2026_FORMAT.name)}</b><p class="tiny muted">${esc(SERIE_D_2026_FORMAT.firstPhase)} ${esc(SERIE_D_2026_FORMAT.secondPhase)} ${esc(SERIE_D_2026_FORMAT.promotion)}</p><div class="serie-d-groups">${SERIE_D_2026_GROUPS.map((group) => `<details><summary>Grupo ${esc(group.id)} <span class="tiny muted">6 clubes</span></summary><div class="tiny muted">${group.teams.map((team) => `<span class="group-team">${esc(team)}</span>`).join('')}</div></details>`).join('')}</div><div class="tiny muted" style="margin-top:8px">Fonte oficial: <a href="${COMPETITION_SOURCES_2026.cbfSerieD}" target="_blank" rel="noreferrer">CBF · Série D 2026</a></div></div>${currentTable}</div>`;
+}
+
 // ============================================================
-// MERCADO + COMPRAS (CELULAR INCLUÍDO)
+// MERCADO DE TRANSFERÊNCIAS + COMPRAS (CELULAR INCLUÍDO)
 // ============================================================
+function transferOfferHTML(s, offer) {
+  const club = s.db.clubs?.[offer.clubId];
+  if (!club) return '';
+  const isRenewal = !!offer.renewal;
+  return `<div class="transfer-offer card">
+    <div class="transfer-offer-main">
+      ${crest(club, 46)}
+      <div class="transfer-offer-copy">
+        <b>${esc(club.name)}</b>
+        <span class="tiny muted">${esc(club.league || club.leagueId)} · ${esc(club.city || '')}</span>
+        <span class="tiny">${isRenewal ? '🔁 Renovação' : offer.type === 'free' ? '🆓 Agente livre' : '🔄 Transferência'} · ${offer.years} ano(s)</span>
+      </div>
+    </div>
+    <div class="transfer-offer-money">
+      <b>R$ ${fmt(offer.salary)}<small>/mês</small></b>
+      <span class="tiny muted">Luvas R$ ${fmt(offer.bonus || 0)}</span>
+      <span class="tiny muted">Cláusula R$ ${fmt(offer.releaseClause || 0)}</span>
+    </div>
+    <div class="transfer-offer-actions">
+      <button class="btn small primary" data-offer-accept="${offer.id}">Aceitar</button>
+      <button class="btn small ghost" data-offer-decline="${offer.id}">Recusar</button>
+    </div>
+  </div>`;
+}
+
 export const marketScreen = {
   html() {
     const s = S(); const p = s.player; const club = G.myClub(s);
     const hasPhone = !!p.hasCellphone;
+    const activeClub = G.hasActiveClub(s);
+    const transferOffers = (s.transfers.offers || []).filter((o) => o.type !== 'endorse');
+    const sponsorOffers = (s.transfers.offers || []).filter((o) => o.type === 'endorse');
+    const canMove = ['pro', 'vet'].includes(p.phase) && !p.dead;
     return `
     <div class="vc-screen">
       <div style="display:flex;gap:10px;align-items:center">
         <button class="btn ghost small" data-go="home">${icon('back')}</button>
-        <h1 class="h-title">${icon('cart')} MERCADO &amp; VIDA</h1>
+        <h1 class="h-title">${icon('cart')} MERCADO DE TRANSFERÊNCIAS</h1>
       </div>
+      <p class="muted">Propostas para você trocar de clube, renovar ou encontrar um novo time. Esta tela não é uma loja de jogadores.</p>
 
-      <div class="card">
-        <div class="h-sec">📱 CELULAR (DESBLOQUEIA REDE SOCIAL)</div>
-        ${hasPhone ? `<div class="banner ok">✅ Você tem um celular. Rede social desbloqueada!</div>` :
-        `<div><button class="btn primary" id="buy-phone">Comprar Celular — R$ 2.800</button><div class="tiny muted" style="margin-top:6px">Necessário para rede social completa, mensagens com irmão, treinar juntos etc.</div></div>`}
+      <div class="card transfer-market-hero">
+        <div class="h-sec">🔄 SUA SITUAÇÃO NO MERCADO</div>
+        ${activeClub && club ? `<div class="current-club-line">${crest(club, 52)}<div><b>${esc(club.name)}</b><div class="tiny muted">${esc(club.league || club.leagueId)} · contrato até ${s.career.contract.until}</div></div><div class="current-contract"><b>R$ ${fmt(s.career.contract.salary)}</b><span class="tiny muted">/mês</span></div></div>` :
+          `<div class="banner warn">📭 Você está sem contrato. Clubes podem enviar propostas, mas os testes continuam difíceis.</div>`}
+        ${canMove ? `<div class="transfer-toolbar">
+          <button class="btn primary" data-market-action="refresh">${icon('refresh')} Buscar propostas</button>
+          ${activeClub ? `<button class="btn" data-market-action="ask">📢 Pedir para ser negociado</button>` : '<span class="tiny muted">Janela de transferências: janeiro, julho e agosto — ou quando você está livre.</span>'}
+        </div>` : `<div class="tiny muted" style="margin-top:10px">O mercado profissional abre quando você chegar à carreira profissional.</div>`}
       </div>
 
       <div class="card" style="margin-top:14px">
-        <div class="h-sec">🛍️ BENS REAIS (MARCAS)</div>
+        <div class="h-sec">📨 PROPOSTAS RECEBIDAS ${transferOffers.length ? `<span class="pill gold">${transferOffers.length}</span>` : ''}</div>
+        ${transferOffers.length ? transferOffers.map((o) => transferOfferHTML(s, o)).join('') : `<div class="empty-state muted">Nenhuma proposta agora. Clique em “Buscar propostas” nas janelas corretas ou peça para ser negociado.</div>`}
+      </div>
+
+      ${sponsorOffers.length ? `<div class="card" style="margin-top:14px"><div class="h-sec">🤝 PATROCÍNIOS</div>${sponsorOffers.map(o => `<div class="transfer-offer sponsor-offer"><div><b>${o.icon || '📺'} ${esc(o.brand)}</b><div class="tiny muted">R$ ${fmt(o.income)}/mês · ${o.months} meses</div></div><div><button class="btn small primary" data-sponsor-accept="${o.id}">Aceitar</button><button class="btn small ghost" data-offer-decline="${o.id}">Recusar</button></div></div>`).join('')}</div>` : ''}
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">📱 CELULAR</div>
+        ${hasPhone ? `<div class="banner ok">✅ Celular equipado. A Rede Social fica disponível na barra do jogo.</div>` :
+        `<div><button class="btn primary" id="buy-phone">Comprar celular — R$ 2.800</button><div class="tiny muted" style="margin-top:6px">Desbloqueia interações sociais e conversas com pessoas do mundo.</div></div>`}
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">🛍️ BENS E PATRIMÔNIO</div>
         <div class="shop-grid">
           ${PURCHASES.map(it => {
             const afford = s.life.bank >= it.price;
@@ -302,6 +362,30 @@ export const marketScreen = {
       s.player.hasCellphone = true;
       autosave(); toast('📱 Celular comprado! Rede social liberada.'); renderRoute();
     });
+    el.querySelector('[data-market-action=refresh]')?.addEventListener('click', () => {
+      const offers = G.generateOffers(s) || [];
+      autosave();
+      toast(offers.length ? `${offers.length} proposta(s) chegaram.` : 'Nenhuma proposta compatível desta vez.', offers.length ? 'ok' : 'warn');
+      renderRoute();
+    });
+    el.querySelector('[data-market-action=ask]')?.addEventListener('click', () => {
+      const r = G.askForTransfer(s);
+      if (r.ok) { autosave(); toast('📢 Seu empresário começou a ouvir o mercado.'); renderRoute(); }
+      else toast(r.msg || 'Não foi possível pedir a negociação.', 'error');
+    });
+    el.querySelectorAll('[data-offer-accept]').forEach((b) => b.onclick = () => {
+      const r = G.acceptClubOffer(s, b.dataset.offerAccept);
+      if (r.ok) { autosave(); toast(`✍️ Contrato assinado com ${r.club.name}!`); renderRoute(); }
+      else toast(r.msg || 'Oferta não encontrada.', 'error');
+    });
+    el.querySelectorAll('[data-sponsor-accept]').forEach((b) => b.onclick = () => {
+      const r = G.acceptEndorsement(s, b.dataset.sponsorAccept);
+      if (r.ok) { autosave(); toast('🤝 Patrocínio aceito!'); renderRoute(); }
+      else toast('Oferta expirada.', 'error');
+    });
+    el.querySelectorAll('[data-offer-decline]').forEach((b) => b.onclick = () => {
+      G.rejectOffer(s, b.dataset.offerDecline); autosave(); renderRoute();
+    });
     el.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => {
       const r = G.buyItem(s, b.dataset.buy);
       if (r.ok) { autosave(); renderRoute(); toast('Compra realizada!'); } else toast(r.msg||'Erro','error');
@@ -313,20 +397,30 @@ export const marketScreen = {
 // ============================================================
 // FAMÍLIA (MELHORADA)
 // ============================================================
-export const familyScreen = { /* mantém estrutura original + botão voltar */ 
+export const familyScreen = {
   html() {
     const s = S();
     return `<div class="vc-screen">
       <div style="display:flex;gap:10px"><button class="btn ghost small" data-go="home">${icon('back')}</button><h1 class="h-title">${icon('heart')} FAMÍLIA</h1></div>
-      <p class="muted">Interaja com irmãos, pais e amigos.</p>
+      <p class="muted">Interaja com pais, irmãos e amigos. Cada conversa leva em conta a sua fase da carreira.</p>
       ${familyContent(s)}
     </div>`;
   },
-  mount(el) { el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go)); /* add family actions if needed */ }
+  mount(el) {
+    const s = S();
+    el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+    el.querySelectorAll('[data-family-chat]').forEach((b) => b.onclick = () => openNpcChat(s, { role: b.dataset.familyRole || 'pai', npcName: b.dataset.familyChat }));
+    el.querySelectorAll('[data-family-act]').forEach((b) => b.onclick = () => {
+      const r = G.familyAct(s, b.dataset.familyId, b.dataset.familyAct);
+      if (r.ok) { autosave(); renderRoute(); toast('❤️ Laços fortalecidos.'); } else toast(r.msg || 'Não foi possível agora.', 'error');
+    });
+  }
 };
 
 function familyContent(s) {
-  return `<div class="card">Seu irmão e amigos aparecem na rede social quando você tiver celular.</div>`;
+  const members = (s.family || []).filter((member) => member.alive !== false);
+  if (!members.length) return '<div class="card muted">Sua história familiar ainda está sendo escrita.</div>';
+  return `<div class="family-grid">${members.map((member) => `<div class="card family-card"><div class="family-card-head">${avatarEl(member.name, 42)}<div><b>${esc(member.name)}</b><div class="tiny muted">${esc(member.role)} · vínculo ${Math.round(member.love || 0)}%</div></div></div><div class="family-actions"><button class="btn small" data-family-chat="${esc(member.name)}" data-family-role="${member.role === 'mãe' ? 'mãe' : member.role === 'pai' ? 'pai' : 'companheiro'}">💬 Conversar</button><button class="btn small ghost" data-family-id="${member.id}" data-family-act="tempo">Passar tempo</button><button class="btn small ghost" data-family-id="${member.id}" data-family-act="ajuda">Ajudar</button></div></div>`).join('')}</div>`;
 }
 
 // ============================================================
@@ -385,159 +479,212 @@ export const fameScreen = {
 };
 
 // ============================================================
-// REDE SOCIAL COMPLETA — SÓ COM CELULAR + SUPABASE LOGIN
+// REDE SOCIAL — FEED, NPCs e jogadores online
 // ============================================================
-let socialUser = null;
+let socialPresenceTimer = null;
+
+function socialHandle(s) {
+  return `@${String(s.player.name || 'craque').toLowerCase().replace(/[^a-z0-9á-ÿ]+/gi, '')}`;
+}
+
+async function openAccountModal(s) {
+  let user = null;
+  try { user = await getCurrentUser(); } catch {}
+  openModal(user ? `
+    <div class="modal-title">${icon('shield')} Conta</div>
+    <p class="muted" style="line-height:1.5">Conectado como <b>${esc(user.email || 'conta autenticada')}</b>.</p>
+    <p class="tiny muted" style="margin:10px 0 18px">A conta sincroniza seu save e libera a presença com outros jogadores. Nenhum dado de login aparece no perfil público.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" data-auth-close>Fechar</button><button class="btn" data-auth-logout>${icon('logout')} Sair</button></div>
+  ` : `
+    <div class="modal-title">${icon('shield')} Conta</div>
+    <p class="tiny muted" style="margin-bottom:14px">Use seu e-mail para sincronizar o jogo e conversar com jogadores que estão online. A senha é enviada diretamente ao provedor de autenticação.</p>
+    <form id="account-form" class="stack" autocomplete="on">
+      <div class="field"><label for="account-email">E-mail</label><input class="input" id="account-email" type="email" autocomplete="email" required maxlength="160" placeholder="voce@exemplo.com"></div>
+      <div class="field"><label for="account-password">Senha</label><input class="input" id="account-password" type="password" autocomplete="current-password" required minlength="6" maxlength="128" placeholder="mínimo de 6 caracteres"></div>
+      <div id="account-error" class="tiny" role="status"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" type="submit" data-auth-action="login">Entrar</button><button class="btn" type="submit" data-auth-action="signup">Criar conta</button></div>
+    </form>
+  `, (modal) => {
+    modal.querySelector('[data-auth-close]')?.addEventListener('click', closeModal);
+    modal.querySelector('[data-auth-logout]')?.addEventListener('click', async () => {
+      await signOut(); closeModal(); toast('Conta desconectada.'); renderRoute();
+    });
+    const form = modal.querySelector('#account-form');
+    if (!form) return;
+    const error = modal.querySelector('#account-error');
+    let action = 'login';
+    modal.querySelectorAll('[data-auth-action]').forEach((button) => button.addEventListener('click', () => { action = button.dataset.authAction; }));
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = modal.querySelector('#account-email').value.trim();
+      const password = modal.querySelector('#account-password').value;
+      if (password.length < 6) { error.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; error.style.color = 'var(--red)'; return; }
+      error.textContent = 'Conectando…'; error.style.color = 'var(--text-2)';
+      const result = action === 'signup' ? await signUpWithEmail(email, password, s.player.name) : await signInWithEmail(email, password);
+      if (result.error) { error.textContent = result.error.message || 'Não foi possível autenticar.'; error.style.color = 'var(--red)'; return; }
+      error.textContent = action === 'signup' && !result.data?.session ? 'Confira seu e-mail para confirmar a conta.' : 'Tudo certo.';
+      error.style.color = 'var(--green)';
+      if (action === 'login' || result.data?.session) {
+        await autoSaveToCloud(s);
+        setTimeout(() => { closeModal(); renderRoute(); }, 350);
+      }
+    });
+  });
+}
+
+function openPostComposer(s) {
+  openModal(`
+    <div class="modal-title">📤 Nova publicação</div>
+    <textarea class="input" id="social-post-text" maxlength="600" rows="5" placeholder="O que está acontecendo na sua carreira?"></textarea>
+    <div class="tiny muted" style="margin:7px 0 14px">A publicação pode aparecer para outras pessoas online. Não inclua dados pessoais.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" data-post-cancel>Cancelar</button><button class="btn primary" data-post-submit>Publicar</button></div>
+  `, (modal) => {
+    modal.querySelector('[data-post-cancel]').onclick = closeModal;
+    modal.querySelector('[data-post-submit]').onclick = async () => {
+      const text = modal.querySelector('#social-post-text').value.trim();
+      if (!text) return;
+      const user = await getCurrentUser();
+      if (!user) { closeModal(); await openAccountModal(s); return; }
+      const result = await createSocialPost(user.id, text, s.player.name);
+      if (!result.ok) { toast('Não foi possível publicar agora.', 'error'); return; }
+      G.postSocial(s); autosave(); closeModal(); toast('📤 Publicação enviada.'); renderRoute();
+    };
+  });
+}
+
+function npcContext(s) {
+  return { age: s.player.age, club: G.myClub(s)?.name || 'sem clube', phase: s.player.phase };
+}
+
+function openNpcChat(s, { role = 'fã', npcName = 'Fã', userId = null } = {}) {
+  if (userId) return openDirectPlayerChat(s, { userId, npcName });
+  openModal(`
+    <div class="modal-title">💬 ${esc(npcName)}</div>
+    <div id="npc-chat-window" class="chat-window" style="height:260px"></div>
+    <form class="chat-input" id="npc-chat-form"><input id="npc-chat-input" maxlength="600" placeholder="Escreva uma mensagem…" autocomplete="off"><button class="btn" type="submit">Enviar</button></form>
+    <div class="tiny muted" style="margin-top:7px">Conversa de personagem; não envie senhas ou informações pessoais.</div>
+  `, (modal) => {
+    const win = modal.querySelector('#npc-chat-window');
+    const input = modal.querySelector('#npc-chat-input');
+    const form = modal.querySelector('#npc-chat-form');
+    const add = (text, who) => { const item = document.createElement('div'); item.className = `msg ${who}`; item.textContent = text; win.appendChild(item); win.scrollTop = win.scrollHeight; };
+    add(role === 'pai' ? 'Fala, filho. Como foi o treino hoje?' : role === 'mãe' ? 'Oi, meu amor. Está se cuidando?' : 'E aí, craque! Tudo bem?', 'them');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); const text = input.value.trim(); if (!text) return;
+      add(text, 'me'); input.value = ''; input.disabled = true;
+      const result = await requestNpcReply({ role, npcName, playerName: s.player.name, message: text, context: npcContext(s) });
+      add(result.reply, 'them'); input.disabled = false; input.focus();
+    });
+  });
+}
+
+async function openDirectPlayerChat(s, { userId, npcName }) {
+  const user = await getCurrentUser();
+  if (!user) return openAccountModal(s);
+  openModal(`
+    <div class="modal-title">💬 ${esc(npcName)}</div>
+    <div id="direct-chat-window" class="chat-window" style="height:260px"><div class="tiny muted">Carregando conversa…</div></div>
+    <form class="chat-input" id="direct-chat-form"><input id="direct-chat-input" maxlength="600" placeholder="Escreva para ${esc(npcName)}…" autocomplete="off"><button class="btn" type="submit">Enviar</button></form>
+  `, async (modal) => {
+    const win = modal.querySelector('#direct-chat-window');
+    const input = modal.querySelector('#direct-chat-input');
+    const form = modal.querySelector('#direct-chat-form');
+    const messages = await getConversation(user.id, userId);
+    win.innerHTML = '';
+    const add = (text, who) => { const item = document.createElement('div'); item.className = `msg ${who}`; item.textContent = text; win.appendChild(item); win.scrollTop = win.scrollHeight; };
+    messages.forEach((message) => add(message.message, message.from_user === user.id ? 'me' : 'them'));
+    if (!messages.length) add('E aí! Vi que você está online no jogo.', 'them');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); const text = input.value.trim(); if (!text) return;
+      const result = await sendDirectMessage(user.id, userId, text, s.player.name);
+      if (!result.ok) return toast('Mensagem não enviada. Tente novamente.', 'error');
+      add(text, 'me'); input.value = '';
+    });
+  });
+}
+
+function onlinePlayersHTML(players, currentId) {
+  const others = (players || []).filter((item) => item.user_id !== currentId);
+  if (!others.length) return '<div class="tiny muted">Nenhum jogador conectado agora. Volte mais tarde.</div>';
+  return others.map((item) => `<div class="online-player"><span class="online-dot"></span><div><b>${esc(item.player_name || 'Craque')}</b><span class="tiny muted">${esc(item.game_context?.club || 'Em carreira')}</span></div><button class="btn small" data-online-chat="${esc(item.user_id)}" data-online-name="${esc(item.player_name || 'Jogador')}">Conversar</button></div>`).join('');
+}
+
+function remoteFeedHTML(posts) {
+  if (!posts?.length) return '<div class="tiny muted">Ainda não há publicações remotas.</div>';
+  return posts.map((post) => `<article class="post remote-post"><div class="post-header">${avatarEl(post.author_name || 'Craque', 34)}<div><b>${esc(post.author_name || 'Craque')}</b><span class="tiny muted"> · online no mundo</span></div></div><div class="post-body">${esc(post.content || '')}</div><div class="post-actions"><button type="button">❤️ Apoiar</button><button type="button" data-online-chat="${esc(post.user_id || '')}" data-online-name="${esc(post.author_name || 'Jogador')}">💬 Conversar</button></div></article>`).join('');
+}
 
 export const socialScreen = {
   html() {
     const s = S();
     const p = s.player;
     if (!p.hasCellphone) {
-      return `<div class="vc-screen">
-        <div class="cell-phone-locked">
-          <div style="font-size:3.2rem;margin-bottom:12px">📵</div>
-          <h2 style="margin:0 0 6px">Sem celular</h2>
-          <p class="muted">Compre um celular no Mercado para desbloquear a rede social completa.</p>
-          <button class="btn primary" data-go="market">Ir ao Mercado</button>
-        </div>
-      </div>`;
+      return `<div class="vc-screen"><div class="cell-phone-locked"><div style="font-size:3.2rem;margin-bottom:12px">📵</div><h2 style="margin:0 0 6px">Sem celular</h2><p class="muted">Compre um celular no Mercado para desbloquear a rede social.</p><button class="btn primary" data-go="market">Ir ao Mercado</button></div></div>`;
     }
-
     const friends = s.friends || [];
-    const clubMates = Object.values(s.db.players || {}).filter(pl => pl.clubId === s.career.clubId).slice(0,5);
-
+    const clubMates = Object.values(s.db.players || {}).filter((pl) => pl.clubId === s.career.clubId).slice(0, 5);
     return `
     <div class="vc-screen">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <button class="btn ghost small" data-go="home">${icon('back')}</button>
-        <h1 class="h-title">📱 REDE SOCIAL</h1>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px"><button class="btn ghost small" data-go="home">${icon('back')}</button><h1 class="h-title">📱 REDE SOCIAL</h1><button class="account-chip" id="account-btn" title="Conta e sincronização">${icon('shield')}<span id="account-label">Conta</span></button></div>
+      <div class="social-header"><div><b>${socialHandle(s)}</b> · ${Number(p.followers || 0).toLocaleString('pt-BR')} seguidores</div><button class="btn small primary" id="post-btn">📤 Publicar</button></div>
+
+      <div class="card online-card" style="margin-top:14px"><div class="h-sec">🟢 JOGADORES ONLINE NO JOGO <span class="tiny muted">(agora)</span></div><div id="online-list"><div class="tiny muted">Verificando presença…</div></div></div>
+
+      <div class="social-feed"><article class="post"><div class="post-header">${avatarEl(p.name, 36)}<div><b>Você</b><span class="tiny muted"> · agora</span></div></div><div class="post-body">Treino pesado hoje. Sentindo o gás para a próxima partida! 🔥</div><div class="post-actions"><button type="button">❤️ Apoiar</button><button type="button" data-npc="fã" data-npc-name="Fã do seu clube">💬 Responder fã</button></div></article>
+        ${friends.map((f) => `<article class="post"><div class="post-header">${avatarEl(f.name,32)}<b>${esc(f.name)}</b></div><div class="post-body">Vi seu último jogo. Você está voando! Vamos trocar uma ideia?</div><div class="post-actions"><button type="button" data-npc="jogador" data-npc-name="${esc(f.name)}">Enviar mensagem</button></div></article>`).join('')}
+        ${clubMates.length ? `<article class="post"><div class="post-header">${crest(G.myClub(s),28)}<b>${esc(clubMates[0].name)}</b><span class="tiny muted"> · companheiro de clube</span></div><div class="post-body">Bora dar um rolê depois do treino?</div><button class="btn small" data-npc="companheiro" data-npc-name="${esc(clubMates[0].name)}">Conversar</button></article>` : ''}
+        <div id="remote-feed"><div class="tiny muted">Carregando publicações…</div></div>
       </div>
 
-            <!-- SUPABASE LOGIN (Rede Social = Login do Jogo) -->
-      <div class="card" style="margin-bottom:14px" id="social-auth">
-        <div style="font-size:0.78rem;margin-bottom:6px;color:var(--accent)">🔐 Login Supabase = salva automaticamente na nuvem + rede social real</div>
-        <div id="auth-status"></div>
-      </div>
-
-      <div class="social-header">
-        <div><b>@${p.name.toLowerCase().replace(/\s/g,'')}</b> • ${p.followers.toLocaleString('pt-BR')} seguidores</div>
-        <button class="btn small primary" id="post-btn">📤 Postar agora</button>
-      </div>
-
-      <!-- FEED -->
-      <div class="social-feed">
-        <div class="post">
-          <div class="post-header">${avatarEl(p.name,36)} <div><b>Você</b> <span class="tiny muted">agora</span></div></div>
-          <div class="post-body">Treino pesado hoje. Sentindo o gás pra próxima partida! 🔥 Quem topa vir treinar junto?</div>
-          <div class="post-actions">
-            <button>❤️ 2.4k</button>
-            <button data-chat="brother">💬 Responder irmão</button>
-          </div>
-        </div>
-
-        ${friends.map(f => `
-          <div class="post">
-            <div class="post-header">${avatarEl(f.name,32)} <b>${esc(f.name)}</b></div>
-            <div class="post-body">Cara, vi seu último jogo. Tá voando! Vamos sair pra treinar juntos?</div>
-            <div class="post-actions"><button data-chat="${f.id}">Enviar mensagem</button></div>
-          </div>`).join('')}
-
-        ${clubMates.length ? `<div class="post"><div class="post-header">${crest(G.myClub(s),28)} <b>${esc(clubMates[0].name)}</b> (companheiro de clube)</div><div class="post-body">E aí ${p.name.split(' ')[0]}! Bora dar um rolê depois do treino?</div><button class="btn small" data-chat="${clubMates[0].id}">Conversar</button></div>` : ''}
-      </div>
-
-      <!-- CHAT RÁPIDO COM IRMÃO -->
-      <div class="card" style="margin-top:18px">
-        <div class="h-sec">💬 CHAT COM SEU IRMÃO</div>
-        <div id="chat-bro" class="chat-window"></div>
-        <div class="chat-input">
-          <input id="chat-input-bro" placeholder="Manda uma mensagem pro seu irmão..." />
-          <button class="btn" id="send-bro">Enviar</button>
-        </div>
-        <div class="tiny muted" style="margin-top:6px">Ex: "Irmão, vamos treinar juntos amanhã?"</div>
-      </div>
-
+      <div class="card" style="margin-top:18px"><div class="h-sec">💬 MENSAGEM PARA A FAMÍLIA</div><div id="chat-bro" class="chat-window"></div><form class="chat-input" id="send-bro-form"><input id="chat-input-bro" maxlength="600" placeholder="Manda uma mensagem para sua família…" autocomplete="off"><button class="btn" type="submit">Enviar</button></form><div class="tiny muted" style="margin-top:6px">Pais e irmãos respondem de acordo com a sua história.</div></div>
       <div style="margin-top:16px"><button class="btn ghost block" data-go="immersion">🌆 Sair pela cidade (Imersão)</button></div>
     </div>`;
   },
   mount(el) {
     const s = S();
-    el.querySelector('#post-btn')?.addEventListener('click', () => {
-      if (!s.player.hasCellphone) return;
-      s.player.fame = Math.min(100, (s.player.fame||0) + 3);
-      s.player.followers += 1200;
-      autosave(); toast('Post feito! +3 fama'); renderRoute();
-    });
+    clearInterval(socialPresenceTimer);
+    el.querySelector('#account-btn')?.addEventListener('click', () => openAccountModal(s));
+    el.querySelector('#post-btn')?.addEventListener('click', async () => { if (!(await getCurrentUser())) return openAccountModal(s); openPostComposer(s); });
+    el.querySelectorAll('[data-npc]').forEach((button) => button.addEventListener('click', () => openNpcChat(s, { role: button.dataset.npc, npcName: button.dataset.npcName })));
+    el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
 
-    // Chat irmão
     const chatWin = el.querySelector('#chat-bro');
-    const input = el.querySelector('#chat-input-bro');
-    const send = el.querySelector('#send-bro');
-
-    function addMsg(text, who='me') {
-      const d = document.createElement('div');
-      d.className = `msg ${who}`;
-      d.textContent = text;
-      chatWin.appendChild(d);
-      chatWin.scrollTop = chatWin.scrollHeight;
-    }
-
-    // Seed initial chat if empty
-    if (!chatWin.dataset.seeded) {
-      addMsg('E aí irmão? Vi que você tá voando no time!', 'them');
-      chatWin.dataset.seeded = '1';
-    }
-
-    send.onclick = () => {
-      const val = input.value.trim();
-      if (!val) return;
-      addMsg(val, 'me');
-      input.value = '';
-      setTimeout(() => {
-        const replies = [
-          'Bora treinar juntos amanhã! 9h na academia do clube?',
-          'Mano, você tá insano! Vamos sair pra comer depois?',
-          'Pode mandar, tô sempre aqui pra você.',
-          'Top! Depois do treino eu passo aí.'
-        ];
-        addMsg(replies[Math.floor(Math.random()*replies.length)], 'them');
-        // Chance de treino juntos → aumenta forma
-        if (val.toLowerCase().includes('treinar') || val.toLowerCase().includes('juntos')) {
-          s.player.form = Math.min(99, s.player.form + 4);
-          s.player.energy = Math.min(100, s.player.energy - 3);
-          autosave();
-          toast('Treinaram juntos! +4 forma');
-        }
-      }, 900);
-    };
-
-    input.onkeydown = (e) => { if (e.key === 'Enter') send.click(); };
-
-    // Chat rápido com outros
-    el.querySelectorAll('[data-chat]').forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.dataset.chat;
-        openModal(`<div class="modal-title">💬 Conversa</div>
-          <div style="margin:10px 0 16px" id="modal-chat"></div>
-          <div class="chat-input"><input id="mchat" placeholder="Escreva aqui..."><button class="btn" id="msend">Enviar</button></div>`, (modal) => {
-            const cwin = modal.querySelector('#modal-chat');
-            const minp = modal.querySelector('#mchat');
-            const msend = modal.querySelector('#msend');
-            function add(t, w='them') {
-              const dd = document.createElement('div'); dd.className = `msg ${w}`; dd.textContent = t; cwin.appendChild(dd);
-            }
-            add('E aí? Tudo bem?', 'them');
-            msend.onclick = () => {
-              const v = minp.value.trim(); if(!v) return;
-              add(v,'me'); minp.value='';
-              setTimeout(()=> add('Legal! Vamos combinar algo em breve.', 'them'), 650);
-            };
-          });
-      };
+    const chatInput = el.querySelector('#chat-input-bro');
+    const addFamily = (text, who) => { const item = document.createElement('div'); item.className = `msg ${who}`; item.textContent = text; chatWin.appendChild(item); chatWin.scrollTop = chatWin.scrollHeight; };
+    addFamily('Oi! Como você está se sentindo para o próximo jogo?', 'them');
+    el.querySelector('#send-bro-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault(); const text = chatInput.value.trim(); if (!text) return;
+      addFamily(text, 'me'); chatInput.value = ''; chatInput.disabled = true;
+      const role = (s.family || []).find((member) => member.role === 'mãe') ? 'mãe' : 'pai';
+      const npcName = (s.family || []).find((member) => member.role === role)?.name || role;
+      const result = await requestNpcReply({ role, npcName, playerName: s.player.name, message: text, context: npcContext(s) });
+      addFamily(result.reply, 'them'); chatInput.disabled = false; chatInput.focus();
     });
 
-    el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
-  }
+    async function refreshRemote() {
+      const user = await getCurrentUser();
+      const label = el.querySelector('#account-label');
+      if (label) label.textContent = user ? 'Conectada' : 'Conta';
+      const online = el.querySelector('#online-list');
+      const feed = el.querySelector('#remote-feed');
+      if (!user) {
+        if (online) online.innerHTML = '<div class="tiny muted">Conecte sua conta pelo ícone discreto acima para aparecer e conversar com jogadores online.</div>';
+        if (feed) feed.innerHTML = '<div class="tiny muted">O feed mundial aparece quando houver publicações de jogadores.</div>';
+        return;
+      }
+      await upsertPresence(user.id, s.player.name, { club: G.myClub(s)?.name, phase: s.player.phase });
+      const [players, posts] = await Promise.all([getOnlinePlayers(), getSocialFeed(12)]);
+      if (!document.getElementById('online-list')) return;
+      if (online) online.innerHTML = onlinePlayersHTML(players, user.id);
+      if (feed) feed.innerHTML = remoteFeedHTML(posts);
+      el.querySelectorAll('[data-online-chat]').forEach((button) => button.onclick = () => {
+        if (!button.dataset.onlineChat) return;
+        openDirectPlayerChat(s, { userId: button.dataset.onlineChat, npcName: button.dataset.onlineName || 'Jogador online' });
+      });
+    }
+    refreshRemote();
+    socialPresenceTimer = setInterval(refreshRemote, 30000);
+  },
 };
 
 // ============================================================
@@ -679,10 +826,9 @@ export const creditsScreen = {
       <div class="menu-title" style="font-size:1.6rem;margin:8px 0 18px;text-align:center">CRÉDITOS</div>
       <div class="card credits-pro">
         <p><strong>Vida de Craque 26</strong> — O jogo de carreira de jogador mais imersivo já feito para navegador.</p>
-        <p style="margin:12px 0">Desenvolvido com paixão por uma equipe indie brasileira. Todos os escudos, fotos de jogadores e dados reais são usados com licenças adquiridas (R$ 500 mil investidos).</p>
+        <p style="margin:12px 0">Desenvolvido com paixão por uma equipe indie brasileira. Dados de referência e assets de terceiros devem ser mantidos conforme as licenças e atribuições de cada fornecedor antes da distribuição comercial.</p>
         <p><strong>Funcionalidades pioneiras:</strong></p>
         <ul style="margin:8px 0 14px 18px;font-size:0.86rem;line-height:1.6">
-          <li>Rede social completa integrada (login = conta do jogo)</li>
           <li>Vida até os 90 anos • Aposentadoria voluntária</li>
           <li>Carros reais, ruas reais, conversa livre</li>
           <li>Glassmorphism premium com caustics e refrações</li>
@@ -701,7 +847,7 @@ export const creditsScreen = {
 // ============================================================
 export const settingsScreen = {
   html() {
-    const st = App.bootSettings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
+    const st = App.bootSettings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, musicVolume: 35, musicMuted: false, quality: 'alta' };
     const accents = [
       { id: 'laranja', label: '🔥 Laranja Neon', color: '#ff6b00' },
       { id: 'verde', label: '🟢 Verde Estádio', color: '#22c55e' },
@@ -734,6 +880,14 @@ export const settingsScreen = {
           <div class="tiny muted" id="vol-lbl">Volume atual: ${st.volume ?? 50}%</div>
         </div>
 
+        <div class="field music-settings">
+          <label>🎵 MÚSICA DO JOGO</label>
+          <div class="seg"><button class="chip ${st.musicMuted ? '' : 'active'}" data-music="on">▶️ Música ligada</button><button class="chip ${st.musicMuted ? 'active' : ''}" data-music="off">🔇 Mutar música</button></div>
+          <input type="range" class="slider" id="cfg-music-vol" min="0" max="100" value="${st.musicVolume ?? 35}">
+          <div class="tiny muted" id="music-vol-lbl">Volume da música: ${st.musicVolume ?? 35}%</div>
+          <div class="tiny muted">A trilha toca apenas quando o arquivo licenciado estiver instalado no pacote do jogo.</div>
+        </div>
+
         <div class="field">
           <label>⚡ VELOCIDADE DA SIMULAÇÃO</label>
           <div class="chips" id="cfg-speed">
@@ -759,7 +913,7 @@ export const settingsScreen = {
     </div>`;
   },
   mount(el) {
-    const st = App.bootSettings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
+    const st = App.bootSettings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, musicVolume: 35, musicMuted: false, quality: 'alta' };
     el.querySelector('[data-back]').onclick = () => {
       if (App.state) go('home');
       else go('menu');
@@ -777,6 +931,18 @@ export const settingsScreen = {
         if (volLbl) volLbl.textContent = `Volume atual: ${st.volume}%`;
       };
     }
+    const musicSlider = el.querySelector('#cfg-music-vol');
+    const musicLbl = el.querySelector('#music-vol-lbl');
+    el.querySelectorAll('[data-music]').forEach((b) => b.onclick = () => {
+      st.musicMuted = b.dataset.music === 'off';
+      setMusicSettings(st);
+      renderRoute();
+    });
+    if (musicSlider) musicSlider.oninput = () => {
+      st.musicVolume = Number(musicSlider.value);
+      if (musicLbl) musicLbl.textContent = `Volume da música: ${st.musicVolume}%`;
+      setMusicSettings(st);
+    };
     el.querySelectorAll('#cfg-speed [data-speed]').forEach((b) => b.onclick = () => {
       st.speed = Number(b.dataset.speed);
       renderRoute();
@@ -791,6 +957,7 @@ export const settingsScreen = {
       if (App.state) App.state.settings = { ...st };
       try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {}
       applySettingsToBody();
+      setMusicSettings(st);
       toast('✅ Configurações salvas!');
       if (App.state) go('home');
       else go('menu');
@@ -873,7 +1040,7 @@ export const savesScreen = {
       cloudSaveBtn.onclick = async () => {
         try {
           const u = await getCurrentUser();
-          if (!u) { toast('Entre em Redes Sociais com seu e-mail para salvar na nuvem.', 'warn'); return; }
+          if (!u) { toast('Abra o ícone Conta na Rede Social para salvar na nuvem.', 'warn'); return; }
           const res = await saveGameToSupabase(App.state);
           if (res?.ok) toast('☁️ Salvo na nuvem Supabase com sucesso!');
           else toast('Erro ao salvar na nuvem.', 'error');
@@ -954,9 +1121,14 @@ export const howtoScreen = {
           No painel inicial, o botão central <b>PARTIDAS</b> é seu portal para o gramado. Você pode <i>Jogar</i> partidas decisivas com narrativa e escolhas ou <i>Simular</i> rodadas rápidas. O botão <b>TREINAR</b> permite focar em finalização, passe, drible ou físico para aumentar seu OVR e Potencial.
         </p>
 
-        <div class="h-sec">🏎️ 4. IMERSÃO, REDE SOCIAL COMPLETA & CARROS REAIS</div>
+        <div class="h-sec">🔄 4. MERCADO DE TRANSFERÊNCIAS</div>
+        <p class="muted" style="margin-bottom:14px">
+          O <b>Mercado</b> é esportivo: recebe propostas de clubes, mostra salário, luvas, duração e cláusula. Você pode aceitar a troca, recusar, buscar ofertas na janela ou pedir para ser negociado. Peneiras não são garantidas: a avaliação é rara e difícil de verdade.
+        </p>
+
+        <div class="h-sec">🏎️ 5. IMERSÃO, REDE SOCIAL COMPLETA & CARROS REAIS</div>
         <p class="muted">
-          Compre seu primeiro celular para acessar a rede social completa, postar mensagens e interagir com torcedores. Conforme ganhar salário e patrocínios, invista no mercado financeiro ou adquira carros reais de luxo para elevar sua fama.
+          Compre seu primeiro celular para acessar a rede social, conversar com família/fãs e ver jogadores online. O pequeno botão de conta no cabeçalho permite sincronizar e-mail/senha. Conforme ganhar salário e patrocínios, invista no mercado financeiro ou adquira carros reais de luxo para elevar sua fama.
         </p>
       </div>
     </div>`;

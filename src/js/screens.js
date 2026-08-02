@@ -8,7 +8,7 @@ import {
   renderRoute, applySettingsToBody, tone, goalSound,
 } from './ui.js';
 import * as G from './game.js';
-import { COUNTRIES, countryById, CAREER_POSITIONS, TRAITS, positionById, TRAININGS } from './data.js';
+import { COUNTRIES, CITIES, CLUBS, LEAGUES, countryById, CAREER_POSITIONS, TRAITS, positionById, TRAININGS } from './data.js';
 
 const S = () => App.state;
 
@@ -32,7 +32,7 @@ export const menuScreen = {
         <button class="btn" data-m="settings">${icon('gear')} Configurações</button>
         <button class="btn" data-m="credits">${icon('award')} Créditos</button>
       </div>
-      <div class="menu-foot">v26 • Glassmorphism • Supabase ready • Licenças reais pagas</div>
+      <div class="menu-foot">v26 • Glassmorphism • carreira viva • modo offline disponível</div>
     </div>`;
   },
   mount(el) {
@@ -48,7 +48,14 @@ export const menuScreen = {
 // ============================================================
 // CRIAÇÃO DE PERSONAGEM (Novo Jogo)
 // ============================================================
-const wizard = { name: '', gender: 'M', country: 'br', position: 'ATA', traits: [], startAge: 5 };
+const WIZARD_CLUBS = Object.entries(CLUBS).flatMap(([leagueId, rows]) => rows.map((row, index) => ({
+  id: `${leagueId}_${index}`,
+  leagueId,
+  league: LEAGUES.find((l) => l.id === leagueId)?.name || leagueId,
+  name: row[0],
+  city: row[2],
+})));
+const wizard = { name: '', gender: 'M', country: 'br', city: '', foot: 'D', clubId: '', position: 'ATA', traits: [], startAge: 5 };
 
 export const newGameScreen = {
   html() {
@@ -75,18 +82,43 @@ export const newGameScreen = {
           <label>3. Nacionalidade</label>
           <div class="chips" id="w-countries">${COUNTRIES.map((c) => `<button class="chip ${wizard.country === c.id ? 'active' : ''}" data-c="${c.id}">${c.flag} ${esc(c.name)}</button>`).join('')}</div>
         </div>
+        <div class="field two-col-fields">
+          <div>
+            <label for="w-city">4. Cidade <span class="muted">(opcional)</span></label>
+            <input class="input" id="w-city" maxlength="48" placeholder="Ex.: Recife" value="${esc(wizard.city)}" list="w-city-list">
+            <datalist id="w-city-list">${(CITIES[wizard.country] || []).map((city) => `<option value="${esc(city)}"></option>`).join('')}</datalist>
+            <div class="tiny muted">Se deixar vazio, uma cidade compatível será escolhida.</div>
+          </div>
+          <div>
+            <label for="w-foot">5. Perna dominante</label>
+            <select class="input" id="w-foot">
+              <option value="D" ${wizard.foot === 'D' ? 'selected' : ''}>🦶 Direita</option>
+              <option value="E" ${wizard.foot === 'E' ? 'selected' : ''}>🦶 Esquerda</option>
+              <option value="AMB" ${wizard.foot === 'AMB' ? 'selected' : ''}>🦶 Ambidestro</option>
+            </select>
+            <div class="tiny muted">A perna escolhida aparece na ficha do jogador.</div>
+          </div>
+        </div>
         <div class="field">
-          <label>4. Posição</label>
+          <label>6. Clube de formação <span class="muted">(opcional)</span></label>
+          <select class="input" id="w-club">
+            <option value="">Sem clube definido — deixar o futebol decidir</option>
+            ${WIZARD_CLUBS.map((c) => `<option value="${c.id}" ${wizard.clubId === c.id ? 'selected' : ''}>${esc(c.name)} — ${esc(c.league)} · ${esc(c.city)}</option>`).join('')}
+          </select>
+          <div class="tiny muted">Aos 16/18 anos, o clube escolhido vira seu ponto de partida. Antes disso é apenas uma preferência: ainda será preciso passar na peneira.</div>
+        </div>
+        <div class="field">
+          <label>7. Posição</label>
           <div class="chips" id="w-pos">${CAREER_POSITIONS.map((p) => `<button class="chip ${wizard.position === p.id ? 'active' : ''}" data-p="${p.id}" title="${esc(p.desc)}">${p.icon} ${esc(p.name)}</button>`).join('')}</div>
           <div class="tiny muted" id="w-posdesc">${esc(pos.desc)}</div>
         </div>
         <div class="field">
-          <label>5. Traços de personalidade (escolha até 2)</label>
+          <label>8. Traços de personalidade (escolha até 2)</label>
           <div class="chips" id="w-traits">${TRAITS.map((tr) => `<button class="chip ${wizard.traits.includes(tr.id) ? 'active' : ''}" data-t="${tr.id}" title="${esc(tr.desc)}">${tr.icon} ${esc(tr.name)}</button>`).join('')}</div>
           <div class="tiny muted">Os traços afetam eventos, evolução e fama durante toda a vida.</div>
         </div>
         <div class="field">
-          <label>6. Começar em qual idade?</label>
+          <label>9. Começar em qual idade?</label>
           <div class="startage-grid" id="w-age">
             ${[
               { v: 5, icon: '🧒', name: 'Infância', desc: '5 anos — experiência completa: escola, escolinha, peneira…' },
@@ -106,6 +138,10 @@ export const newGameScreen = {
     nameInp.oninput = () => { wizard.name = nameInp.value; };
     el.querySelectorAll('[data-g]').forEach((b) => b.onclick = () => { wizard.gender = b.dataset.g; renderRoute(); });
     el.querySelectorAll('#w-countries [data-c]').forEach((b) => b.onclick = () => { wizard.country = b.dataset.c; renderRoute(); });
+    const cityInp = el.querySelector('#w-city');
+    cityInp.oninput = () => { wizard.city = cityInp.value; };
+    el.querySelector('#w-foot').onchange = (e) => { wizard.foot = e.target.value; };
+    el.querySelector('#w-club').onchange = (e) => { wizard.clubId = e.target.value; };
     el.querySelectorAll('#w-pos [data-p]').forEach((b) => b.onclick = () => { wizard.position = b.dataset.p; renderRoute(); });
     el.querySelectorAll('#w-traits [data-t]').forEach((b) => b.onclick = () => {
       const id = b.dataset.t;
@@ -196,7 +232,7 @@ export const homeScreen = {
             <div class="ph-eyebrow">${countryById(p.country)?.flag || '🌍'} ${esc(countryById(p.country)?.name || p.country)} • ${p.city ? esc(p.city) : ''}</div>
             <h1 class="ph-name">${esc(p.name)}</h1>
             <div class="ph-meta">
-              ${posBadge(p.position)} <span class="ph-age">${p.age} ANOS</span> <span class="pill ghost">${p.foot === 'D' ? '🦶 Destro' : '🦶 Canhoto'}</span>
+              ${posBadge(p.position)} <span class="ph-age">${p.age} ANOS</span> <span class="pill ghost">${p.foot === 'D' ? '🦶 Destro' : p.foot === 'AMB' ? '🦶 Ambidestro' : '🦶 Canhoto'}</span>
               <span class="ph-phase">${G.phaseLabel(s)}</span>
             </div>
           </div>

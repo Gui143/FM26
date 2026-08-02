@@ -162,12 +162,13 @@ export async function loadGameFromSupabase(userId = null) {
 export async function createSocialPost(userId, text, playerName) {
   const client = await initSupabase();
   const uid = userId || (await getCurrentUser())?.id;
-  if (!uid) return { ok: false };
+  const content = String(text || '').trim().slice(0, 600);
+  if (!uid || !content) return { ok: false };
 
   const { error } = await client.from('social_posts').insert({
     user_id: uid,
-    author_name: playerName,
-    content: text,
+    author_name: String(playerName || 'Craque').slice(0, 80),
+    content,
     created_at: new Date().toISOString()
   });
 
@@ -175,14 +176,82 @@ export async function createSocialPost(userId, text, playerName) {
 }
 
 export async function getSocialFeed(limit = 12) {
-  const client = await initSupabase();
-  const { data, error } = await client
-    .from('social_posts')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  try {
+    const client = await initSupabase();
+    const { data } = await client
+      .from('social_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(Math.min(Math.max(Number(limit) || 12, 1), 40));
+    return data || [];
+  } catch {
+    return [];
+  }
+}
 
-  return data || [];
+// Presença discreta: só expõe nome de jogo e última atividade, nunca e-mail.
+export async function upsertPresence(userId, playerName, gameContext = {}) {
+  const client = await initSupabase();
+  const uid = userId || (await getCurrentUser())?.id;
+  if (!uid) return { ok: false, msg: 'login_required' };
+  const { error } = await client.from('social_presence').upsert({
+    user_id: uid,
+    player_name: String(playerName || 'Craque').slice(0, 80),
+    game_context: {
+      club: String(gameContext.club || '').slice(0, 80),
+      phase: String(gameContext.phase || '').slice(0, 24),
+    },
+    last_seen: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+  return { ok: !error, error };
+}
+
+export async function getOnlinePlayers(limit = 24) {
+  try {
+    const client = await initSupabase();
+    const since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const { data } = await client
+      .from('social_presence')
+      .select('user_id, player_name, game_context, last_seen')
+      .gt('last_seen', since)
+      .order('last_seen', { ascending: false })
+      .limit(Math.min(Math.max(Number(limit) || 24, 1), 50));
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function sendDirectMessage(userId, toUserId, message, fromName) {
+  const client = await initSupabase();
+  const uid = userId || (await getCurrentUser())?.id;
+  const text = String(message || '').trim().slice(0, 600);
+  if (!uid || !toUserId || !text) return { ok: false };
+  const { error } = await client.from('social_messages').insert({
+    from_user: uid,
+    to_user: String(toUserId),
+    message: text,
+    from_name: String(fromName || 'Craque').slice(0, 80),
+    created_at: new Date().toISOString(),
+  });
+  return { ok: !error, error };
+}
+
+export async function getConversation(userId, otherUserId, limit = 40) {
+  try {
+    const client = await initSupabase();
+    const uid = userId || (await getCurrentUser())?.id;
+    if (!uid || !otherUserId) return [];
+    const { data } = await client
+      .from('social_messages')
+      .select('*')
+      .or(`and(from_user.eq.${uid},to_user.eq.${otherUserId}),and(from_user.eq.${otherUserId},to_user.eq.${uid})`)
+      .order('created_at', { ascending: true })
+      .limit(Math.min(Math.max(Number(limit) || 40, 1), 80));
+    return data || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function sendMessageToBrother(userId, toUserId, message, fromName) {
@@ -274,6 +343,13 @@ create table if not exists social_messages (
   from_name text,
   message text,
   created_at timestamptz default now()
+);
+
+create table if not exists social_presence (
+  user_id uuid primary key references auth.users on delete cascade,
+  player_name text not null,
+  game_context jsonb default '{}'::jsonb,
+  last_seen timestamptz default now()
 );
 
 -- RLS policies (recomendado)

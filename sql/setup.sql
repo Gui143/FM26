@@ -15,6 +15,7 @@ ALTER TABLE IF EXISTS public.game_saves DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.social_posts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.social_messages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.social_presence DISABLE ROW LEVEL SECURITY;
 
 -- Remove a política problemática DIRETAMENTE (método 1)
 DROP POLICY IF EXISTS "Users manage own saves" ON public.game_saves;
@@ -24,6 +25,8 @@ DROP POLICY IF EXISTS "Users manage own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Public read posts" ON public.social_posts;
 DROP POLICY IF EXISTS "Users insert own posts" ON public.social_posts;
 DROP POLICY IF EXISTS "Users see their messages" ON public.social_messages;
+DROP POLICY IF EXISTS "Players read presence" ON public.social_presence;
+DROP POLICY IF EXISTS "Players manage own presence" ON public.social_presence;
 
 -- Remove QUALQUER outra política que ainda exista (método 3 - loop)
 DO $$
@@ -34,7 +37,7 @@ BEGIN
         SELECT policyname, tablename 
         FROM pg_policies 
         WHERE schemaname = 'public' 
-          AND tablename IN ('game_saves', 'profiles', 'social_posts', 'social_messages')
+          AND tablename IN ('game_saves', 'profiles', 'social_posts', 'social_messages', 'social_presence')
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', r.policyname, r.tablename);
     END LOOP;
@@ -81,6 +84,13 @@ CREATE TABLE IF NOT EXISTS public.social_messages (
   created_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.social_presence (
+  user_id uuid PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  player_name text NOT NULL,
+  game_context jsonb DEFAULT '{}'::jsonb,
+  last_seen timestamptz DEFAULT now()
+);
+
 -- ============================================================
 -- ETAPA 2: HABILITA RLS E CRIA AS POLÍTICAS (limpas)
 -- ============================================================
@@ -117,6 +127,14 @@ CREATE POLICY "Users see their messages"
 ON public.social_messages 
 FOR ALL 
 USING (auth.uid() = from_user OR auth.uid()::text = to_user);
+
+-- presença pública mínima: somente nome de jogo/contexto e horário; sem e-mail
+ALTER TABLE public.social_presence ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Players read presence"
+ON public.social_presence FOR SELECT USING (true);
+CREATE POLICY "Players manage own presence"
+ON public.social_presence FOR ALL
+USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- ============================================================
 -- ✅ FINALIZADO

@@ -1307,3 +1307,278 @@ table.data th, table.data td { padding: 8px 10px; }
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.05);
 }
+
+/* ============================================================
+   VIDA DE CRAQUE 26 — Componentes do modo carreira (BitLife × FIFA)
+   ============================================================ */
+
+/* Avatar com iniciais */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #000; font-weight: 900; flex: none; letter-spacing: 0.02em;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+}
+/* Escudo de clube (placeholder) */
+.club-crest {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: linear-gradient(135deg, #2a2a33, #16161b);
+  border: 2px solid var(--accent); color: var(--text); font-weight: 900; flex: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+/* Menu ball */
+.menu-ball { font-size: 5rem; filter: drop-shadow(0 0 24px rgba(255, 119, 0, 0.45)); display: inline-block; animation: floatBall 3s ease-in-out infinite; }
+@keyframes floatBall { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(8deg); } }
+
+/* Cards de idade (novo jogo) */
+.startage-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.age-card {
+  display: flex; gap: 10px; align-items: flex-start; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px; cursor: pointer; transition: all 0.15s;
+}
+.age-card:hover { border-color: var(--accent); }
+.age-card.sel { border-color: var(--accent); background: var(--accent-soft); }
+.age-card .age-ico { font-size: 1.6rem; }
+.age-card b { display: block; font-size: 0.95rem; }
+.age-card small { color: var(--text-2); font-size: 0.74rem; line-height: 1.35; display: block; margin-top: 2px; }
+
+/* Hero do jogador (home) */
+.player-hero { flex-wrap: wrap; }
+.ph-left { display: flex; gap: 14px; align-items: center; flex: 1; min-width: 240px; }
+.ph-eyebrow { font-size: 0.72rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
+.ph-name { font-size: 1.45rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
+.ph-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.ph-age { font-size: 0.82rem; color: var(--text-2); font-weight: 700; }
+.ph-phase { font-size: 0.7rem; font-weight: 800; color: var(--accent); background: var(--accent-soft); padding: 3px 9px; border-radius: 999px; }
+.ph-right { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ph-club {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
+  flex-wrap: wrap;
+}
+.ph-clubname { font-weight: 800; }
+.ph-contract { margin-left: auto; font-size: 0.8rem; color: var(--accent); font-weight: 800; }
+.ph-value { font-size: 0.82rem; font-weight: 800; color: var(--gold); }
+
+/* Barras de vida */
+.life-meter {
+  display: flex; align-items: center; gap: 10px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
+}
+.life-meter .lm-ico { font-size: 1.3rem; }
+.life-meter .lm-body { flex: 1; min-width: 0; }
+.life-meter .lm-top { display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.life-meter .lm-top b { color: var(--text); }
+.life-meter.low { border-color: rgba(239, 68, 68, 0.4); }
+.life-meter.warn { border-color: rgba(251, 191, 36, 0.35); }
+
+/* Banners */
+.banner {
+  display: block; width: 100%; text-align: left; border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-top: 14px; font-size: 0.88rem; font-weight: 700;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+}
+.banner.warn { border-color: rgba(251, 191, 36, 0.5); background: rgba(251, 191, 36, 0.1); color: #fcd34d; }
+.banner.info { border-color: rgba(56, 189, 248, 0.5); background: rgba(56, 189, 248, 0.1); color: #7dd3fc; }
+.banner.gold { border-color: rgba(255, 119, 0, 0.6); background: var(--accent-soft); color: var(--accent); }
+.banner.ok { border-color: rgba(34, 197, 94, 0.5); background: rgba(34, 197, 94, 0.1); color: #4ade80; }
+.banner.decision { cursor: pointer; border-color: var(--accent); background: linear-gradient(90deg, var(--accent-soft), transparent); animation: pulseBorder 1.6s infinite; }
+@keyframes pulseBorder { 0%,100% { box-shadow: 0 0 0 0 rgba(255,119,0,0.35); } 50% { box-shadow: 0 0 0 6px rgba(255,119,0,0); } }
+
+/* Ações rápidas */
+.quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.qa {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 8px; cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.qa:hover { border-color: var(--accent); transform: translateY(-2px); }
+.qa .ico { width: 26px; height: 26px; color: var(--accent); }
+.qa b { font-size: 0.88rem; display: block; }
+.qa small { font-size: 0.68rem; color: var(--text-2); }
+
+/* Fixture row (home) */
+.fixture-row {
+  display: flex; align-items: center; gap: 12px; padding: 11px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.fixture-row:last-child { border-bottom: none; }
+.fixture-row.played { opacity: 0.75; }
+.fx-info { flex: 1; min-width: 0; }
+.fx-name { font-weight: 800; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fx-right { display: flex; align-items: center; gap: 8px; flex: none; }
+.fx-score-sm { font-size: 0.78rem; color: var(--text-2); font-weight: 700; }
+.fx-res { font-size: 0.7rem; font-weight: 900; }
+.fx-res.win { color: #4ade80; }
+.fx-res.loss { color: #fca5a5; }
+
+/* Notícias */
+.news-item { display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 0.9rem; align-items: flex-start; cursor: pointer; }
+.news-item:last-child { border-bottom: none; }
+.news-item.unread { background: linear-gradient(90deg, var(--accent-soft), transparent); border-radius: var(--radius-sm); padding-left: 10px; }
+.news-ico { font-size: 1.2rem; }
+.news-body { flex: 1; min-width: 0; }
+.news-text { line-height: 1.45; }
+
+/* Match rows */
+.match-row {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.mr-teams { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.mr-club { display: inline-flex; align-items: center; gap: 7px; font-size: 0.86rem; flex: 1; min-width: 0; }
+.mr-club b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mr-score { font-size: 1.05rem; font-weight: 900; color: var(--accent); white-space: nowrap; }
+.fx-big { font-size: 1.2rem; }
+.mr-meta { margin: 6px 0; }
+.mr-actions { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+
+/* Live match */
+.live-box { text-align: center; }
+.live-top { margin-bottom: 8px; }
+.live-teams { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 14px; }
+.lt { display: flex; flex-direction: column; align-items: center; gap: 7px; font-weight: 800; font-size: 0.9rem; flex: 1; min-width: 0; }
+.ls { font-size: 2.2rem; font-weight: 900; color: var(--accent); white-space: nowrap; }
+.live-progress { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.82rem; color: var(--text-2); font-weight: 700; }
+.spinner.small { width: 20px; height: 20px; border-width: 3px; }
+.feed-item { display: flex; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed var(--line); font-size: 0.86rem; animation: fadeUp 0.3s ease; }
+.feed-item.you { background: var(--accent-soft); border-radius: var(--radius-sm); border-bottom-color: transparent; padding: 8px 10px; }
+.feed-item .min { font-weight: 900; color: var(--accent); font-size: 0.74rem; min-width: 30px; padding-top: 1px; }
+.result-card { border-color: var(--accent); background: linear-gradient(180deg, var(--panel-2), var(--panel)); }
+.result-line { line-height: 1.55; font-size: 0.92rem; color: var(--text-2); }
+
+/* Skills */
+.skill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.skill-grid.mental { margin-top: 9px; }
+.skill-cell { display: flex; gap: 9px; align-items: center; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 10px; }
+.sk-ico { font-size: 1.15rem; }
+.sk-body { flex: 1; min-width: 0; }
+.sk-top { display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: 800; color: var(--text-2); margin-bottom: 4px; }
+.sk-top b { color: var(--text); }
+
+/* Timeline & seasons */
+.timeline { display: flex; flex-direction: column; }
+.tl-item { display: flex; gap: 12px; padding: 7px 2px; border-left: 2px solid var(--line); margin-left: 6px; padding-left: 14px; font-size: 0.88rem; }
+.tl-year { font-weight: 900; color: var(--accent); min-width: 40px; }
+.season-row { display: flex; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.season-row:last-child { border-bottom: none; }
+.sr-year { font-weight: 900; color: var(--accent); min-width: 44px; }
+.sr-main { flex: 1; min-width: 160px; }
+.sr-badges { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+
+/* Contrato / ofertas */
+.contract-box .cb-club { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.cb-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.cb-stats div { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px; }
+.cb-stats div span { display: block; }
+.offer-card {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 13px 14px; margin-bottom: 10px;
+}
+.oc-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 220px; }
+.oc-terms { margin-top: 3px; color: var(--text-2); line-height: 1.5; }
+.oc-actions { display: flex; gap: 8px; }
+
+/* Família */
+.partner-box { display: flex; gap: 14px; align-items: center; }
+.fam-row { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.fam-row:last-child { border-bottom: none; }
+.fam-row .meter { flex: 1; min-width: 160px; }
+.inv-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.inv-row:last-child { border-bottom: none; }
+
+/* Dinheiro */
+.money-hero { text-align: center; }
+.money-big { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.02em; color: var(--accent); line-height: 1.1; }
+.money-big.neg { color: var(--red); }
+.money-flow { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+.lifestyle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.lifestyle-card {
+  display: flex; flex-direction: column; gap: 3px; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px; cursor: pointer; transition: all 0.15s;
+}
+.lifestyle-card:hover { border-color: var(--accent); }
+.lifestyle-card.sel { border-color: var(--accent); background: var(--accent-soft); }
+.lifestyle-card .ls-ico { font-size: 1.4rem; }
+.lifestyle-card small { color: var(--text-2); }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.shop-card {
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px; position: relative;
+}
+.shop-card.locked { opacity: 0.65; }
+.sh-ico { font-size: 1.5rem; }
+.shop-card small { color: var(--text-2); }
+
+/* Fama */
+.fame-hero { text-align: center; }
+.fame-stars { font-size: 1.5rem; letter-spacing: 3px; margin-bottom: 8px; }
+.fame-tips div { padding: 5px 0; font-size: 0.9rem; color: var(--text-2); }
+
+/* Decisões (eventos) */
+.decision-card { max-width: 520px; }
+.decision-text { font-size: 1rem; line-height: 1.55; margin-bottom: 14px; }
+.decision-choices { display: flex; flex-direction: column; gap: 9px; }
+.decision-choices .choice {
+  justify-content: flex-start; height: auto; min-height: 50px; padding: 11px 15px;
+  text-align: left; white-space: normal;
+}
+.decision-choices .choice small { display: block; color: var(--text-3); font-weight: 500; margin-top: 2px; font-size: 0.76rem; }
+.decision-choices .choice:hover small { color: var(--text-2); }
+
+/* Histórico de treino */
+.hist-row { display: flex; gap: 10px; align-items: center; padding: 7px 2px; border-bottom: 1px solid var(--line); font-size: 0.86rem; flex-wrap: wrap; }
+.hist-row:last-child { border-bottom: none; }
+
+/* Hall da fama */
+.hall-hero { text-align: center; }
+.hall-ball { font-size: 3.4rem; }
+.hall-name { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.02em; margin: 6px 0 2px; }
+.hall-legacy {
+  display: inline-flex; align-items: center; gap: 14px; margin: 16px auto 4px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 22px; text-align: left;
+}
+.legacy-score {
+  width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 900; color: #000;
+  background: linear-gradient(135deg, #f5c542, #d4a017);
+  box-shadow: 0 0 22px rgba(245, 197, 66, 0.4);
+}
+.legacy-score.epic { background: linear-gradient(135deg, var(--accent), var(--accent-light)); box-shadow: 0 0 26px var(--accent-glow); }
+
+/* Seleção */
+.nt-hero { display: flex; gap: 14px; align-items: center; }
+.nt-status .pill { font-size: 0.8rem; }
+
+/* Sidebar do jogador */
+.sb-player {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px; margin-bottom: 10px;
+}
+.sb-player .sb-name { font-weight: 800; font-size: 0.92rem; }
+.sb-player .sb-meta { font-size: 0.72rem; color: var(--text-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sb-ball { font-size: 1.15rem; }
+
+/* Container de telas internas */
+.vc-screen { max-width: 880px; margin: 0 auto; }
+@media (max-width: 520px) {
+  .startage-grid, .lifestyle-grid { grid-template-columns: 1fr; }
+  .skill-grid { grid-template-columns: repeat(2, 1fr); }
+  .quick-actions { grid-template-columns: 1fr; }
+}
+
+/* Elenco do clube (carreira) */
+.squad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 9px; margin-top: 6px; }
+.squad-card {
+  display: flex; align-items: center; gap: 10px; background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px;
+}
+.squad-card .sq-body { flex: 1; min-width: 0; }
+.squad-card .sq-name { font-weight: 800; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

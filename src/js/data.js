@@ -7,15 +7,28 @@ export const DB_VERSION = 1;
 
 // -------------------- PAÍSES / CONFEDERAÇÕES --------------------
 export const COUNTRIES = [
-  { id: 'br', name: 'Brasil', confed: 'america' },
-  { id: 'ar', name: 'Argentina', confed: 'america' },
-  { id: 'en', name: 'Inglaterra', confed: 'europa' },
-  { id: 'es', name: 'Espanha', confed: 'europa' },
-  { id: 'it', name: 'Itália', confed: 'europa' },
-  { id: 'de', name: 'Alemanha', confed: 'europa' },
-  { id: 'fr', name: 'França', confed: 'europa' },
-  { id: 'pt', name: 'Portugal', confed: 'europa' },
-  { id: 'nl', name: 'Holanda', confed: 'europa' },
+  { id: 'br', name: 'Brasil', flag: '🇧🇷', confed: 'america', ntRep: 86 },
+  { id: 'ar', name: 'Argentina', flag: '🇦🇷', confed: 'america', ntRep: 90 },
+  { id: 'uy', name: 'Uruguai', flag: '🇺🇾', confed: 'america', ntRep: 78 },
+  { id: 'co', name: 'Colômbia', flag: '🇨🇴', confed: 'america', ntRep: 79 },
+  { id: 'mx', name: 'México', flag: '🇲🇽', confed: 'america', ntRep: 74 },
+  { id: 'us', name: 'EUA', flag: '🇺🇸', confed: 'america', ntRep: 73 },
+  { id: 'pt', name: 'Portugal', flag: '🇵🇹', confed: 'europa', ntRep: 86 },
+  { id: 'es', name: 'Espanha', flag: '🇪🇸', confed: 'europa', ntRep: 91 },
+  { id: 'en', name: 'Inglaterra', flag: '🏴', confed: 'europa', ntRep: 90 },
+  { id: 'fr', name: 'França', flag: '🇫🇷', confed: 'europa', ntRep: 90 },
+  { id: 'de', name: 'Alemanha', flag: '🇩🇪', confed: 'europa', ntRep: 87 },
+  { id: 'it', name: 'Itália', flag: '🇮🇹', confed: 'europa', ntRep: 85 },
+  { id: 'nl', name: 'Holanda', flag: '🇳🇱', confed: 'europa', ntRep: 82 },
+  { id: 'be', name: 'Bélgica', flag: '🇧🇪', confed: 'europa', ntRep: 80 },
+  { id: 'hr', name: 'Croácia', flag: '🇭🇷', confed: 'europa', ntRep: 80 },
+  { id: 'rs', name: 'Sérvia', flag: '🇷🇸', confed: 'europa', ntRep: 75 },
+  { id: 'jp', name: 'Japão', flag: '🇯🇵', confed: 'asia', ntRep: 76 },
+  { id: 'kr', name: 'Coreia do Sul', flag: '🇰🇷', confed: 'asia', ntRep: 75 },
+  { id: 'ng', name: 'Nigéria', flag: '🇳🇬', confed: 'africa', ntRep: 77 },
+  { id: 'sn', name: 'Senegal', flag: '🇸🇳', confed: 'africa', ntRep: 76 },
+  { id: 'ma', name: 'Marrocos', flag: '🇲🇦', confed: 'africa', ntRep: 77 },
+  { id: 'eg', name: 'Egito', flag: '🇪🇬', confed: 'africa', ntRep: 74 },
 ];
 
 // -------------------- LIGAS --------------------
@@ -300,28 +313,34 @@ export const CLUBS = {
 // -------------------- NOMES DE JOGADORES (geração procedural) --------------------
 export const NAME_POOLS = {
   br: {
-    first: ['Gabriel','Lucas','Matheus','Pedro','Vinícius','Rafael','Bruno','Thiago','Felipe','Rodrigo','Gustavo','Diego','André','Caio','Eduardo','Fernando','Guilherme','Henrique','Igor','João','Kauã','Leonardo','Marcos','Nathan','Otávio','Paulo','Renan','Samuel','Victor','Wesley','Yuri','Arthur','Danilo','Everton','Fábio','Hugo','Igor','Jean','Kléber','Leandro','Murilo','Nicolas','Pablo','Ricardo','Sérgio','Talles','Uillian','Vanderlei','Willian','Xavier','Adriano','Alex','Antony','Breno','Carlos','Daniel','Ederson','Fabinho','Gerson','Hernani','Iago','Júnior','Luan','Marlon','Neymar','Oscar','Patrick','Richarlison','Savio','Tetê','Vanderson','Werton','Zé'],
-    last: ['Silva','Santos','Oliveira','Souza','Rodrigues','Ferreira','Alves','Pereira','Lima','Gomes','Costa','Ribeiro','Martins','Carvalho','Rocha','Almeida','Nascimento','Araújo','Melo','Barbosa','Cardoso','Correia','Dias','Teixeira','Fernandes','Freitas','Moreira','Nogueira','Pinto','Ramos','Cavalcante','Duarte','Farias','Macedo','Moraes','Nunes','Peixoto','Reis','Sales','Vieira','Andrade','Batista','Campos','Cunha','Figueiredo','Lopes','Miranda','Monteiro','Pires','Tavares','Viana','Assis','Borges','Castro','Dantas','Esteves','Fonseca','Guimarães','Leite','Maia','Neves','Paiva','Queiroz','Siqueira','Toledo','Vasconcelos','Braga','Xavier','Aguiar','Barros','Coelho'],
+    first: ['Gabriel', 'Lucas', 'Matheus', 'Pedro', 'Vinícius', 'Rafael', 'Bruno', 'Thiago', 'Felipe', 'Rodrigo', 'Gustavo', 'Diego', 'André', 'Caio', 'Eduardo', 'Fernando', 'Guilherme', 'Henrique', 'Igor', 'João', 'Kauã', 'Leonardo', 'Marcos', 'Nathan', 'Otávio', 'Paulo', 'Renan', 'Samuel', 'Victor', 'Wesley', 'Yuri', 'Arthur', 'Danilo', 'Everton', 'Fábio', 'Hugo', 'Jean', 'Murilo', 'Nicolas', 'Pablo', 'Ricardo', 'Sérgio', 'Talles', 'Willian', 'Adriano', 'Alex', 'Antony', 'Breno', 'Carlos', 'Daniel', 'Ederson', 'Fabinho', 'Gerson', 'Luan', 'Marlon', 'Oscar', 'Patrick', 'Richarlison', 'Savio', 'Tetê', 'Vanderson', 'Zé'],
+    firstF: ['Ana', 'Beatriz', 'Camila', 'Débora', 'Elena', 'Fernanda', 'Gabriela', 'Helena', 'Isabela', 'Júlia', 'Larissa', 'Lívia', 'Luana', 'Mariana', 'Natália', 'Olívia', 'Patrícia', 'Rafaela', 'Sofia', 'Tainá', 'Valentina', 'Yasmin', 'Amanda', 'Bruna', 'Carla', 'Duda', 'Elisa', 'Flávia', 'Giovana', 'Ingrid', 'Joana', 'Karina', 'Letícia', 'Maitê', 'Nicole', 'Paula', 'Raquel', 'Sabrina', 'Tatiane', 'Vitória', 'Aline', 'Bianca', 'Carol', 'Daiane', 'Érica', 'Fabiana', 'Gisele', 'Heloísa', 'Isadora', 'Jéssica'],
+    last: ['Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes', 'Costa', 'Ribeiro', 'Martins', 'Carvalho', 'Rocha', 'Almeida', 'Nascimento', 'Araújo', 'Melo', 'Barbosa', 'Cardoso', 'Correia', 'Dias', 'Teixeira', 'Fernandes', 'Freitas', 'Moreira', 'Nogueira', 'Pinto', 'Ramos', 'Cavalcante', 'Duarte', 'Farias', 'Macedo', 'Moraes', 'Nunes', 'Peixoto', 'Reis', 'Sales', 'Vieira', 'Andrade', 'Batista', 'Campos', 'Cunha', 'Figueiredo', 'Lopes', 'Miranda', 'Monteiro', 'Pires', 'Tavares', 'Viana', 'Assis', 'Borges', 'Castro', 'Dantas', 'Esteves', 'Fonseca', 'Guimarães', 'Leite', 'Maia', 'Neves', 'Paiva', 'Queiroz', 'Siqueira', 'Toledo', 'Vasconcelos', 'Braga', 'Aguiar', 'Barros', 'Coelho'],
   },
   hisp: {
-    first: ['Alejandro','Bruno','Carlos','Damián','Diego','Emiliano','Enzo','Facundo','Federico','Franco','Gonzalo','Ignacio','Joaquín','Julián','Lautaro','Lisandro','Luciano','Marcos','Mateo','Matías','Maximiliano','Nicolás','Pablo','Pedro','Santiago','Sebastián','Thiago','Tomás','Valentín','Exequiel','Agustín','Alexis','Andrés','Ángel','Cristian','Ezequiel','Germán','Hernán','Iván','Javier','Kevin','Leandro','Manuel','Marcelo','Mauricio','Nahuel','Óscar','Ramiro','Rodrigo','Rubén'],
-    last: ['González','Rodríguez','Fernández','López','Martínez','Pérez','García','Romero','Sosa','Álvarez','Torres','Ruiz','Ramírez','Flores','Benítez','Acosta','Medina','Herrera','Suárez','Aguirre','Giménez','Pereyra','Rojas','Castillo','Vega','Campos','Fuentes','Cabrera','Morales','Navarro','Ortiz','Vargas','Castro','Paredes','Mercado','Quiroga','Figueroa','Palacios','Ledesma','Arce'],
+    first: ['Alejandro', 'Bruno', 'Carlos', 'Damián', 'Diego', 'Emiliano', 'Enzo', 'Facundo', 'Federico', 'Franco', 'Gonzalo', 'Ignacio', 'Joaquín', 'Julián', 'Lautaro', 'Lisandro', 'Luciano', 'Marcos', 'Mateo', 'Matías', 'Maximiliano', 'Nicolás', 'Pablo', 'Pedro', 'Santiago', 'Sebastián', 'Thiago', 'Tomás', 'Valentín', 'Exequiel', 'Agustín', 'Alexis', 'Andrés', 'Ángel', 'Cristian', 'Ezequiel', 'Germán', 'Hernán', 'Iván', 'Javier', 'Kevin', 'Leandro', 'Manuel', 'Marcelo', 'Mauricio', 'Nahuel', 'Óscar', 'Ramiro', 'Rodrigo', 'Rubén'],
+    firstF: ['Sofía', 'Valentina', 'Camila', 'Luciana', 'Martina', 'Julieta', 'Florencia', 'Agustina', 'Milagros', 'Catalina', 'Isabella', 'Antonella', 'Renata', 'Josefina', 'Emilia', 'Victoria', 'Guadalupe', 'Abril', 'Morena', 'Malena', 'Delfina', 'Amparo', 'Lucía', 'Micaela', 'Rocío'],
+    last: ['González', 'Rodríguez', 'Fernández', 'López', 'Martínez', 'Pérez', 'García', 'Romero', 'Sosa', 'Álvarez', 'Torres', 'Ruiz', 'Ramírez', 'Flores', 'Benítez', 'Acosta', 'Medina', 'Herrera', 'Suárez', 'Aguirre', 'Giménez', 'Pereyra', 'Rojas', 'Castillo', 'Vega', 'Campos', 'Fuentes', 'Cabrera', 'Morales', 'Navarro', 'Ortiz', 'Vargas', 'Castro', 'Paredes', 'Mercado', 'Quiroga', 'Figueroa', 'Palacios', 'Ledesma', 'Arce'],
   },
   en: {
-    first: ['Jack','Harry','Oliver','George','Charlie','Jacob','Alfie','Leo','Oscar','Henry','Archie','Joshua','Ethan','Daniel','Samuel','James','William','Thomas','Benjamin','Lucas','Mason','Finley','Harrison','Jude','Cole','Declan','Phil','Bukayo','Marcus','Trent','Jordan','Aaron','Callum','Reece','Conor','Mason','Jarrod','Ivan','Ollie','Eberechi','Kobbie','Lewis','Curtis','Anthony','Dominic','Kieran','Tyrone','Ezri','Ben','Luke'],
-    last: ['Smith','Jones','Williams','Taylor','Brown','Davies','Wilson','Evans','Thomas','Johnson','Roberts','Walker','Wright','Robinson','Thompson','Hughes','White','Edwards','Green','Hall','Lewis','Harris','Clarke','Patel','Jackson','Wood','Turner','Martin','Cooper','Hill','Ward','Morris','Moore','Clark','King','Baker','Young','Allen','Mitchell','Phillips','Campbell','Parker','Bell','Graham','Kelly','Howard','Rice','Saka','Foden','Palmer'],
+    first: ['Jack', 'Harry', 'Oliver', 'George', 'Charlie', 'Jacob', 'Alfie', 'Leo', 'Oscar', 'Henry', 'Archie', 'Joshua', 'Ethan', 'Daniel', 'Samuel', 'James', 'William', 'Thomas', 'Benjamin', 'Lucas', 'Mason', 'Finley', 'Harrison', 'Jude', 'Cole', 'Declan', 'Phil', 'Bukayo', 'Marcus', 'Trent', 'Jordan', 'Aaron', 'Callum', 'Reece', 'Conor', 'Mason', 'Jarrod', 'Ivan', 'Ollie', 'Kobbie', 'Lewis', 'Curtis', 'Anthony', 'Dominic', 'Kieran', 'Ben', 'Luke'],
+    firstF: ['Olivia', 'Amelia', 'Isla', 'Ava', 'Mia', 'Poppy', 'Freya', 'Grace', 'Sophie', 'Emily', 'Ella', 'Evie', 'Ruby', 'Lily', 'Chloe', 'Jessica', 'Charlotte', 'Harriet', 'Daisy', 'Maisie', 'Nancy', 'Darcie', 'Elsie', 'Phoebe', 'Imogen'],
+    last: ['Smith', 'Jones', 'Williams', 'Taylor', 'Brown', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Johnson', 'Roberts', 'Walker', 'Wright', 'Robinson', 'Thompson', 'Hughes', 'White', 'Edwards', 'Green', 'Hall', 'Lewis', 'Harris', 'Clarke', 'Patel', 'Jackson', 'Wood', 'Turner', 'Martin', 'Cooper', 'Hill', 'Ward', 'Morris', 'Moore', 'Clark', 'King', 'Baker', 'Young', 'Allen', 'Mitchell', 'Phillips', 'Campbell', 'Parker', 'Bell', 'Graham', 'Kelly', 'Howard', 'Rice', 'Foden', 'Palmer'],
   },
   it: {
-    first: ['Alessandro','Andrea','Antonio','Carlo','Daniele','Davide','Domenico','Edoardo','Emanuele','Federico','Filippo','Francesco','Gabriele','Giacomo','Giorgio','Giovanni','Giuseppe','Lorenzo','Luca','Marco','Matteo','Mattia','Michele','Nicola','Nicolò','Riccardo','Salvatore','Simone','Stefano','Tommaso','Vincenzo','Alessio','Bruno','Cesare','Claudio','Elia','Fabio','Gianluca','Ivan','Loris','Manuel','Massimo','Milo','Paolo','Pietro','Renato','Samuele','Tiziano','Umberto','Valerio'],
-    last: ['Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Colombo','Ricci','Marino','Greco','Bruno','Gallo','Conti','De Luca','Costa','Giordano','Mancini','Rizzo','Lombardi','Moretti','Barbieri','Fontana','Santoro','Mariani','Rinaldi','Caruso','Ferraro','Fabbri','Valentini','Basile','Serra','Vitale','Pellegrini','Bellini','Monti','Palumbo','Sorrentino','Leone','D’Angelo','Marchetti','Battaglia','Neri','Franco','Martini','Ferretti','Parisi','Testa','Grassi','Riva','Caputo'],
+    first: ['Alessandro', 'Andrea', 'Antonio', 'Carlo', 'Daniele', 'Davide', 'Domenico', 'Edoardo', 'Federico', 'Filippo', 'Francesco', 'Gabriele', 'Giacomo', 'Giorgio', 'Giovanni', 'Giuseppe', 'Lorenzo', 'Luca', 'Marco', 'Matteo', 'Mattia', 'Michele', 'Nicola', 'Riccardo', 'Salvatore', 'Simone', 'Stefano', 'Tommaso', 'Vincenzo', 'Alessio', 'Bruno', 'Claudio', 'Elia', 'Fabio', 'Gianluca', 'Ivan', 'Manuel', 'Massimo', 'Paolo', 'Pietro', 'Renato', 'Samuele', 'Umberto', 'Valerio'],
+    firstF: ['Sofia', 'Giulia', 'Alessia', 'Chiara', 'Francesca', 'Martina', 'Giorgia', 'Anna', 'Elena', 'Sara', 'Giovanna', 'Beatrice', 'Ludovica', 'Bianca', 'Vittoria', 'Aurora', 'Rachele', 'Gaia', 'Emma', 'Matilde', 'Camilla', 'Noemi', 'Greta', 'Marta', 'Serena'],
+    last: ['Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Bruno', 'Gallo', 'Conti', 'De Luca', 'Costa', 'Giordano', 'Mancini', 'Rizzo', 'Lombardi', 'Moretti', 'Barbieri', 'Fontana', 'Santoro', 'Mariani', 'Rinaldi', 'Caruso', 'Ferraro', 'Fabbri', 'Valentini', 'Basile', 'Serra', 'Vitale', 'Pellegrini', 'Bellini', 'Monti', 'Palumbo', 'Sorrentino', 'Leone', 'Marchetti', 'Battaglia', 'Neri', 'Franco', 'Martini', 'Ferretti', 'Parisi', 'Testa', 'Grassi', 'Riva', 'Caputo'],
   },
   de: {
-    first: ['Ben','Finn','Jonas','Leon','Luca','Lukas','Maximilian','Moritz','Niklas','Noah','Paul','Philipp','Tim','Tom','Felix','Jan','Julian','Kai','Kevin','Marco','Marius','Nico','Sebastian','Simon','Timo','Tobias','Yannick','Dominik','Erik','Florian','Henrik','Jamal','Joshua','Karim','Leroy','Mats','Max','Niklas','Robin','Serge','Sven','Thilo','Tony','Tristan','Wout','Sepp','Xaver','Malik','Emre','Antonio'],
-    last: ['Müller','Schmidt','Schneider','Fischer','Weber','Meyer','Wagner','Becker','Hoffmann','Schulz','Koch','Bauer','Richter','Klein','Wolf','Neumann','Schwarz','Zimmermann','Braun','Krüger','Hartmann','Lange','Schmitt','Werner','Krause','Meier','Lehmann','Schmid','Schulze','Maier','Köhler','Herrmann','Walter','König','Mayer','Huber','Kaiser','Fuchs','Peters','Lang','Scholz','Brandt','Haas','Vogel','Jung','Hahn','Keller','Busch','Berger','Kramer'],
+    first: ['Ben', 'Finn', 'Jonas', 'Leon', 'Luca', 'Lukas', 'Maximilian', 'Moritz', 'Niklas', 'Noah', 'Paul', 'Philipp', 'Tim', 'Tom', 'Felix', 'Jan', 'Julian', 'Kai', 'Kevin', 'Marco', 'Marius', 'Nico', 'Sebastian', 'Simon', 'Timo', 'Tobias', 'Yannick', 'Dominik', 'Erik', 'Florian', 'Henrik', 'Jamal', 'Joshua', 'Karim', 'Leroy', 'Mats', 'Max', 'Robin', 'Serge', 'Sven', 'Thilo', 'Tony', 'Tristan', 'Wout', 'Sepp', 'Xaver', 'Malik', 'Emre', 'Antonio'],
+    firstF: ['Emma', 'Hannah', 'Mia', 'Lea', 'Lena', 'Anna', 'Lina', 'Marie', 'Sophie', 'Emilia', 'Clara', 'Laura', 'Julia', 'Amelie', 'Katharina', 'Marlene', 'Frieda', 'Ida', 'Nora', 'Paula', 'Greta', 'Maja', 'Lotte', 'Alma', 'Ronja'],
+    last: ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Hoffmann', 'Schulz', 'Koch', 'Bauer', 'Richter', 'Klein', 'Wolf', 'Neumann', 'Schwarz', 'Zimmermann', 'Braun', 'Krüger', 'Hartmann', 'Lange', 'Schmitt', 'Werner', 'Krause', 'Meier', 'Lehmann', 'Schmid', 'Schulze', 'Maier', 'Köhler', 'Herrmann', 'Walter', 'König', 'Mayer', 'Huber', 'Kaiser', 'Fuchs', 'Peters', 'Lang', 'Scholz', 'Brandt', 'Haas', 'Vogel', 'Jung', 'Hahn', 'Keller', 'Busch', 'Berger', 'Kramer'],
   },
   fr: {
-    first: ['Adrien','Alexandre','Antoine','Aurélien','Benjamin','Brice','Clément','Corentin','Dimitri','Enzo','Florian','Hugo','Jordan','Jules','Kylian','Léo','Loïc','Louis','Lucas','Mathis','Maxence','Moussa','Nabil','Nathan','Nicolas','Olivier','Paul','Pierre','Quentin','Randal','Romain','Samuel','Sofiane','Théo','Thomas','Valentin','Wissam','Yacine','Boubacar','Dayot','Eduardo','Ferland','Gautier','Ismaël','Jonathan','Kingsley','Leny','Maghnes','Youssouf','Warren'],
-    last: ['Martin','Bernard','Dubois','Thomas','Robert','Richard','Petit','Durand','Leroy','Moreau','Simon','Laurent','Lefèvre','Michel','David','Bertrand','Roux','Vincent','Fournier','Morel','Girard','André','Lefebvre','Mercier','Dupont','Lambert','Bonnet','Fontaine','Rousseau','Chevalier','Robin','Barbier','Gauthier','Perrin','Charpentier','Renard','Moulin','Collet','Benoit','Gros','Henry','Masson','Marchand','Duval','Denis','Dumont','Marie','Noël','Perrot','Camara'],
+    first: ['Adrien', 'Alexandre', 'Antoine', 'Aurélien', 'Benjamin', 'Brice', 'Clément', 'Corentin', 'Dimitri', 'Enzo', 'Florian', 'Hugo', 'Jordan', 'Jules', 'Kylian', 'Léo', 'Loïc', 'Louis', 'Lucas', 'Mathis', 'Maxence', 'Moussa', 'Nabil', 'Nathan', 'Nicolas', 'Olivier', 'Paul', 'Pierre', 'Quentin', 'Randal', 'Romain', 'Samuel', 'Sofiane', 'Théo', 'Thomas', 'Valentin', 'Wissam', 'Yacine', 'Boubacar', 'Dayot', 'Gautier', 'Ismaël', 'Jonathan', 'Kingsley', 'Leny', 'Maghnes', 'Youssouf', 'Warren'],
+    firstF: ['Louise', 'Emma', 'Jade', 'Léa', 'Manon', 'Chloé', 'Camille', 'Sarah', 'Inès', 'Lina', 'Nina', 'Juliette', 'Zoé', 'Anaïs', 'Margaux', 'Clara', 'Alice', 'Jeanne', 'Romane', 'Élise', 'Ambre', 'Maëlys', 'Victoire', 'Constance', 'Apolline'],
+    last: ['Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Richard', 'Petit', 'Durand', 'Leroy', 'Moreau', 'Simon', 'Laurent', 'Lefèvre', 'Michel', 'David', 'Bertrand', 'Roux', 'Vincent', 'Fournier', 'Morel', 'Girard', 'André', 'Lefebvre', 'Mercier', 'Dupont', 'Lambert', 'Bonnet', 'Fontaine', 'Rousseau', 'Chevalier', 'Robin', 'Barbier', 'Gauthier', 'Perrin', 'Charpentier', 'Renard', 'Moulin', 'Collet', 'Benoit', 'Gros', 'Henry', 'Masson', 'Marchand', 'Duval', 'Denis', 'Dumont', 'Marie', 'Noël', 'Perrot', 'Camara'],
   },
 };
 
@@ -392,3 +411,162 @@ export const NAT_LABELS = {
 };
 
 export const T = (lang, key) => (I18N[lang] && I18N[lang][key]) || I18N.pt[key] || key;
+
+// ============================================================
+// ADICIONAIS DO MODO CARREIRA (Vida de Craque 26)
+// ============================================================
+
+export const CITIES = {
+  br: ['Rio de Janeiro', 'São Paulo', 'Belo Horizonte', 'Porto Alegre', 'Salvador', 'Fortaleza', 'Curitiba', 'Recife', 'Santos', 'Goiânia', 'Niterói', 'Campinas', 'Manaus', 'Cuiabá', 'Vitória', 'Belém'],
+  ar: ['Buenos Aires', 'Rosário', 'Córdoba', 'La Plata', 'Mendoza'],
+  uy: ['Montevidéu', 'Paysandú', 'Salto'],
+  co: ['Bogotá', 'Medellín', 'Cali', 'Barranquilla'],
+  pt: ['Lisboa', 'Porto', 'Braga', 'Faro', 'Coimbra'],
+  es: ['Madrid', 'Barcelona', 'Sevilha', 'Valência', 'Bilbao'],
+  en: ['Londres', 'Manchester', 'Liverpool', 'Birmingham', 'Leeds'],
+  fr: ['Paris', 'Lyon', 'Marselha', 'Lille', 'Nice'],
+  de: ['Munique', 'Berlim', 'Dortmund', 'Hamburgo', 'Leipzig'],
+  it: ['Roma', 'Milão', 'Nápoles', 'Turim', 'Florença'],
+  nl: ['Amsterdã', 'Roterdã', 'Eindhoven'],
+  be: ['Bruxelas', 'Antuérpia', 'Gante'],
+  hr: ['Zagreb', 'Split', 'Rijeka'],
+  rs: ['Belgrado', 'Novi Sad', 'Niš'],
+  us: ['Miami', 'Los Angeles', 'Nova York', 'Atlanta', 'Seattle'],
+  mx: ['Cidade do México', 'Monterrey', 'Guadalajara'],
+  jp: ['Tóquio', 'Osaka', 'Yokohama'],
+  kr: ['Seul', 'Busan', 'Incheon'],
+  ng: ['Lagos', 'Abuja', 'Kano'],
+  sn: ['Dacar', 'Touba', 'Thiès'],
+  ma: ['Casablanca', 'Rabat', 'Marraquexe'],
+  eg: ['Cairo', 'Alexandria', 'Gizé'],
+};
+export const POOL_BY_COUNTRY = {
+  br: 'br', ar: 'hisp', uy: 'hisp', co: 'hisp', mx: 'hisp', es: 'hisp',
+  en: 'en', us: 'en', it: 'it', de: 'de', nl: 'de', be: 'de', fr: 'fr',
+  pt: 'br', hr: 'hisp', rs: 'hisp', jp: 'en', kr: 'en', ng: 'en', sn: 'fr', ma: 'fr', eg: 'en',
+};
+export const CAREER_POSITIONS = [
+  { id: 'GOL', name: 'Goleiro', abbr: 'GOL', color: 'pos-G', icon: '🧤', desc: 'Defende a meta. Depende do atributo Goleiro.', w: { GOL: 0.62, DEF: 0.12, PHY: 0.10, PAS: 0.10, COM: 0.06 }, main: 'GOL' },
+  { id: 'ZAG', name: 'Zagueiro', abbr: 'ZAG', color: 'pos-D', icon: '🛡️', desc: 'Rocha da defesa: marcação e jogo aéreo.', w: { DEF: 0.42, PHY: 0.26, PAS: 0.12, PAC: 0.10, DRI: 0.04, SHO: 0.04, COM: 0.02 }, main: 'DEF' },
+  { id: 'LAT', name: 'Lateral', abbr: 'LAT', color: 'pos-D', icon: '🏃', desc: 'Sobe e desce o flanco o jogo inteiro.', w: { PAC: 0.30, DEF: 0.28, PAS: 0.18, PHY: 0.12, DRI: 0.06, SHO: 0.04, COM: 0.02 }, main: 'PAC' },
+  { id: 'VOL', name: 'Volante', abbr: 'VOL', color: 'pos-D', icon: '⚔️', desc: 'Cão de guarda do meio: rouba e distribui.', w: { DEF: 0.28, PAS: 0.24, PHY: 0.20, PAC: 0.12, DRI: 0.08, SHO: 0.05, COM: 0.03 }, main: 'DEF' },
+  { id: 'MC', name: 'Meia Central', abbr: 'MC', color: 'pos-M', icon: '🧭', desc: 'Dita o ritmo do jogo com passes.', w: { PAS: 0.30, DRI: 0.18, VIS: 0.14, PAC: 0.14, DEF: 0.12, PHY: 0.08, SHO: 0.04 }, main: 'PAS' },
+  { id: 'MEI', name: 'Meia Ofensivo', abbr: 'MEI', color: 'pos-M', icon: '🎩', desc: 'Cria jogadas entre as linhas e finaliza.', w: { PAS: 0.28, DRI: 0.22, SHO: 0.15, VIS: 0.14, PAC: 0.12, PHY: 0.05, DEF: 0.04 }, main: 'PAS' },
+  { id: 'PON', name: 'Ponta', abbr: 'PON', color: 'pos-A', icon: '⚡', desc: 'Velocidade e 1x1 na beirada do campo.', w: { PAC: 0.28, DRI: 0.25, SHO: 0.20, PAS: 0.14, VIS: 0.06, PHY: 0.05, DEF: 0.02 }, main: 'PAC' },
+  { id: 'ATA', name: 'Atacante', abbr: 'ATA', color: 'pos-A', icon: '🎯', desc: 'A referência do gol: finalização e presença.', w: { SHO: 0.32, PAC: 0.20, DRI: 0.18, PAS: 0.12, PHY: 0.12, VIS: 0.04, DEF: 0.02 }, main: 'SHO' },
+];
+export const SKILLS = {
+  PAC: { label: 'Ritmo', icon: '💨', group: 'fis' },
+  SHO: { label: 'Chute', icon: '🎯', group: 'tec' },
+  PAS: { label: 'Passe', icon: '🎳', group: 'tec' },
+  DRI: { label: 'Drible', icon: '🌀', group: 'tec' },
+  DEF: { label: 'Defesa', icon: '🛡️', group: 'tec' },
+  PHY: { label: 'Físico', icon: '💪', group: 'fis' },
+  VIS: { label: 'Visão', icon: '👁️', group: 'men' },
+  LID: { label: 'Liderança', icon: '🗣️', group: 'men' },
+  COM: { label: 'Compostura', icon: '🧘', group: 'men' },
+  DET: { label: 'Determinação', icon: '🔥', group: 'men' },
+  GOL: { label: 'Goleiro', icon: '🧤', group: 'tec' },
+};
+export const TECH_SKILLS = ['SHO', 'PAS', 'DRI', 'DEF'];
+export const PHYS_SKILLS = ['PAC', 'PHY'];
+export const MENTAL_SKILLS = ['VIS', 'LID', 'COM', 'DET'];
+export const TRAITS = [
+  { id: 'prof', name: 'Profissional', icon: '📋', desc: 'Rotina impecável: menos escândalos, melhor recuperação.' },
+  { id: 'amb', name: 'Ambicioso', icon: '🚀', desc: 'Evolui mais rápido, mas exige clubes grandes para ser feliz.' },
+  { id: 'hum', name: 'Humilde', icon: '🙏', desc: 'Felicidade estável mesmo quando as coisas não andam.' },
+  { id: 'fog', name: 'Fogoso', icon: '🌶️', desc: 'Mais raça em campo… e mais cartões.' },
+  { id: 'res', name: 'Resiliente', icon: '🛠️', desc: 'Volta mais rápido de lesões e de fases ruins.' },
+  { id: 'car', name: 'Carismático', icon: '⭐', desc: 'Ganha fama e seguidores mais rápido.' },
+  { id: 'est', name: 'Estudioso', icon: '📚', desc: 'Inteligência alta; escola vai bem.' },
+  { id: 'fes', name: 'Festeiro', icon: '🎉', desc: 'Vive a vida: mais fama, mais risco de escândalo.' },
+  { id: 'sor', name: 'Sortudo', icon: '🍀', desc: 'Eventos bons acontecem com mais frequência.' },
+  { id: 'cab', name: 'Cabeça Fria', icon: '🧠', desc: 'Compostura altíssima nos momentos decisivos.' },
+];
+export const TRAININGS = [
+  { id: 'sho', name: 'Finalização', icon: '🎯', skills: ['SHO', 'PAS'], desc: 'Arremates, chutes de fora e batidas de pênalti.' },
+  { id: 'dri', name: 'Drible', icon: '🌀', skills: ['DRI', 'PAC'], desc: 'Fintas, condução de bola e 1x1.' },
+  { id: 'pas', name: 'Passe', icon: '🎳', skills: ['PAS', 'VIS'], desc: 'Distribuição curta e longa, visão de jogo.' },
+  { id: 'pac', name: 'Velocidade', icon: '💨', skills: ['PAC', 'PHY'], desc: 'Sprints e explosão muscular.' },
+  { id: 'phy', name: 'Físico', icon: '💪', skills: ['PHY', 'DEF'], desc: 'Força, resistência e jogadas de contato.' },
+  { id: 'def', name: 'Defesa', icon: '🛡️', skills: ['DEF', 'PHY'], desc: 'Marcação, desarme e posicionamento defensivo.' },
+  { id: 'men', name: 'Mental', icon: '🧠', skills: ['COM', 'DET', 'VIS'], desc: 'Foco, liderança e leitura de jogo.' },
+  { id: 'gol', name: 'Goleiro', icon: '🧤', skills: ['GOL'], desc: 'Defesas, saídas e jogo com os pés (só goleiros).' },
+  { id: 'desc', name: 'Descanso', icon: '😴', skills: [], desc: 'Recupera energia e forma, sem risco de lesão.' },
+];
+export const AWARDS = [
+  { id: 'artilheiro', name: 'Artilheiro da Liga', icon: '⚽' },
+  { id: 'melhor_jogador', name: 'Melhor Jogador da Liga', icon: '🏅' },
+  { id: 'revelacao', name: 'Revelação do Ano', icon: '🌟' },
+  { id: 'bola_ouro', name: 'Bola de Ouro', icon: '🏆' },
+  { id: 'chuteira', name: 'Chuteira de Ouro', icon: '👟' },
+  { id: 'copa_campeao', name: 'Campeão da Copa', icon: '🏆' },
+  { id: 'continental', name: 'Campeão Continental', icon: '🌎' },
+  { id: 'mundial', name: 'Campeão Mundial', icon: '🌍' },
+  { id: 'melhor_nt', name: 'Destaque da Seleção', icon: '🇧🇷' },
+];
+export const BRANDS = [
+  { id: 'nike', name: 'Nike', icon: '👟', tier: 3 },
+  { id: 'adidas', name: 'Adidas', icon: '👟', tier: 3 },
+  { id: 'puma', name: 'Puma', icon: '👟', tier: 2 },
+  { id: 'energia', name: 'Energia+', icon: '⚡', tier: 1 },
+  { id: 'banco', name: 'BancoPrime', icon: '🏦', tier: 2 },
+  { id: 'app', name: 'SocNet', icon: '📱', tier: 1 },
+  { id: 'carro', name: 'Veloz Motors', icon: '🚗', tier: 2 },
+  { id: 'refri', name: 'SodaPop', icon: '🥤', tier: 1 },
+  { id: 'game', name: 'PlayMax', icon: '🎮', tier: 2 },
+  { id: 'relogio', name: 'LuxTime', icon: '⌚', tier: 3 },
+];
+export const LIFESTYLES = [
+  { id: 0, name: 'Humilde', icon: '🍚', cost: 0, happ: 0, fame: 0, desc: 'Vida simples, sem luxos. Sem custo fixo.' },
+  { id: 1, name: 'Confortável', icon: '🏠', cost: 8000, happ: 8, fame: 1, desc: 'Apartamento bom, carro popular, restaurantes.' },
+  { id: 2, name: 'Luxo', icon: '💎', cost: 60000, happ: 16, fame: 3, desc: 'Mansão, carros importados, viagens.' },
+  { id: 3, name: 'Mega Estrela', icon: '👑', cost: 300000, happ: 24, fame: 6, desc: 'Jatinho, iate e festas épicas.' },
+];
+export const PURCHASES = [
+  { id: 'carro_simples', name: 'Carro popular', icon: '🚗', price: 90000, happ: 5, fame: 0, needFame: 0 },
+  { id: 'carro_esportivo', name: 'Carro esportivo', icon: '🏎️', price: 700000, happ: 12, fame: 3, needFame: 20 },
+  { id: 'casa_apartamento', name: 'Apartamento próprio', icon: '🏢', price: 900000, happ: 10, fame: 0, needFame: 0 },
+  { id: 'casa_mansao', name: 'Mansão', icon: '🏰', price: 6000000, happ: 18, fame: 6, needFame: 40 },
+  { id: 'barco', name: 'Iate', icon: '⛵', price: 3500000, happ: 14, fame: 8, needFame: 50 },
+  { id: 'jet', name: 'Jatinho', icon: '✈️', price: 12000000, happ: 16, fame: 10, needFame: 60 },
+  { id: 'relogio', name: 'Relógio de luxo', icon: '⌚', price: 250000, happ: 6, fame: 2, needFame: 25 },
+  { id: 'casa_pais', name: 'Casa para seus pais', icon: '🏡', price: 800000, happ: 12, fame: 2, needFame: 10 },
+];
+export const NARRATIVE = {
+  shot: ['disparou de fora da área!', 'arriscou de longe, por cima do travessão!', 'bateu cruzado, tirando tinta da trave!', 'finalizou com perigo, o goleiro espalmou!'],
+  chance: ['recebeu na entrada da área e limpou o marcador!', 'tabelou e invadiu a área, quase saiu o gol!', 'dominou no peito e girou em cima da marcação!', 'abriu espaço com um corte seco, a zaga cortou no susto!'],
+  pass: ['distribuiu um lançamento perfeito para o ataque!', 'achou o companheiro em profundidade!', 'tocou de primeira e inverteu o jogo!', 'fez uma enfiada sensacional!'],
+  dribble: ['passou pelo marcador com um drible desconcertante!', 'aplicou um elástico e foi para cima!', 'deu um corte seco e deixou o zagueiro sentado!', 'usou o corpo e protegeu a bola com maestria!'],
+  tackle: ['roubou a bola com um carrinho perfeito!', 'se antecipou e desarmou com precisão!', 'fechou o espaço e recuperou a posse!', 'ganhou a dividida no chão!'],
+  card: ['cometeu falta dura e levou cartão amarelo.', 'descarregou o braço e o árbitro marcou falta.', 'fez uma entrada forte e o juiz advertiu.'],
+  save: ['voou no ângulo e salvou o time!', 'fez uma defesaça à queima-roupa!', 'saiu do gol e cortou o cruzamento no susto!', 'espalmou para escanteio uma bomba!'],
+  goal: ['GOL! GOL! GOL! Que pintura de jogada!', 'GOL! Na rede! Explosão no estádio!', 'GOL! O craque fez a torcida explodir!', 'GOL! GOLAÇO! Não deu chances para o goleiro!'],
+  assist: ['cruzou na medida e o companheiro só escorou: GOL!', 'deixou o atacante na cara do gol: GOL!', 'enfiou a bola e o companheiro bateu: GOL!'],
+  own: ['chutou de qualquer jeito e o goleiro fez a defesa.', 'tentou o cruzamento e a zaga cortou.', 'bateu fraco, sem perigo.', 'a jogada não saiu como planejado.'],
+};
+export const positionById = (id) => CAREER_POSITIONS.find((p) => p.id === id) || CAREER_POSITIONS[CAREER_POSITIONS.length - 1];
+export const countryById = (id) => COUNTRIES.find((c) => c.id === id);
+
+// Tier de carreira (1-6) por liga do mundo real — usado no modo jogador
+export const LEAGUE_TIER = {
+  br1: 5, br2: 4, br3: 3, br4: 2,
+  ar1: 4,
+  en1: 6, es1: 6, it1: 6, de1: 5, fr1: 5, pt1: 4, nl1: 4,
+};
+
+// Textos adicionais do modo carreira (fundidos ao i18n principal)
+Object.assign(I18N.pt, {
+  training: 'Treino', play: 'Jogar', career: 'Carreira', market: 'Mercado',
+  family: 'Família', money: 'Dinheiro', fame: 'Fama', more: 'Mais', inbox: 'Mensagens',
+  settings: 'Configurações', saves: 'Saves', credits: 'Créditos', howto: 'Como Jogar',
+  newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save',
+  advance: 'Avançar mês', next: 'Próximo', home: 'Início',
+});
+Object.assign(I18N.en, {
+  training: 'Training', play: 'Play', career: 'Career', market: 'Market',
+  family: 'Family', money: 'Money', fame: 'Fame', more: 'More', inbox: 'Messages',
+  settings: 'Settings', saves: 'Saves', credits: 'Credits', howto: 'How to Play',
+  newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save',
+  advance: 'Advance month', next: 'Next', home: 'Home',
+});

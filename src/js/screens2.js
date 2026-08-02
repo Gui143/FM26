@@ -1,951 +1,855 @@
 // ============================================================
-// screens2.js — Calendário, tabelas, copas, mercado, finanças,
-// clube, base, treinador, estatísticas, ranking, amistosos,
-// campeonato personalizado, editor, saves, config, créditos, inbox
+// screens2.js — Treino, partidas, carreira, mercado, família,
+// dinheiro, fama, mensagens, hall da fama, config, saves, créditos
+// Vida de Craque 26 — BitLife × FIFA
 // ============================================================
-import { App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num, crest, avatar, ovrBadge, posBadge, clubCell, autosave, applySettingsToBody, renderRoute, tone, compLogo, awardIcon } from './ui.js';
+import {
+  App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num,
+  avatarEl, avatar, crest, ovrBadge, posBadge, meter, lifeMeter, pill, autosave, t,
+  renderRoute, applySettingsToBody, tone, goalSound,
+} from './ui.js';
 import * as G from './game.js';
-import { LEAGUES, COUNTRIES, POSITIONS, POS_ORDER } from './data.js';
+import {
+  COUNTRIES, countryById, positionById,
+  TRAININGS, SKILLS, LIFESTYLES, PURCHASES, AWARDS,
+} from './data.js';
 import { downloadFile, readUploadedFile, compressText, decompressText } from './saveio.js';
-import { resizeImage, advanceWeek, playBarHTML, playBarMount, countryName, leagueName, refDateInfo } from './screens.js';
-import { clamp } from './util.js';
+import { advanceMonthUI, openPendingModal } from './screens.js';
 
-const S = () => {
-  const s = App.state;
-  if (s && s.settings) {
-    const isInfinite = s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true';
-    if (isInfinite) {
-      const val = (s.settings.infiniteMoneyValue !== undefined) ? Number(s.settings.infiniteMoneyValue) : 999999999;
-      if (s.finances.balance !== val) {
-        s.finances.balance = val;
-      }
-    }
-  }
-  return s;
-};
+const S = () => App.state;
+const fmt = (v) => Number(v).toLocaleString('pt-BR');
 
 // ============================================================
-// CALENDÁRIO — mês, temporada, janelas e detalhes do jogo
+// TREINO
 // ============================================================
-let calWeek = null;
-let calMonth = 1;
-let calView = 'month'; // 'month' | 'season'
-let calComp = 'all';
-
-// Janelas de transferência em semanas (espelho de transferWindowOpen)
-const CAL_WINDOWS = [[1, 6], [20, 24]];
-
-function calFixtureById(s, key) {
-  const [compId, fixtureId] = key.split('|');
-  const comp = s.competitions.find((c) => c.id === compId);
-  const fixture = comp?.fixtures.find((f) => f.id === fixtureId);
-  return comp && fixture ? { comp, fixture } : null;
-}
-
-function openFixtureModal(s, key) {
-  const found = calFixtureById(s, key);
-  if (!found) return;
-  const { comp, fixture } = found;
-  const h = s.db.clubs[fixture.home], a = s.db.clubs[fixture.away];
-  const date = refDateInfo(fixture.week, s.year);
-  const isUser = fixture.home === s.clubId || fixture.away === s.clubId;
-  const canPlay = isUser && !fixture.played && fixture.week === s.week;
-  const winner = fixture.played ? (fixture.gh > fixture.ga ? fixture.home : fixture.ga > fixture.gh ? fixture.away : (fixture.pen?.winner === 'h' ? fixture.home : fixture.pen?.winner === 'a' ? fixture.away : null)) : null;
-  const userResult = fixture.played && isUser ? (winner === s.clubId ? 'Vitória' : winner ? 'Derrota' : 'Empate') : null;
-  const m = openModal(`
-    <div class="modal-title">${icon('trophy')} ${esc(comp.name)}</div>
-    <div class="tiny muted" style="margin:-6px 0 12px">${esc(comp.roundNames?.[fixture.round - 1] || `Rodada ${fixture.round || 1}`)} · Semana ${fixture.week} · ${esc(date.weekday)} ${esc(date.day)} de ${esc(date.month.toLowerCase())}</div>
-    <div class="fx-modal">
-      <div class="fx-team ${winner === fixture.home ? 'winner' : ''}">${crest(h, 54)}<strong>${esc(h.short)}</strong><small>${fixture.home === s.clubId ? 'Você' : 'Mandante'}</small></div>
-      <div class="fx-score">${fixture.played ? `${fixture.gh} × ${fixture.ga}` : '—'}${fixture.pen ? `<small>pên ${fixture.pen.h}-${fixture.pen.a}</small>` : ''}</div>
-      <div class="fx-team ${winner === fixture.away ? 'winner' : ''}">${crest(a, 54)}<strong>${esc(a.short)}</strong><small>${fixture.away === s.clubId ? 'Você' : 'Visitante'}</small></div>
-    </div>
-    <div class="tiny muted" style="text-align:center;margin:10px 0 4px">${fixture.neutral ? '🏟️ Campo neutro' : `🏟️ ${esc(h.stadium)}`} · ${esc(h.city || '')}${userResult ? ` · <b class="fx-res ${userResult === 'Vitória' ? 'win' : userResult === 'Derrota' ? 'loss' : ''}">${userResult}</b>` : ''}${fixture.leg ? ` · Jogo ${fixture.leg}${fixture.leg === 2 ? ' (decisão)' : ' (ida)'}` : ''}</div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
-      ${canPlay ? `<button class="btn primary" data-play-now>${icon('play')} Jogar agora</button>` : ''}
-      ${!fixture.played && !canPlay ? `<span class="pill">${fixture.week > s.week ? `Agendado — faltam ${fixture.week - s.week} sem.` : 'Aguardando simulação'}</span>` : ''}
-      <button class="btn ghost" data-close-x>Fechar</button>
-    </div>`);
-  m.querySelector('[data-play-now]')?.addEventListener('click', () => { closeModal(); go('match'); });
-  m.querySelector('[data-close-x]').onclick = closeModal;
-}
-
-export const calendarScreen = {
+export const trainingScreen = {
   html() {
     const s = S();
-    const next = G.nextUserFixture(s);
-    const club = s.db.clubs[s.clubId];
-    const monthDate = new Date(Date.UTC(s.year, calMonth, 1));
-    const daysInMonth = new Date(Date.UTC(s.year, calMonth + 1, 0)).getUTCDate();
-    const firstDay = monthDate.getUTCDay();
-    const base = Date.UTC(s.year, 0, 2);
-    const weekStartDay = (wk) => new Date(base + Math.max(0, wk - 1) * 7 * 86400000);
-    const compFilter = (comp) => calComp === 'all' || comp.id === calComp;
-    const events = {};
-    const seasonFixtures = [];
-    for (const comp of s.competitions) {
-      if (!compFilter(comp)) continue;
-      for (const fixture of comp.fixtures) {
-        if (fixture.home !== s.clubId && fixture.away !== s.clubId) continue;
-        seasonFixtures.push({ comp, fixture });
-        const date = weekStartDay(fixture.week);
-        if (date.getUTCFullYear() !== s.year || date.getUTCMonth() !== calMonth) continue;
-        const day = date.getUTCDate();
-        (events[day] = events[day] || []).push({ comp, fixture });
-      }
-    }
-    seasonFixtures.sort((a, b) => a.fixture.week - b.fixture.week || (a.fixture.round || 0) - (b.fixture.round || 0));
-    // O mês inteiro cai dentro de alguma janela aberta?
-    const inWindow = (dayDate) => CAL_WINDOWS.some(([w1, w2]) => {
-      const d1 = weekStartDay(w1), d2 = new Date(weekStartDay(w2).getTime() + 6 * 86400000);
-      return dayDate >= d1 && dayDate <= d2;
-    });
-    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const weekdays = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    const cells = [];
-    for (let i = 0; i < firstDay; i++) cells.push('<div class="ref-calendar-day is-empty"></div>');
-    for (let day = 1; day <= daysInMonth; day++) {
-      const entries = events[day] || [];
-      const dayDate = new Date(Date.UTC(s.year, calMonth, day));
-      const marketOpen = inWindow(dayDate);
-      cells.push(`<div class="ref-calendar-day ${entries.length ? 'has-event' : ''} ${marketOpen ? 'open-window' : ''}"><b class="ref-calendar-number">${day}${marketOpen ? '<i class="win-dot" title="Janela de transferências aberta"></i>' : ''}</b>${entries.map(({ comp, fixture }) => {
-        const opponent = s.db.clubs[fixture.home === s.clubId ? fixture.away : fixture.home];
-        return `<button class="ref-calendar-event" data-fx="${comp.id}|${fixture.id}"><strong>${fixture.home === s.clubId ? 'CAS' : 'FOR'} · ${esc(opponent.short)}</strong><small>${icon('trophy')} ${fixture.played ? `${fixture.gh} × ${fixture.ga}` : `18:00 · ${esc(comp.short || comp.name)}`}</small></button>`;
-      }).join('')}</div>`);
-    }
-    while (cells.length % 7) cells.push('<div class="ref-calendar-day is-empty"></div>');
-    const nextDate = next ? refDateInfo(next.fixture.week, s.year) : null;
-    const nextHome = next ? s.db.clubs[next.fixture.home] : null;
-    const nextAway = next ? s.db.clubs[next.fixture.away] : null;
-    const nextIsHome = next?.fixture.home === s.clubId;
-    // Estado real das janelas
-    const windowOpen = G.transferWindowOpen(s);
-    const nextWindowWeek = s.week < CAL_WINDOWS[0][0] ? CAL_WINDOWS[0][0] : (s.week > CAL_WINDOWS[0][1] && s.week < CAL_WINDOWS[1][0]) ? CAL_WINDOWS[1][0] : (s.week > CAL_WINDOWS[1][1] ? CAL_WINDOWS[0][0] : null);
-    const windowState = windowOpen ? 'JANELA ABERTA' : 'JANELA FECHADA';
-    const windowLabel = (wk, end) => { const d = refDateInfo(wk, s.year); return end ? `${d.short.toLowerCase()}` : d.short.toLowerCase(); };
-    const myComps = s.competitions.filter((c) => c.teams.includes(s.clubId) || c.custom || c.friendly);
-
+    const p = s.player;
+    const tr = s.training;
+    const isGK = p.position === 'GOL';
+    const list = TRAININGS.filter((x) => x.id !== 'gol' || isGK);
     return `
-    <div class="ref-calendar">
-      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('calendar')} CALENDÁRIO</span><span></span></header>
-      <section class="ref-calendar-hero">
-        <div class="ref-calendar-brand">${crest(club, 76)}<div><span class="ref-eyebrow">TEMPORADA ${s.year}</span><h1>Calendário.</h1><p>Jogos, mandos, competições e períodos de recuperação.</p></div></div>
-        <div class="ref-origin">${compLogo('br1', 40)}<span><b>ORIGEM</b><strong>Tabela oficial</strong></span></div>
-      </section>
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('whistle')} TREINO</h1>
+      <p class="muted" style="margin:4px 0 14px">${G.currentDate(s)} • ${tr.done ? 'Treino de hoje já realizado.' : 'Escolha o foco e a intensidade.'}</p>
+      ${!['base', 'pro', 'vet'].includes(p.phase) ? `<div class="banner info">🧒 Você ainda não tem clube, mas treinar na escolinha/na rua desenvolve suas habilidades.</div>` : ''}
+      ${p.injured > 0 ? `<div class="banner warn">🤕 Lesionado! Treinos de recuperação são os únicos permitidos — use <b>Descanso</b>.</div>` : ''}
 
-      <section class="ref-card ref-calendar-next ref-action" data-go-match tabindex="0">
-        <div><span class="ref-section-label">PRÓXIMO JOGO</span><h2>${nextDate ? `${nextDate.day} de ${nextDate.month.toLowerCase()} · 18:00` : 'Agenda livre'}</h2><p>${next ? `${icon('trophy')} ${esc(next.comp.name)} · ${next.fixture.round || 1}/${next.comp.fixtures.length || 1}` : 'Nenhum compromisso pendente.'}</p></div>
-        ${next ? `<div class="ref-calendar-matchup"><span>${crest(nextHome, 50)}<b>${esc(nextHome.short)}</b></span><strong>×</strong><span><b>${esc(nextAway.short)}</b>${crest(nextAway, 50)}</span></div><div class="ref-calendar-location"><b>${nextIsHome ? 'CASA' : 'FORA'}</b><strong>${esc(nextIsHome ? club.stadium : nextHome.stadium)}</strong></div>` : ''}
-      </section>
-
-      <section class="ref-calendar-filters">
-        <div class="ref-calendar-tabs">
-          <button class="${calView === 'month' ? 'active' : ''}" data-view="month">Mês</button>
-          <button class="${calView === 'season' ? 'active' : ''}" data-view="season">Temporada</button>
+      <div class="card" style="margin-top:6px">
+        <div class="h-sec">Foco do treino</div>
+        <div class="chips" id="tr-focus">
+          ${list.map((trd) => `<button class="chip ${tr.focus === trd.id ? 'active' : ''}" data-f="${trd.id}" title="${esc(trd.desc)}">${trd.icon} ${esc(trd.name)}</button>`).join('')}
         </div>
-        <span>${icon('sliders')}</span>
-        <select data-calcomp>
-          <option value="all" ${calComp === 'all' ? 'selected' : ''}>Todas as competições</option>
-          ${myComps.map((c) => `<option value="${c.id}" ${calComp === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
-        </select>
-      </section>
+        <div class="tiny muted" id="tr-desc">${esc((TRAININGS.find((x) => x.id === tr.focus) || TRAININGS[0]).desc)}</div>
+      </div>
 
-      <section class="ref-card ref-transfer-windows">
-        <div class="ref-card-head"><span class="ref-section-label">${icon('cart')} MERCADO DE TRANSFERÊNCIAS</span><h2>Janelas da temporada</h2><span class="ref-window-state ${windowOpen ? 'open' : ''}">${windowState}</span></div>
-        <div class="ref-window-grid">
-          <div><b>1ª JANELA</b><strong>${windowLabel(CAL_WINDOWS[0][0])} <small>até</small> ${windowLabel(CAL_WINDOWS[0][1])}</strong><em>${s.week > CAL_WINDOWS[0][1] ? 'ENCERRADA' : s.week >= CAL_WINDOWS[0][0] ? 'ABERTA AGORA' : `EM ${CAL_WINDOWS[0][0] - s.week} SEM.`}</em></div>
-          <div><b>2ª JANELA</b><strong>${windowLabel(CAL_WINDOWS[1][0])} <small>até</small> ${windowLabel(CAL_WINDOWS[1][1])}</strong><em>${s.week > CAL_WINDOWS[1][1] ? 'ENCERRADA' : s.week >= CAL_WINDOWS[1][0] ? 'ABERTA AGORA' : (nextWindowWeek === CAL_WINDOWS[1][0] ? `EM ${CAL_WINDOWS[1][0] - s.week} SEM.` : 'FUTURA')}</em></div>
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">Intensidade</div>
+        <div class="seg" id="tr-int">
+          <button class="chip ${tr.intensity === 0 ? 'active' : ''}" data-i="0">🌤️ Leve</button>
+          <button class="chip ${tr.intensity === 1 ? 'active' : ''}" data-i="1">⚡ Normal</button>
+          <button class="chip ${tr.intensity === 2 ? 'active' : ''}" data-i="2">🔥 Pesado</button>
         </div>
-        <div class="ref-window-foot"><span><i class="win-dot"></i> Dias com selo laranja indicam mercado aberto no calendário.</span><span>Propostas só são aceitas com a janela <b>aberta</b>.</span></div>
-      </section>
+        <div class="tiny muted" style="margin-top:6px">Pesado evolui mais rápido, mas gasta energia e aumenta o risco de lesão.</div>
+        <button class="btn primary big block" id="tr-go" style="margin-top:12px" ${tr.done ? 'disabled' : ''}>${icon('whistle')} ${tr.done ? 'Treino já feito este mês' : 'Treinar agora'}</button>
+      </div>
 
-      ${calView === 'month' ? `
-      <section class="ref-card ref-month-card">
-        <div class="ref-month-head"><button class="ref-month-button" data-month="-1">${icon('back')}</button><h2>${monthNames[calMonth]} <b>${s.year}</b></h2><button class="ref-month-button" data-month="1">${icon('back')}</button></div>
-        <div class="ref-calendar-grid"><div class="ref-calendar-weekdays">${weekdays.map((d) => `<b>${d}</b>`).join('')}</div><div class="ref-calendar-cells">${cells.join('')}</div></div>
-      </section>` : `
-      <section class="ref-card ref-season-card">
-        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} TEMPORADA COMPLETA</span><h2>Todos os jogos <small>${seasonFixtures.length} compromissos</small></h2></div>
-        <div class="ref-season-list">
-          ${seasonFixtures.map(({ comp, fixture }) => {
-            const d = refDateInfo(fixture.week, s.year);
-            const opp = s.db.clubs[fixture.home === s.clubId ? fixture.away : fixture.home];
-            const isHome = fixture.home === s.clubId;
-            const played = fixture.played;
-            const gf = isHome ? fixture.gh : fixture.ga, ga = isHome ? fixture.ga : fixture.gh;
-            const resCls = played ? (gf > ga ? 'win' : gf < ga ? 'loss' : 'draw') : (fixture.week === s.week ? 'now' : '');
-            return `<button class="ref-season-row ${resCls}" data-fx="${comp.id}|${fixture.id}">
-              <b class="rs-date">${d.day} ${d.month.slice(0, 3)}</b>
-              <span class="rs-opp">${crest(opp, 30)}<span><strong>${esc(opp.name)}</strong><small>${isHome ? 'Casa' : 'Fora'} · ${esc(comp.short || comp.name)}${fixture.leg ? ` · jogo ${fixture.leg}` : ''}</small></span></span>
-              <em class="rs-res">${played ? `${gf} × ${ga}` : (fixture.week === s.week ? 'HOJE' : `S${fixture.week}`)}</em>
-            </button>`;
-          }).join('') || '<div class="ref-empty-small">Nenhum compromisso nesta competição.</div>'}
-        </div>
-      </section>`}
-      <div class="ref-calendar-action">${playBarHTML()}</div>
-    </div>`;
-  },
-  mount(el) {
-    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
-    el.querySelectorAll('[data-month]').forEach((b) => b.onclick = () => { calMonth = Math.max(0, Math.min(11, calMonth + Number(b.dataset.month))); renderRoute(); });
-    el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { calView = b.dataset.view; renderRoute(); });
-    el.querySelector('[data-calcomp]')?.addEventListener('change', (e) => { calComp = e.target.value; renderRoute(); });
-    el.querySelectorAll('[data-fx]').forEach((b) => b.onclick = () => { const s = S(); openFixtureModal(s, b.dataset.fx); });
-    el.querySelector('[data-go-match]')?.addEventListener('click', () => go('match'));
-    el.querySelector('[data-go-match]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go('match'); });
-    playBarMount(el);
-  },
-};
+      <div id="tr-result">${tr.lastResult ? resultCardHTML(tr.lastResult) : ''}</div>
 
-// ============================================================
-// TABELAS (todas as ligas)
-// ============================================================
-export const tableScreen = {
-  html(params) {
-    const s = S();
-    const myLeagueId = s.db.clubs[s.clubId].leagueId;
-    const showId = params[0] || myLeagueId;
-    const comp = s.competitions.find((c) => c.type === 'league' && c.id.includes(`L_${showId}_`));
-    const league = LEAGUES.find((l) => l.id === showId);
-    const table = comp ? G.leagueTable(s, comp) : [];
-    const rel = league?.relegation || 0;
-    return `
-    <div class="stack">
-      <div class="card"><div class="seg" style="flex-wrap:wrap">${LEAGUES.map((l) => `<button class="chip ${showId === l.id ? 'active' : ''}" data-l="${l.id}">${esc(l.name)}</button>`).join('')}</div></div>
-      <div class="card">
-        <div class="h-sec"><span style="display:inline-flex;align-items:center;gap:8px">${compLogo(showId, 30)} ${esc(league?.name || '')}</span> — ${s.year}</div>
-        <div class="table-wrap"><table class="data">
-          <thead><tr><th>#</th><th>Clube</th><th class="num">P</th><th class="num">J</th><th class="num">V</th><th class="num">E</th><th class="num">D</th><th class="num">GP</th><th class="num">GC</th><th class="num">SG</th></tr></thead>
-          <tbody>${table.map((r, i) => `<tr class="${r.clubId === s.clubId ? 'me' : i < 4 ? 'promo' : rel && i >= table.length - rel ? 'releg' : ''}" data-club="${r.clubId}">
-            <td>${i + 1}</td><td>${clubCell(s, r.clubId)}</td><td class="num"><b>${r.pts}</b></td><td class="num">${r.played}</td><td class="num">${r.w}</td><td class="num">${r.d}</td><td class="num">${r.l}</td><td class="num">${r.gf}</td><td class="num">${r.ga}</td><td class="num">${r.gd}</td>
-          </tr>`).join('')}</tbody></table></div>
-        <div class="tiny muted" style="margin-top:10px"><span class="pill green"> continental</span> ${rel ? `<span class="pill red"> rebaixamento</span>` : ''}</div>
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">📋 Últimos treinos</div>
+        ${tr.history.length ? tr.history.slice(0, 8).map((h) => `
+          <div class="hist-row"><span class="tiny muted">${G.fmtMonth(h.month)}/${h.year}</span><b>${(TRAININGS.find((x) => x.id === h.focus) || {}).icon || ''} ${(TRAININGS.find((x) => x.id === h.focus) || {}).name || h.focus}</b> <span class="tiny">${esc(h.gains)}</span></div>`).join('') : '<div class="muted">Nenhum treino registrado ainda.</div>'}
       </div>
     </div>`;
   },
   mount(el) {
-    el.querySelectorAll('[data-l]').forEach((b) => b.onclick = () => go(`table/${b.dataset.l}`));
+    const s = S();
+    const tr = s.training;
+    el.querySelectorAll('#tr-focus [data-f]').forEach((b) => b.onclick = () => { tr.focus = b.dataset.f; renderRoute(); });
+    el.querySelectorAll('#tr-int [data-i]').forEach((b) => b.onclick = () => { tr.intensity = Number(b.dataset.i); renderRoute(); });
+    el.querySelector('#tr-go').onclick = () => {
+      const focus = tr.focus || 'sho';
+      const r = G.doTraining(s, focus, tr.intensity);
+      if (!r.ok) { toast(r.msg || 'Erro.', 'error'); return; }
+      tone(660, 0.12, 'triangle');
+      autosave();
+      s.training.lastResult = r;
+      renderRoute();
+    };
   },
 };
 
+function resultCardHTML(r) {
+  const gains = Object.entries(r.gains).filter(([, v]) => v).map(([k, v]) => `${SKILLS[k]?.label || k}: ${v > 0 ? '+' : ''}${v}`).join(' • ');
+  return `<div class="card result-card" style="margin-top:14px"><div class="h-sec">✅ TREINO CONCLUÍDO</div><div class="result-line">${esc(gains || 'Sem ganhos diretos este mês (a evolução é gradual).')}</div>${r.gains.injury ? `<div class="banner warn" style="margin-top:8px">🤕 Lesão no treino: ${r.gains.injury} mes(es) fora!</div>` : ''}</div>`;
+}
+
 // ============================================================
-// COPAS (brackets das competições do usuário)
+// PARTIDAS
 // ============================================================
-export const cupsScreen = {
-  html() {
+export const matchScreen = {
+  html(params) {
     const s = S();
-    const cups = s.competitions.filter((c) => c.type === 'cup' && (c.teams.includes(s.clubId) || c.custom));
-    const others = s.competitions.filter((c) => c.type === 'cup' && !c.teams.includes(s.clubId) && !c.custom && !c.friendly && !c.singleMatch);
-    const bracket = (comp) => {
-      const rounds = {};
-      comp.fixtures.forEach((f) => { (rounds[f.round] = rounds[f.round] || []).push(f); });
-      const rKeys = Object.keys(rounds).map(Number).sort((a, b) => a - b);
-      return rKeys.map((r) => `
-        <div class="bracket-round"><div class="br-title">${comp.roundNames?.[r - 1] || 'Fase ' + r}</div>
-        ${rounds[r].map((f) => `
-          <div class="tie">
-            <div>
-              <span class="${f.played && winnerOf(f) === f.home ? 'winner' : ''}">${clubCell(s, f.home)}</span>
-              <b style="margin:0 5px">×</b>
-              <span class="${f.played && winnerOf(f) === f.away ? 'winner' : ''}">${clubCell(s, f.away)}</span>
-            </div>
-            <div class="tscore">${f.played ? `${f.gh} × ${f.ga}${f.pen ? ` <span class="tiny muted">pên ${f.pen.h}-${f.pen.a}</span>` : ''}` : `<span class="pill">S${f.week}</span>`}</div>
-            ${f.leg ? `<div class="tiny muted" style="grid-column:1/-1">${f.leg === 1 ? 'Jogo de ida' : `Jogo de volta${aggLabel(comp, f)}`}</div>` : ''}
-          </div>`).join('')}
-        </div>`).join('');
-    };
-    function winnerOf(f) { return f.gh > f.ga ? f.home : f.ga > f.gh ? f.away : (f.pen?.winner === 'h' ? f.home : f.away); }
-    function aggLabel(comp, f) {
-      const tie = comp.fixtures.filter((x) => x.tieId === f.tieId);
-      const l1 = tie.find((x) => x.leg === 1), l2 = tie.find((x) => x.leg === 2);
-      if (!l1 || !l2 || !l1.played) return '';
-      const agg1 = l1.gh + (l2.played ? l2.ga : 0), agg2 = l1.ga + (l2.played ? l2.gh : 0);
-      return ` • agregado ${agg1}–${agg2}`;
+    if (params[0] === 'play' && params[1]) {
+      const fx = s.matches.find((f) => f.id === params[1]);
+      if (!fx) return '<div class="vc-screen"><p class="muted">Partida não encontrada.</p><button class="btn block" data-go="match">Voltar</button></div>';
+      return matchLiveHTML(s, fx);
     }
+    const upcoming = s.matches.filter((f) => !f.played);
+    const played = s.matches.filter((f) => f.played);
+    const club = G.myClub(s);
     return `
-    <div class="stack">
-      ${cups.length ? cups.map((comp) => `
-        <div class="card">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            ${icon('trophy')}<b style="font-size:1.05rem">${esc(comp.name)}</b>
-            ${comp.friendly ? '<span class="pill blue">amistoso</span>' : ''}${comp.custom ? '<span class="pill gold">personalizada</span>' : ''}
-            ${comp.status === 'finished' && comp.champion ? `<span class="pill gold" style="margin-left:auto">🏆 ${esc(s.db.clubs[comp.champion].short)}</span>` : `<span class="pill green" style="margin-left:auto">em andamento</span>`}
-          </div>
-          ${bracket(comp) || '<div class="tiny muted">Aguardando sorteio.</div>'}
-        </div>`).join('') : '<div class="card empty">Você não disputa copas nesta temporada.</div>'}
-      ${others.length ? `<div class="card"><div class="h-sec">Outras copas no mundo</div><div class="chips" style="flex-wrap:wrap">${others.map((c) => `<span class="pill">${esc(c.short)}${c.champion ? ` 🏆 ${esc(s.db.clubs[c.champion].short)}` : ''}</span>`).join('')}</div></div>` : ''}
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('play')} PARTIDAS</h1>
+      <p class="muted" style="margin:4px 0 14px">${G.currentDate(s)} • ${club ? esc(club.name) : 'Sem clube'} • ${upcoming.length} jogo(s) no mês</p>
+      ${s.player.injured > 0 ? `<div class="banner warn">🤕 Você está lesionado — não pode entrar em campo. Os jogos serão simulados no fim do mês.</div>` : ''}
+      ${s.pending ? `<button class="banner decision" data-open-pending>🎲 DECISÃO PENDENTE — ${esc(s.pending.title)} →</button>` : ''}
+      <div class="card" style="margin-top:6px">
+        <div class="h-sec">📅 Próximos jogos do mês</div>
+        ${upcoming.length === 0 ? '<div class="muted">Nenhum jogo este mês. Use o tempo para treinar forte!</div>' : ''}
+        ${upcoming.map((f) => matchRow(s, f)).join('')}
+      </div>
+      ${played.length ? `<div class="card" style="margin-top:14px"><div class="h-sec">✅ Disputados este mês</div>${played.map((f) => matchRow(s, f, true)).join('')}</div>` : ''}
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">⚽ Temporada ${s.calendar.year}</div>
+        <div class="grid cols-4">
+          <div class="kpi"><div class="v">${s.career.season.apps}</div><div class="l">Jogos</div></div>
+          <div class="kpi"><div class="v">${s.career.season.goals}</div><div class="l">Gols</div></div>
+          <div class="kpi"><div class="v">${s.career.season.assists}</div><div class="l">Assist.</div></div>
+          <div class="kpi"><div class="v">${s.career.season.apps ? (s.career.season.ratingSum / s.career.season.apps).toFixed(1).replace('.', ',') : '—'}</div><div class="l">Média</div></div>
+        </div>
+      </div>
+      <div style="margin-top:14px"><button class="btn primary big block" data-act="advance">${icon('refresh')} Avançar mês</button></div>
     </div>`;
   },
+  mount(el, params) {
+    const s = S();
+    el.querySelector('[data-open-pending]')?.addEventListener('click', () => openPendingModal(s));
+    el.querySelector('[data-go="match"]')?.addEventListener('click', () => go('match'));
+    el.querySelector('[data-act=advance]')?.addEventListener('click', () => advanceMonthUI('match'));
+    el.querySelectorAll('[data-play]').forEach((b) => b.onclick = () => {
+      if (s.player.injured > 0) { toast('Você está lesionado!', 'error'); return; }
+      go(`match/play/${b.dataset.play}`);
+    });
+    el.querySelectorAll('[data-quick]').forEach((b) => b.onclick = () => {
+      const r = G.quickSimMatch(s, b.dataset.quick);
+      autosave();
+      toast(r.ok ? `⚽ Simulado: ${r.fx.gh}×${r.fx.ga} (nota ${r.fx.rating})` : (r.msg || 'Erro.'), r.ok ? 'ok' : 'error');
+      renderRoute();
+    });
+    if (params[0] === 'play' && params[1]) mountLive(el, s, params[1]);
+  },
 };
 
+function matchRow(s, f, played = false) {
+  const opp = G.oppInfo(s, f);
+  const isNT = f.type === 'nt';
+  const club = G.myClub(s);
+  const score = f.played ? `<b class="fx-big">${f.gh} × ${f.ga}</b>` : 'VS';
+  const resLabel = f.result === 'W' ? 'Vitória' : f.result === 'L' ? 'Derrota' : f.result === 'D' ? 'Empate' : '';
+  return `
+  <div class="match-row ${played ? 'played' : ''}">
+    <div class="mr-teams">
+      <span class="mr-club">${club ? crest(club, 30) : ''} <b>${club ? esc(club.short) : 'Você'}</b></span>
+      <span class="mr-score">${score}</span>
+      <span class="mr-club">${isNT ? `${countryById(f.oppCountry)?.flag || ''} <b>${esc(f.oppName)}</b>` : `${crest((s.db.clubs || {})[f.oppId] || { name: f.oppName, short: f.oppName.slice(0, 3).toUpperCase(), colors: ['#2a2a33', '#16161b'] }, 30)} <b>${esc(f.oppName)}</b>`}</span>
+    </div>
+    <div class="mr-meta tiny muted">${esc(f.compName)} • ${f.home ? '🏟️ Casa' : '✈️ Fora'}</div>
+    ${!played ? `<div class="mr-actions"><button class="btn small primary" data-play="${f.id}">${icon('play')} Jogar</button><button class="btn small" data-quick="${f.id}">Simular</button></div>`
+    : `<div class="mr-actions"><span class="pill ${f.result === 'W' ? 'green' : f.result === 'L' ? 'red' : ''}">${resLabel}</span>${f.rating != null ? `<span class="pill gold">Nota ${f.rating}</span>` : ''}${f.goals ? `<span class="pill">${f.goals}⚽</span>` : ''}${f.assists ? `<span class="pill">${f.assists}🅰️</span>` : ''}${f.motm ? '<span class="pill blue">⭐ MOM</span>' : ''}</div>`}
+  </div>`;
+}
+
+function matchLiveHTML(s, fx) {
+  const opp = G.oppInfo(s, fx);
+  const club = G.myClub(s);
+  return `
+  <div class="vc-screen">
+    <div class="live-box card">
+      <div class="live-top tiny muted">${esc(fx.compName)} • ${G.currentDate(s)}</div>
+      <div class="live-teams">
+        <div class="lt">${club ? crest(club, 48) : ''}<b>${club ? esc(club.name) : 'Você'}</b></div>
+        <div class="ls" id="live-score">—</div>
+        <div class="lt">${fx.type === 'nt' ? `${countryById(fx.oppCountry)?.flag || ''}<b>${esc(fx.oppName)}</b>` : `${crest((s.db.clubs || {})[fx.oppId] || { name: fx.oppName, short: '???', colors: ['#2a2a33', '#16161b'] }, 48)}<b>${esc(fx.oppName)}</b>`}</div>
+      </div>
+      <div class="live-progress"><div class="spinner small"></div> <span id="live-status">A bola está rolando…</span></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="h-sec">📻 Narração</div>
+      <div class="feed" id="live-feed"></div>
+    </div>
+    <div id="live-result"></div>
+    <div style="margin-top:14px"><button class="btn ghost block" data-go="match">${icon('back')} Sair da partida</button></div>
+  </div>`;
+}
+
+function mountLive(el, s, fixtureId) {
+  const r = G.playMatch(s, fixtureId);
+  const fx = r.fx;
+  if (!r.ok) { toast(r.msg || 'Erro ao jogar.', 'error'); go('match'); return; }
+  const scoreEl = document.getElementById('live-score');
+  const statusEl = document.getElementById('live-status');
+  const feedEl = document.getElementById('live-feed');
+  const resultEl = document.getElementById('live-result');
+  scoreEl.innerHTML = `<b>${fx.gh}</b> × <b>${fx.ga}</b>`;
+  // delegação de clique (o botão Continuar só existe após o fim)
+  el.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-go]');
+    if (btn) go(btn.dataset.go);
+  });
+  // anima os eventos
+  const events = fx.narrative || [];
+  let idx = 0;
+  const timer = setInterval(() => {
+    if (idx < events.length) {
+      const ev = events[idx];
+      const isGoal = ev.text.includes('GOL');
+      const item = document.createElement('div');
+      item.className = `feed-item ${isGoal ? 'goal' : ''} ${ev.who === 'you' ? 'you' : ''}`;
+      item.innerHTML = `<span class="min">${ev.min ? ev.min + "'" : ''}</span><span>${esc(ev.text)}</span>`;
+      feedEl.appendChild(item);
+      if (isGoal) goalSound();
+      idx++;
+      if (idx >= events.length) {
+        clearInterval(timer);
+        finishLive();
+      }
+    }
+  }, 420);
+  function finishLive() {
+    statusEl.textContent = 'Fim de jogo!';
+    scoreEl.innerHTML = `<b>${fx.gh}</b> × <b>${fx.ga}</b>`;
+    const win = fx.result === 'W' ? 'VITÓRIA' : fx.result === 'L' ? 'DERROTA' : 'EMPATE';
+    resultEl.innerHTML = `
+      <div class="card result-card" style="margin-top:14px">
+        <div class="h-sec">🏁 FIM DE JOGO — ${win}</div>
+        <div class="grid cols-3" style="margin-bottom:10px">
+          <div class="kpi"><div class="v">${fx.rating ?? '—'}</div><div class="l">Sua nota</div></div>
+          <div class="kpi"><div class="v">${fx.goals}</div><div class="l">Gols</div></div>
+          <div class="kpi"><div class="v">${fx.assists}</div><div class="l">Assist.</div></div>
+        </div>
+        ${fx.motm ? '<div class="banner gold" style="margin-bottom:10px">⭐ MELHOR EM CAMPO! Destaque da partida.</div>' : ''}
+        ${fx.rating < 5.5 ? '<div class="banner warn">😞 Atuação abaixo da média. A torcida reclamou.</div>' : ''}
+        ${fx.goals ? `<div class="banner ok">🎉 ${fx.goals} gol(s)! Fama em alta!</div>` : ''}
+        <button class="btn primary big block" data-go="match">${icon('check')} Continuar</button>
+      </div>`;
+    autosave();
+  }
+}
+
 // ============================================================
-// MERCADO
+// CARREIRA
 // ============================================================
-const mkt = { tab: 'buy', pos: 'all', q: '', limit: 40 };
+let carTab = 'stats';
+export const careerScreen = {
+  html() {
+    const s = S();
+    const p = s.player;
+    const total = s.career.total;
+    const season = s.career.season;
+    const tabs = [['stats', '📊 Estatísticas'], ['elenco', '👥 Elenco'], ['hist', '📜 História'], ['awards', '🏆 Prêmios'], ['nt', '🦅 Seleção']];
+    return `
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('chart')} CARREIRA</h1>
+      <p class="muted" style="margin:4px 0 14px">${esc(p.name)} — ${G.phaseLabel(s)} • Temporada ${s.calendar.year}</p>
+      <div class="chips" id="car-tabs">${tabs.map(([id, label]) => `<button class="chip ${carTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('')}</div>
+      <div id="car-body" style="margin-top:14px">${carBodyHTML(s, carTab)}</div>
+    </div>`;
+  },
+  mount(el) {
+    el.querySelectorAll('#car-tabs [data-tab]').forEach((b) => b.onclick = () => { carTab = b.dataset.tab; renderRoute(); });
+    el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+    el.querySelector('[data-open-pending]')?.addEventListener('click', () => openPendingModal(S()));
+  },
+};
+
+function carBodyHTML(s, tab) {
+  const p = s.player;
+  if (tab === 'stats') {
+    const total = s.career.total;
+    const season = s.career.season;
+    const avg = season.apps ? (season.ratingSum / season.apps).toFixed(1).replace('.', ',') : '—';
+    const all = s.career.history;
+    const totalAvg = total.apps ? (all.reduce((a, h) => a + h.avg * h.apps, 0) / Math.max(1, total.apps)).toFixed(1).replace('.', ',') : '—';
+    return `
+    <div class="card">
+      <div class="h-sec">Números da carreira</div>
+      <div class="grid cols-4">
+        <div class="kpi"><div class="v">${total.apps}</div><div class="l">Jogos</div></div>
+        <div class="kpi"><div class="v">${total.goals}</div><div class="l">Gols</div></div>
+        <div class="kpi"><div class="v">${total.assists}</div><div class="l">Assist.</div></div>
+        <div class="kpi"><div class="v">${totalAvg}</div><div class="l">Média</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="h-sec">Temporada ${s.calendar.year}</div>
+      <div class="grid cols-4">
+        <div class="kpi"><div class="v">${season.apps}</div><div class="l">Jogos</div></div>
+        <div class="kpi"><div class="v">${season.goals}</div><div class="l">Gols</div></div>
+        <div class="kpi"><div class="v">${season.assists}</div><div class="l">Assist.</div></div>
+        <div class="kpi"><div class="v">${avg}</div><div class="l">Média</div></div>
+      </div>
+      ${season.titles.length ? `<div style="margin-top:10px">${season.titles.map((x) => pill(x, 'gold')).join(' ')}</div>` : ''}
+      ${season.awards.length ? `<div style="margin-top:6px">${season.awards.map((a) => pill(awardName(a), 'green')).join(' ')}</div>` : ''}
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="h-sec">Atributos atuais</div>
+      <div class="skill-grid">
+        ${['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'].map((k) => skillCell(p, k)).join('')}
+      </div>
+      <div class="skill-grid mental">
+        ${['VIS', 'LID', 'COM', 'DET'].map((k) => skillCell(p, k)).join('')}
+        ${p.position === 'GOL' ? skillCell(p, 'GOL') : ''}
+      </div>
+    </div>
+    ${s.career.history.length === 0 ? '<div class="muted" style="margin-top:12px">Nenhuma temporada completa ainda.</div>' : ''}`;
+  }
+  if (tab === 'elenco') {
+    const club = G.myClub(s);
+    if (!club) return '<div class="card"><div class="muted">Você está sem clube. Assine um contrato para ver o elenco.</div></div>';
+    const squad = Object.values(s.db.players).filter((p) => p.clubId === club.id && !p.loan);
+    const order = { G: 0, D: 1, M: 2, A: 3 };
+    squad.sort((a, b) => (order[a.pos] ?? 9) - (order[b.pos] ?? 9) || b.ovr - a.ovr);
+    return `
+    <div class="card">
+      <div class="h-sec">${crest(club, 36)} ${esc(club.name)} — Elenco (${squad.length})</div>
+      <div class="squad-grid">
+        ${squad.map((p) => `
+          <div class="squad-card">
+            ${avatar(p, 44)}
+            <div class="sq-body">
+              <div class="sq-name">${esc(p.name)}</div>
+              <div class="tiny muted">${posDb(p.pos)}${p.number ? ` • Camisa ${p.number}` : ''} • ${p.age} anos</div>
+            </div>
+            ${ovrBadge(p.ovr, 34)}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  if (tab === 'hist') {
+    const timeline = [...s.career.timeline].reverse();
+    const seasons = [...s.career.history].reverse();
+    return `
+    <div class="card">
+      <div class="h-sec">📜 Linha do tempo da carreira</div>
+      ${timeline.length ? `<div class="timeline">${timeline.slice(0, 60).map((e) => `<div class="tl-item"><span class="tl-year">${e.year}</span><span class="tl-text">${esc(e.text)}</span></div>`).join('')}</div>` : '<div class="muted">Nada ainda.</div>'}
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="h-sec">Temporadas</div>
+      ${seasons.length ? seasons.map((h) => `
+        <div class="season-row">
+          <div class="sr-year">${h.year}</div>
+          <div class="sr-main"><b>${esc(h.club)}</b> <span class="tiny muted">${esc(h.league)}</span>
+            <div class="tiny">${h.apps} jogos • ${h.goals} gols • ${h.assists} assist. • média ${h.avg}</div>
+          </div>
+          <div class="sr-badges">${h.titles.map((x) => pill(x, 'gold')).join('')} ${h.awards.map((a) => pill(awardName(a), 'green')).join('')}</div>
+        </div>`).join('') : '<div class="muted">Complete uma temporada para ver o histórico.</div>'}
+    </div>`;
+  }
+  if (tab === 'awards') {
+    const allAwards = s.career.history.flatMap((h) => h.awards.map((a) => ({ a, year: h.year })));
+    const allTitles = s.career.history.flatMap((h) => h.titles.map((x) => ({ x, year: h.year })));
+    return `
+    <div class="card">
+      <div class="h-sec">🏆 Títulos</div>
+      ${allTitles.length ? allTitles.map((t) => `<div class="tl-item"><span class="tl-year">${t.year}</span><span class="tl-text">🏆 ${esc(t.x)}</span></div>`).join('') : '<div class="muted">Nenhum título ainda. Vá conquistá-los!</div>'}
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="h-sec">⭐ Prêmios individuais</div>
+      ${allAwards.length ? allAwards.map((t) => `<div class="tl-item"><span class="tl-year">${t.year}</span><span class="tl-text">${awardIcon(awardName(t.a))} ${esc(awardName(t.a))}</span></div>`).join('') : '<div class="muted">Nenhum prêmio individual ainda.</div>'}
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="h-sec">Reconhecimentos disponíveis</div>
+      <div class="tiny muted">${AWARDS.map((a) => `${a.icon} ${esc(a.name)}`).join(' • ')}</div>
+      <div class="tiny muted" style="margin-top:6px">Faça gols, seja decisivo e vença títulos para desbloqueá-los.</div>
+    </div>`;
+  }
+  if (tab === 'nt') {
+    const my = countryById(p.country);
+    const tny = G.tournamentFor(s.calendar.year);
+    return `
+    <div class="card">
+      <div class="h-sec">🦅 Seleção de ${esc(my ? my.name : p.country)}</div>
+      <div class="nt-hero">
+        <span class="nt-flag" style="font-size:3rem">${my ? my.flag : '🌍'}</span>
+        <div>
+          <div class="nt-status">${s.nt.called ? '<span class="pill green">CONVOCADO</span>' : '<span class="pill red">NÃO CONVOCADO</span>'}</div>
+          <div class="tiny muted" style="margin-top:4px">${s.nt.called ? 'Você está na lista do técnico!' : s.nt.monthsOut > 0 ? `Fora da lista há ${s.nt.monthsOut} mes(es).` : 'Ainda não foi chamado.'}</div>
+        </div>
+      </div>
+      <div class="grid cols-3" style="margin-top:12px">
+        <div class="kpi"><div class="v">${s.nt.caps}</div><div class="l">Jogos</div></div>
+        <div class="kpi"><div class="v">${s.nt.goals}</div><div class="l">Gols</div></div>
+        <div class="kpi"><div class="v">${s.nt.lastCall || '—'}</div><div class="l">Última conv.</div></div>
+      </div>
+      ${tny ? `<div class="banner gold" style="margin-top:12px">🌍 Em ${tny.name} este ano${s.nt.called ? ' — você está na disputa!' : ' — a convocação ainda pode vir!'}</div>` : ''}
+      <div class="tiny muted" style="margin-top:10px">Convocação depende de overall, forma e regularidade em campo. Jogar bem em clubes grandes ajuda.</div>
+    </div>`;
+  }
+  return '';
+}
+
+function posDb(pos) {
+  return { G: '🧤 Goleiro', D: '🛡️ Defensor', M: '🧭 Meio-campo', A: '🎯 Atacante' }[pos] || pos;
+}
+
+function awardName(id) {
+  return AWARDS.find((a) => a.id === id)?.name || id;
+}
+function awardIcon(name) {
+  const map = { 'Artilheiro da Liga': '⚽', 'Melhor Jogador da Liga': '🏅', 'Revelação do Ano': '🌟', 'Bola de Ouro': '🏆', 'Chuteira de Ouro': '👟', 'Destaque da Seleção': '🦅' };
+  return map[name] || '⭐';
+}
+function skillCell(p, k) {
+  const sk = SKILLS[k];
+  const v = p.skills[k] || 0;
+  return `<div class="skill-cell"><span class="sk-ico">${sk.icon}</span><div class="sk-body"><div class="sk-top"><span>${esc(sk.label)}</span><b>${v}</b></div><div class="bar"><i style="width:${v}%;background:var(--accent)"></i></div></div></div>`;
+}
+
+// ============================================================
+// MERCADO / CONTRATO / TRANSFERÊNCIAS
+// ============================================================
 export const marketScreen = {
   html() {
     const s = S();
-    const open = G.transferWindowOpen(s);
-    let body = '';
-    if (mkt.tab === 'buy') {
-      const list = G.marketList(s, { pos: mkt.pos === 'all' ? null : mkt.pos, search: mkt.q }).slice(0, mkt.limit);
-      body = `
-        <div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <input class="input" id="mk-q" placeholder="Buscar jogador…" value="${esc(mkt.q)}" style="flex:1;min-width:160px;min-height:42px">
-          <div class="seg">${['all', 'G', 'D', 'M', 'A'].map((p) => `<button class="chip ${mkt.pos === p ? 'active' : ''}" data-mpos="${p}">${p === 'all' ? 'Todos' : p}</button>`).join('')}</div>
-        </div>
-        <div class="card"><div class="table-wrap"><table class="data">
-          <thead><tr><th></th><th>Jogador</th><th>Pos</th><th class="num">OVR</th><th class="num">POT</th><th class="num">Idade</th><th class="num">Pedida</th><th></th></tr></thead>
-          <tbody>${list.map((p) => `
-            <tr><td>${avatar(p, 28)}</td>
-            <td><b>${esc(p.name)}</b><div class="tiny muted">${clubCell(s, p.clubId, 18)}</div></td>
-            <td>${posBadge(p.pos)}</td><td class="num">${ovrBadge(p.ovr)}</td><td class="num">${ovrBadge(p.pot)}</td><td class="num">${p.age}</td>
-            <td class="num">${money(G.askingPrice(s, p))}</td>
-            <td><button class="btn small" data-offer="${p.id}" ${open ? '' : 'disabled'}>Propor</button></td></tr>`).join('')}</tbody></table></div>
-          <div style="text-align:center;margin-top:12px"><button class="btn ghost" data-more>${icon('plus')} Carregar mais</button></div>
-        </div>`;
-    } else if (mkt.tab === 'sell') {
-      const mine = G.clubPlayers(s.db, s.clubId).sort((a, b) => b.value - a.value);
-      const bids = s.market.offers.filter((o) => s.db.players[o.playerId]);
-      body = `
-        ${bids.length ? `<div class="card"><div class="h-sec">Ofertas recebidas (leilão)</div>${bids.map((o) => {
-          const p = s.db.players[o.playerId]; const buyer = s.db.clubs[o.fromClubId];
-          return `<div class="inbox-item" style="margin-bottom:10px"><div class="it-title">${esc(buyer.name)} → ${esc(p.name)}: ${money(o.fee)}</div>
-            <div class="tiny muted">expira na semana ${o.expires}</div>
-            <div class="inbox-actions">
-              <button class="btn small primary" data-bid="${o.id}:accept">Vender</button>
-              <button class="btn small" data-bid="${o.id}:counter">Negociar +15%</button>
-              <button class="btn small danger" data-bid="${o.id}:reject">Recusar</button>
-            </div></div>`;
-        }).join('')}</div>` : ''}
-        <div class="card"><div class="h-sec">Seu elenco — toque para listar/retirar</div><div class="table-wrap"><table class="data">
-        <thead><tr><th></th><th>Jogador</th><th>Pos</th><th class="num">OVR</th><th class="num">Valor</th><th>Status</th></tr></thead>
-        <tbody>${mine.map((p) => `<tr data-list="${p.id}"><td>${avatar(p, 28)}</td><td><b>${esc(p.name)}</b></td><td>${posBadge(p.pos)}</td><td class="num">${ovrBadge(p.ovr)}</td><td class="num">${money(p.value)}</td>
-        <td>${p.listed ? '<span class="pill yellow">à venda</span>' : '<span class="pill">—</span>'}</td></tr>`).join('')}</tbody></table></div></div>`;
-    } else if (mkt.tab === 'pending') {
-      const pend = (s.market.pending || []);
-      body = `<div class="card"><div class="h-sec">Negociações em andamento</div>
-        ${pend.length ? pend.map((o) => {
-          const p = s.db.players[o.playerId];
-          if (!p) return '';
-          return `<div class="inbox-item" style="margin-bottom:10px"><div class="it-title">${esc(p.name)} — ${p.clubId ? esc(s.db.clubs[p.clubId].short) : ''}</div>
-          <div class="it-text">Sua oferta: ${money(o.fee)} • Pedida: ${money(o.asking)} • Status: ${o.status === 'accepted' ? '✅ aceita' : o.status === 'counter' ? '🔁 contraproposta' : 'aguardando (semana ' + o.responseWeek + ')'}</div>
-          <div class="inbox-actions">
-            ${o.status === 'accepted' ? `<button class="btn small primary" data-confirm="${o.id}">${icon('check')} Confirmar contratação</button>` : ''}
-            ${o.status === 'counter' ? `<button class="btn small primary" data-reoffer="${o.id}">Oferecer ${money(o.asking)}</button>` : ''}
-          </div></div>`;
-        }).join('') : '<div class="empty">Nenhuma negociação em andamento.<br><span class="tiny">Envie propostas na aba Comprar.</span></div>'}</div>`;
-    } else {
-      const free = G.freeAgents(s);
-      body = `<div class="card"><div class="h-sec">Agentes livres</div><div class="table-wrap"><table class="data">
-        <thead><tr><th></th><th>Jogador</th><th>Pos</th><th class="num">OVR</th><th class="num">Idade</th><th class="num">Salário</th><th></th></tr></thead>
-        <tbody>${free.map((p) => `<tr><td>${avatar(p, 28)}</td><td><b>${esc(p.name)}</b></td><td>${posBadge(p.pos)}</td><td class="num">${ovrBadge(p.ovr)}</td><td class="num">${p.age}</td><td class="num">${money(p.salary)}</td>
-        <td><button class="btn small primary" data-sign="${p.id}" ${open ? '' : 'disabled'}>Contratar</button></td></tr>`).join('') || '<tr><td colspan="7" class="muted">Nenhum agente livre.</td></tr>'}</tbody></table></div>
-        <div class="tiny muted" style="margin-top:8px">Jogadores sem contrato renovado ao fim da temporada ficam livres no mercado.</div></div>`;
-    }
+    const p = s.player;
+    const club = G.myClub(s);
+    const con = s.career.contract;
+    const offers = s.transfers.offers.filter((o) => o.type !== 'endorse');
+    const endOffers = s.transfers.offers.filter((o) => o.type === 'endorse');
+    const isFree = !club && ['pro', 'base', 'vet'].includes(p.phase);
     return `
-    <div class="stack">
-      <div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-        <div class="seg" id="mkt-tabs">
-          ${[['buy', 'Comprar'], ['sell', 'Vender'], ['pending', `Negociações${(S().market.pending || []).length ? ` (${S().market.pending.length})` : ''}`], ['free', 'Livres']].map(([k, l]) => `<button class="chip ${mkt.tab === k ? 'active' : ''}" data-tab="${k}">${l}</button>`).join('')}
-        </div>
-        <span class="pill ${open ? 'green' : 'red'}">${open ? '🟢 Janela ABERTA' : '🔒 Janela fechada (semanas 1–6 e 20–24)'}</span>
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('cart')} MERCADO</h1>
+      <p class="muted" style="margin:4px 0 14px">${G.currentDate(s)} • Valor de mercado: <b class="num">${money(p.value)}</b></p>
+
+      <div class="card">
+        <div class="h-sec">✍️ Contrato atual</div>
+        ${club ? `<div class="contract-box">
+          <div class="cb-club">${crest(club, 44)}<div><b>${esc(club.name)}</b><div class="tiny muted">${esc(club.league)} • ${esc(club.city || '')}</div></div></div>
+          ${con ? `<div class="cb-stats">
+            <div><span class="tiny muted">Salário</span><b class="num">R$ ${fmt(con.salary)}/mês</b></div>
+            <div><span class="tiny muted">Vigência</span><b>até ${con.until} (${con.years} ano${con.years > 1 ? 's' : ''})</b></div>
+            <div><span class="tiny muted">Cláusula</span><b class="num">R$ ${fmt(con.releaseClause)}</b></div>
+            <div><span class="tiny muted">Luvas recebidas</span><b class="num">R$ ${fmt(con.bonus)}</b></div>
+          </div>` : '<div class="muted">Sem contrato assinado.</div>'}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+            <button class="btn small primary" data-act="renew" ${!con ? 'disabled' : ''}>${icon('edit')} Renovar contrato</button>
+            <button class="btn small" data-act="ask" ${!club || p.phase === 'retired' ? 'disabled' : ''}>📢 Pedir transferência</button>
+          </div>
+        </div>` : `<div class="muted">${isFree ? 'Você está sem contrato — aproveite as propostas!' : p.phase === 'retired' ? 'Carreira encerrada.' : 'Você ainda não tem clube.'}</div>`}
       </div>
-      ${body}
+
+      ${s.transfers.asking > 0 ? `<div class="banner info" style="margin-top:12px">📢 Pedido de transferência registrado (${s.transfers.asking} mes(es)). Mais clubes vão se interessar.</div>` : ''}
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">📨 Propostas de clubes (${offers.length})</div>
+        ${offers.length === 0 ? '<div class="muted">Nenhuma proposta no momento. Elas chegam nas janelas (janeiro, julho e agosto) conforme seu desempenho.</div>' : ''}
+        ${offers.map((o) => offerCard(s, o)).join('')}
+      </div>
+
+      ${endOffers.length ? `<div class="card" style="margin-top:14px">
+        <div class="h-sec">📺 Patrocínios</div>
+        ${endOffers.map((o) => `<div class="offer-card">
+          <div class="oc-main"><span style="font-size:1.6rem">${o.icon || '🤝'}</span><div><b>${esc(o.brand)}</b><div class="tiny muted">${fmt(o.income)}/mês por ${o.months} meses</div></div></div>
+          <div class="oc-actions"><button class="btn small primary" data-end="${o.id}">Aceitar</button><button class="btn small" data-rej="${o.id}">Recusar</button></div>
+        </div>`).join('')}
+      </div>` : ''}
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">📈 Evolução do valor</div>
+        <div class="tiny muted">Seu valor de mercado é atualizado todo mês com base em overall, idade, potencial, forma e fama.</div>
+        <div class="meter" style="margin-top:8px"><span class="tiny muted" style="min-width:86px">Forma</span><div class="bar"><i style="width:${p.form}%"></i></div><span class="val">${Math.round(p.form)}</span></div>
+        <div class="meter" style="margin-top:6px"><span class="tiny muted" style="min-width:86px">Fama</span><div class="bar"><i style="width:${p.fame}%;background:var(--gold)"></i></div><span class="val">${Math.round(p.fame)}</span></div>
+      </div>
     </div>`;
   },
   mount(el) {
     const s = S();
-    el.querySelectorAll('#mkt-tabs [data-tab]').forEach((b) => b.onclick = () => { mkt.tab = b.dataset.tab; renderRoute(); });
-    el.querySelectorAll('[data-mpos]').forEach((b) => b.onclick = () => { mkt.pos = b.dataset.mpos; renderRoute(); });
-    const q = el.querySelector('#mk-q');
-    if (q) {
-      let mqTimer = null;
-      q.addEventListener('input', () => {
-        clearTimeout(mqTimer);
-        mqTimer = setTimeout(() => {
-          mkt.q = q.value;
-          renderRoute();
-          setTimeout(() => { const nq = document.querySelector('#mk-q'); if (nq) { nq.focus(); nq.setSelectionRange(nq.value.length, nq.value.length); } }, 30);
-        }, 260);
-      });
-    }
-    el.querySelector('[data-more]')?.addEventListener('click', () => { mkt.limit += 40; renderRoute(); });
-    el.querySelectorAll('[data-offer]').forEach((b) => b.onclick = () => openOfferModal(b.dataset.offer));
-    el.querySelectorAll('[data-list]').forEach((r) => r.onclick = () => {
-      const p = s.db.players[r.dataset.list];
-      G.listPlayerForSale(s, p.id, !p.listed);
-      toast(p.listed ? `${esc(p.name)} está à venda.` : `${esc(p.name)} removido da lista.`);
-      autosave(); renderRoute();
+    el.querySelector('[data-act=renew]')?.addEventListener('click', () => {
+      const r = G.renewContract(s);
+      toast(r.ok ? '🖋️ Contrato renovado!' : (r.msg || 'Erro.'), r.ok ? 'ok' : 'error');
+      if (r.ok) { autosave(); renderRoute(); }
     });
-    el.querySelectorAll('[data-bid]').forEach((b) => b.onclick = () => {
-      const [id, act] = b.dataset.bid.split(':');
-      G.respondBid(s, id, act);
-      autosave(); renderRoute();
+    el.querySelector('[data-act=ask]')?.addEventListener('click', () => {
+      confirmBox('Pedir transferência', 'A diretoria vai ouvir propostas por 3 meses. O torcedor pode não gostar…', () => {
+        G.askForTransfer(s); autosave(); renderRoute(); toast('📢 Pedido registrado.');
+      }, 'Pedir');
     });
-    el.querySelectorAll('[data-confirm]').forEach((b) => b.onclick = () => {
-      const r = G.confirmBuy(s, b.dataset.confirm);
-      toast(r.ok ? '✅ Reforço confirmado!' : (r.msg || 'Falha na contratação.'), r.ok ? 'ok' : 'error');
-      autosave(); renderRoute();
+    el.querySelectorAll('[data-off]').forEach((b) => b.onclick = () => {
+      const id = b.dataset.off;
+      const act = b.dataset.act;
+      const o = s.transfers.offers.find((x) => x.id === id);
+      if (!o) return;
+      if (act === 'accept') {
+        const r = G.acceptClubOffer(s, id);
+        if (r.ok) {
+          autosave(); renderRoute();
+          toast(`✍️ Fechou com ${r.club.name}! Luvas de R$ ${fmt(o.bonus)}.`);
+        } else toast(r.msg || 'Erro.', 'error');
+      } else {
+        G.rejectOffer(s, id);
+        renderRoute();
+        toast('Proposta recusada.');
+      }
     });
-    el.querySelectorAll('[data-reoffer]').forEach((b) => b.onclick = () => {
-      const o = (s.market.pending || []).find((x) => x.id === b.dataset.reoffer);
-      if (o) { o.fee = o.asking; o.responseWeek = s.week + 1; o.status = null; toast('Nova proposta enviada!'); autosave(); renderRoute(); }
-    });
-    el.querySelectorAll('[data-sign]').forEach((b) => b.onclick = () => {
-      const r = G.signFreeAgent(s, b.dataset.sign);
-      toast(r.ok ? '✅ Contratado sem custos de transferência!' : (r.msg || 'Falhou.'), r.ok ? 'ok' : 'error');
-      autosave(); renderRoute();
-    });
+    el.querySelectorAll('[data-end]').forEach((b) => b.onclick = () => { const r = G.acceptEndorsement(s, b.dataset.end); if (r.ok) { autosave(); renderRoute(); toast('🤝 Patrocínio fechado!'); } });
+    el.querySelectorAll('[data-rej]').forEach((b) => b.onclick = () => { G.rejectOffer(s, b.dataset.rej); renderRoute(); });
   },
 };
 
-function openOfferModal(playerId) {
-  const s = S();
-  const p = s.db.players[playerId];
-  const ask = G.askingPrice(s, p);
-  const min = Math.round(p.value * 0.6 / 10000) * 10000, max = Math.round(ask * 1.4 / 10000) * 10000;
-  const m = openModal(`
-    <div class="modal-title">${icon('cart')} Proposta por ${esc(p.name)}</div>
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">${avatar(p, 46)}<div><b>${esc(p.name)}</b><div class="tiny muted">${POSITIONS[p.pos]} • ${p.age} anos • OVR ${p.ovr} • ${esc(s.db.clubs[p.clubId].name)}</div></div></div>
-    <div class="field"><label>Valor da transferência: <b id="of-fee-v">${money(Math.round((ask + min) / 2))}</b> <span class="tiny muted">(pedida ~ ${money(ask)})</span></label>
-      <input class="input" type="range" id="of-fee" min="${min}" max="${max}" step="10000" value="${Math.round((ask + min) / 2)}"></div>
-    <div class="field"><label>Salário semanal: <b id="of-wage-v">${money(Math.round(p.salary * 1.1))}</b></label>
-      <input class="input" type="range" id="of-wage" min="${Math.round(p.salary * 0.9)}" max="${Math.round(p.salary * 2)}" step="1000" value="${Math.round(p.salary * 1.1)}"></div>
-    <div class="tiny muted" style="margin-bottom:14px">O clube responde na próxima semana. Empresário cobra ~6% de comissão.</div>
-    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" data-c>Cancelar</button><button class="btn primary" data-s>Enviar proposta</button></div>`);
-  const fee = m.querySelector('#of-fee'), wage = m.querySelector('#of-wage');
-  fee.oninput = () => m.querySelector('#of-fee-v').textContent = money(Number(fee.value));
-  wage.oninput = () => m.querySelector('#of-wage-v').textContent = money(Number(wage.value));
-  m.querySelector('[data-c]').onclick = closeModal;
-  m.querySelector('[data-s]').onclick = () => {
-    const r = G.makeOffer(s, playerId, Number(fee.value), Number(wage.value));
-    closeModal();
-    toast(r.ok ? '📨 Proposta enviada!' : (r.msg || 'Erro'), r.ok ? 'ok' : 'error');
-    if (r.ok) autosave(); renderRoute();
-  };
+function offerCard(s, o) {
+  const club = (s.db.clubs || {})[o.clubId];
+  if (!club) return '';
+  return `
+  <div class="offer-card">
+    <div class="oc-main">
+      ${crest(club, 42)}
+      <div>
+        <b>${esc(club.name)}</b>
+        <div class="tiny muted">${esc(club.league)} • ${esc(club.country)}</div>
+        <div class="oc-terms tiny">💵 R$ ${fmt(o.salary)}/mês • ${o.years} ano${o.years > 1 ? 's' : ''} • Cláusula R$ ${fmt(o.releaseClause)} • Luvas R$ ${fmt(o.bonus)}</div>
+        ${o.renewal ? '<div class="pill gold">RENOVAÇÃO</div>' : ''}
+      </div>
+    </div>
+    <div class="oc-actions">
+      <button class="btn small primary" data-off="${o.id}" data-act="accept">Aceitar</button>
+      <button class="btn small" data-off="${o.id}" data-act="reject">Recusar</button>
+    </div>
+  </div>`;
 }
 
 // ============================================================
-// FINANÇAS
+// FAMÍLIA E RELACIONAMENTOS
 // ============================================================
-export const financesScreen = {
+export const familyScreen = {
   html() {
     const s = S();
-    const club = s.db.clubs[s.clubId];
-    const wages = G.clubPlayers(s.db, s.clubId).reduce((x, p) => x + p.salary, 0);
-    const income = s.finances.ledger.filter((l) => l.value > 0).slice(0, 30).reduce((x, l) => x + l.value, 0);
-    const out = s.finances.ledger.filter((l) => l.value < 0).slice(0, 30).reduce((x, l) => x - l.value, 0);
+    const p = s.player;
+    const par = s.partner;
+    const family = s.family.filter((f) => f.role !== 'filho' && f.role !== 'filha');
+    const kids = s.family.filter((f) => f.role === 'filho' || f.role === 'filha');
+    const roleIco = { pai: '👨', mãe: '👩', irmão: '👦', irmã: '👧', filho: '👶', filha: '👶' };
     return `
-    <div class="stack" style="max-width:900px;margin:0 auto">
-      <div class="grid cols-4">
-        <div class="card kpi"><div class="v" style="color:${s.finances.balance < 0 ? 'var(--red)' : 'var(--accent)'}">${money(s.finances.balance)}</div><div class="l">Caixa atual</div></div>
-        <div class="card kpi"><div class="v">${money(wages)}</div><div class="l">Folha/semana</div></div>
-        <div class="card kpi"><div class="v">${money(Math.round(club.sponsor.value / 44))}</div><div class="l">Patrocínio/sem</div></div>
-        <div class="card kpi"><div class="v">${num(club.capacity)}</div><div class="l">Capacidade</div></div>
-      </div>
-      <div class="card">
-        <div class="h-sec">Patrocinador master</div>
-        <div style="display:flex;align-items:center;gap:12px"><span class="pill gold" style="font-size:1rem">${esc(club.sponsor.name)}</span><span class="muted">${money(club.sponsor.value)} por temporada</span></div>
-      </div>
-      <div class="card">
-        <div class="h-sec">Extrato recente <span class="pill green" style="float:right">+ ${money(income)}</span> <span class="pill red" style="float:right;margin-right:6px">− ${money(out)}</span></div>
-        <div class="table-wrap"><table class="data" style="min-width:0">
-          <thead><tr><th>Sem</th><th>Descrição</th><th class="num">Valor</th></tr></thead>
-          <tbody>${s.finances.ledger.slice(0, 40).map((l) => `<tr><td class="muted">S${l.week}</td><td>${esc(l.desc)}</td><td class="num" style="color:${l.value < 0 ? 'var(--red)' : '#4ade80'};font-weight:700">${l.value < 0 ? '−' : '+'} ${money(Math.abs(l.value))}</td></tr>`).join('')}</tbody>
-        </table></div>
-      </div>
-      <div class="card tiny muted">💡 Receitas: bilheteria (jogos em casa), patrocínio semanal, premiações e vendas de atletas. Despesas: folha salarial semanal, transferências e comissões de empresários.</div>
-    </div>`;
-  },
-};
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('heart')} FAMÍLIA E AMOR</h1>
+      <p class="muted" style="margin:4px 0 14px">Relacionamentos influenciam sua felicidade dentro e fora de campo.</p>
 
-// ============================================================
-// CLUBE
-// ============================================================
-export const clubScreen = {
-  html() {
-    const s = S();
-    const c = s.db.clubs[s.clubId];
-    const squad = G.clubPlayers(s.db, s.clubId);
-    const avgOvr = Math.round(squad.reduce((x, p) => x + p.ovr, 0) / squad.length);
-    return `
-    <div class="stack" style="max-width:900px;margin:0 auto">
-      <div class="card" style="text-align:center;padding:26px">
-        ${crest(c, 110)}
-        <div style="font-weight:900;font-size:1.5rem;margin-top:12px">${esc(c.name)}</div>
-        <div class="muted">${esc(c.city)}, ${esc(countryName(s, c.country))} • fundado em ${c.founded}</div>
-        <div class="pill gold" style="margin-top:10px">Reputação ${'★'.repeat(Math.max(1, Math.round(c.rep / 20)))} (${c.rep})</div>
-      </div>
-      <div class="grid cols-4">
-        <div class="card kpi"><div class="v">${esc(c.stadium)}</div><div class="l">Estádio</div></div>
-        <div class="card kpi"><div class="v">${num(c.capacity)}</div><div class="l">Capacidade</div></div>
-        <div class="card kpi"><div class="v">${num(c.fans)}</div><div class="l">Torcedores</div></div>
-        <div class="card kpi"><div class="v">${avgOvr}</div><div class="l">OVR médio</div></div>
-      </div>
-      <div class="grid cols-2">
-        <div class="card"><div class="h-sec">Competição atual</div><div style="font-weight:700">${esc(leagueName(c.leagueId))}</div><div class="tiny muted">${c.tier === 2 ? 'Segunda divisão' : 'Primeira divisão'}</div></div>
-        <div class="card"><div class="h-sec">Categorias de base</div>${`<div class="meter"><span class="tiny muted" style="min-width:70px">Nível</span><div class="bar"><i style="width:${c.youthLevel}%"></i></div><span class="val">${c.youthLevel}</span></div>`}<div class="tiny muted" style="margin-top:8px">Revelações chegam no início de cada temporada.</div></div>
-      </div>
-      <div class="card">
-        <div class="h-sec">Títulos do clube (${c.titles.length})</div>
-        ${c.titles.length ? `<div class="chips" style="flex-wrap:wrap">${c.titles.map((t) => `<span class="pill gold">${esc(t.comp)} ${t.year}</span>`).join('')}</div>` : '<div class="muted">Nenhum título conquistado ainda nesta carreira. Mude a história!</div>'}
-      </div>
-    </div>`;
-  },
-};
-
-// ============================================================
-// BASE / OLHEIROS
-// ============================================================
-export const youthScreen = {
-  html() {
-    const s = S();
-    const club = s.db.clubs[s.clubId];
-    const kids = G.clubPlayers(s.db, s.clubId).filter((p) => p.age <= 20).sort((a, b) => b.pot - a.pot);
-    const invested = s.scoutSeason === s.season;
-    return `
-    <div class="stack" style="max-width:900px;margin:0 auto">
-      <div class="card">
-        <div class="h-sec">Categorias de base — ${esc(club.name)}</div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
-          <div style="flex:1;min-width:220px">
-            <div class="meter"><span class="tiny muted" style="min-width:110px">Nível da base</span><div class="bar"><i style="width:${club.youthLevel}%"></i></div><span class="val">${club.youthLevel}</span></div>
-            <div class="tiny muted" style="margin-top:8px">Todo início de temporada, 2–3 jovens são promovidos. O nível define a qualidade média das revelações.</div>
+      ${par ? `
+      <div class="card partner-card">
+        <div class="h-sec">💞 ${par.married ? 'Cônjuge' : 'Namorado(a)'} ${par.together ? '' : ''}</div>
+        <div class="partner-box">
+          ${avatarEl(par.name, 52)}
+          <div style="flex:1;min-width:0">
+            <b>${esc(par.name)}</b> ${par.married ? '<span class="pill gold">💍 Casado</span>' : ''}
+            <div class="tiny muted">Juntos desde ${esc(par.since || '—')} • ${par.age} anos</div>
+            ${meter('Amor', par.love, 100, 'var(--red)')}
           </div>
-          <button class="btn" data-scout ${invested ? 'disabled' : ''}>${icon('sprout')} ${invested ? 'Olheiros ativos' : 'Investir em olheiros (R$ 3 mi)'}</button>
         </div>
-      </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn small" data-par="tempo">💞 Passar tempo</button>
+          <button class="btn small" data-par="presente">💝 Dar presente</button>
+          ${par.married ? '' : `<button class="btn small danger" data-par="termine">💔 Terminar</button>`}
+        </div>
+      </div>` : `
       <div class="card">
-        <div class="h-sec">Jóias do clube (sub-20)</div>
-        <div class="table-wrap"><table class="data">
-          <thead><tr><th></th><th>Nome</th><th>Pos</th><th class="num">Idade</th><th class="num">OVR</th><th class="num">POT</th><th class="num">Valor</th><th></th></tr></thead>
-          <tbody>${kids.map((p) => `<tr><td>${avatar(p, 28)}</td><td><b>${esc(p.name)}</b></td><td>${posBadge(p.pos)}</td><td class="num">${p.age}</td><td class="num">${ovrBadge(p.ovr)}</td><td class="num">${ovrBadge(p.pot)}</td><td class="num">${money(p.value)}</td>
-            <td><button class="btn small" data-view="${p.id}">Ver</button></td></tr>`).join('') || '<tr><td colspan="8" class="muted">Nenhum jovem no elenco.</td></tr>'}</tbody></table></div>
-        <div class="tiny muted" style="margin-top:10px">💎 Potencial acima de 82 indica uma possível joia mundial. Empreste jovens (tela do jogador) para evoluírem mais rápido.</div>
+        <div class="h-sec">💞 Amor</div>
+        <div class="muted">Você está solteiro(a). Fique de olho nos eventos — o amor pode aparecer quando você menos espera.</div>
+      </div>`}
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">👨‍👩‍👧‍👦 Família</div>
+        ${family.map((f) => `
+        <div class="fam-row">
+          ${avatarEl(f.name, 40)}
+          <div style="flex:1;min-width:0">
+            <b>${roleIco[f.role] || '👤'} ${esc(f.name)}</b> <span class="tiny muted">${f.role} • ${f.age} anos</span>
+            ${meter('Carinho', f.love, 100, 'var(--blue)')}
+          </div>
+          <div style="display:flex;gap:6px;flex-direction:column">
+            <button class="btn small" data-fam="${f.id}" data-act="tempo">💬 Tempo</button>
+            <button class="btn small" data-fam="${f.id}" data-act="presente">🎁</button>
+          </div>
+        </div>`).join('')}
       </div>
+
+      ${kids.length ? `<div class="card" style="margin-top:14px">
+        <div class="h-sec">🍼 Filhos</div>
+        ${kids.map((k) => `<div class="fam-row">${avatarEl(k.name, 36)}<div><b>${k.role === 'filho' ? '👦' : '👧'} ${esc(k.name)}</b> <span class="tiny muted">${k.age} ano${k.age === 1 ? '' : 's'}</span></div>${meter('Carinho', k.love, 100, 'var(--red)')}<button class="btn small" data-fam="${k.id}" data-act="tempo">💬 Tempo</button></div>`).join('')}
+      </div>` : ''}
+
+      ${s.friends.length ? `<div class="card" style="margin-top:14px">
+        <div class="h-sec">🧑‍🤝‍🧑 Amigos</div>
+        ${s.friends.map((f) => `
+        <div class="fam-row">
+          ${avatarEl(f.name, 36)}
+          <div style="flex:1;min-width:0"><b>${esc(f.name)}</b> ${meter('Amizade', f.love, 100, 'var(--green, #22c55e)')}</div>
+          <button class="btn small" data-fri="${f.id}" data-act="rolê">🎮 Rolê</button>
+        </div>`).join('')}
+      </div>` : ''}
     </div>`;
   },
   mount(el) {
     const s = S();
-    el.querySelector('[data-scout]')?.addEventListener('click', () => {
-      G.enforceInfiniteMoney(s);
-      if (s.finances.balance < 3e6) { toast('Caixa insuficiente.', 'error'); return; }
-      s.finances.balance -= 3e6;
-      G.enforceInfiniteMoney(s);
-      s.db.clubs[s.clubId].youthLevel = clamp(s.db.clubs[s.clubId].youthLevel + 3, 40, 99);
-      s.scoutSeason = s.season;
-      G.log(s, 'Investimento em olheiros', -3e6);
-      toast('🔭 Olheiros contratados! A próxima leva da base será melhor.');
-      autosave(); renderRoute();
+    el.querySelectorAll('[data-par]').forEach((b) => b.onclick = () => {
+      const r = G.partnerAct(s, b.dataset.par);
+      if (!r.ok) toast(r.msg || 'Erro.', 'error'); else { autosave(); renderRoute(); }
     });
-    el.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => go(`player/${b.dataset.view}`));
+    el.querySelectorAll('[data-fam]').forEach((b) => b.onclick = () => {
+      const r = G.familyAct(s, b.dataset.fam, b.dataset.act);
+      if (!r.ok) toast(r.msg || 'Erro.', 'error'); else { autosave(); renderRoute(); }
+    });
+    el.querySelectorAll('[data-fri]').forEach((b) => b.onclick = () => {
+      const r = G.friendAct(s, b.dataset.fri, b.dataset.act);
+      if (!r.ok) toast(r.msg || 'Erro.', 'error'); else { autosave(); renderRoute(); }
+    });
   },
 };
 
 // ============================================================
-// TREINADOR
+// DINHEIRO
 // ============================================================
-export const managerScreen = {
+export const moneyScreen = {
   html() {
     const s = S();
-    const m = s.manager;
-    const xpPct = (m.xp % 300) / 300 * 100;
-    const nextLevelXp = (Math.floor(m.xp / 300) + 1) * 300;
+    const p = s.player;
+    const life = s.life;
+    const last = life.lastMonth || { income: 0, expense: 0, breakdown: [] };
+    return `
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('money')} FINANÇAS</h1>
+      <p class="muted" style="margin:4px 0 14px">${G.currentDate(s)}</p>
 
-    if (s.retired) {
-      return `
-      <div class="stack" style="max-width:800px;margin:0 auto">
-        <div class="card" style="text-align:center;padding:40px">
-          <div style="font-size:4rem">🏆</div>
-          <h1 style="font-size:2.2rem;margin:10px 0">Fim de Carreira</h1>
-          <p class="muted">Obrigado por sua contribuição ao futebol mundial.</p>
-          <div style="margin:30px 0;text-align:left;background:rgba(255,255,255,0.05);padding:20px;border-radius:12px">
-            <h2 style="margin-bottom:15px">Legado de ${esc(m.name)}</h2>
-            <div class="grid cols-2">
-              <div><b>Temporadas:</b> ${s.season}</div>
-              <div><b>Nível Final:</b> ${m.level}</div>
-              <div><b>Reputação:</b> ${Math.round(m.rep)}</div>
-              <div><b>Títulos:</b> ${m.titles.length}</div>
-            </div>
-            <div style="margin-top:20px">
-              <b>Sala de Troféus:</b>
-              <div class="chips" style="margin-top:10px">
-                ${m.titles.map(t => `<span class="pill gold">🏆 ${esc(t.comp)} (T${t.season})</span>`).join('') || 'Nenhum título conquistado.'}
-              </div>
-            </div>
-          </div>
-          <button class="btn primary big" onclick="location.reload()">Voltar ao Menu Principal</button>
+      <div class="card money-hero">
+        <div class="tiny muted">BANCO</div>
+        <div class="money-big ${life.bank < 0 ? 'neg' : ''}">${money(life.bank)}</div>
+        <div class="money-flow">
+          <span class="pill green">+ R$ ${fmt(last.income || 0)} este mês</span>
+          <span class="pill red">− R$ ${fmt(last.expense || 0)} despesas</span>
         </div>
-      </div>`;
+        <div class="tiny muted" style="margin-top:8px">${(last.breakdown || []).map(([k, v]) => `${esc(k)}: R$ ${fmt(v)}`).join(' • ')}</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">🏠 Estilo de vida</div>
+        <div class="lifestyle-grid">
+          ${LIFESTYLES.map((l) => `<button class="lifestyle-card ${life.lifestyle === l.id ? 'sel' : ''}" data-life="${l.id}"><span class="ls-ico">${l.icon}</span><b>${esc(l.name)}</b><small>R$ ${fmt(l.cost)}/mês</small></button>`).join('')}
+        </div>
+        <div class="tiny muted" style="margin-top:6px">Estilo de vida afeta felicidade e fama, mas custa caro.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">🛍️ Compras</div>
+        <div class="shop-grid">
+          ${PURCHASES.map((it) => {
+            const afford = life.bank >= it.price;
+            const fameOk = p.fame >= it.needFame;
+            const owned = p.possessions.some((x) => x.id === it.id);
+            return `<div class="shop-card ${afford && fameOk && !owned ? '' : 'locked'}">
+              <span class="sh-ico">${it.icon}</span>
+              <b>${esc(it.name)}</b>
+              <small>R$ ${fmt(it.price)}</small>
+              ${owned ? '<span class="pill green">Possuído</span>' : `<button class="btn small primary" data-buy="${it.id}" ${afford && fameOk ? '' : 'disabled'}>Comprar</button>`}
+              ${!fameOk && !owned ? `<small class="tiny muted">Requer fama ${it.needFame}</small>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">📈 Investimentos</div>
+        <div class="tiny muted" style="margin-bottom:8px">Aplicações rendem mensalmente: CDB 0,8% • Imóveis 1,4% • Risco 4% (pode oscilar!).</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn small" data-inv="cdb">🏦 CDB</button>
+          <button class="btn small" data-inv="imoveis">🏢 Imóveis</button>
+          <button class="btn small" data-inv="risco">🚀 Alto risco</button>
+        </div>
+        <input class="input" type="number" id="inv-amt" min="10000" step="10000" placeholder="Valor (mín. R$ 10 mil)" style="margin-top:8px;width:100%">
+        <div style="margin-top:12px">
+          ${life.investments.length ? life.investments.map((inv) => `
+            <div class="inv-row"><span>${esc(inv.name)} <span class="tiny muted">(${esc(inv.risk)})</span></span><b class="num">R$ ${fmt(Math.round(inv.amount))}</b><button class="btn small" data-with="${inv.id}">Resgatar</button></div>`).join('') : '<div class="muted">Nenhum investimento ativo.</div>'}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">🤝 Patrocínios ativos</div>
+        ${life.endorsements.length ? life.endorsements.map((e) => `<div class="inv-row"><span>🤝 ${esc(e.brand)}</span><b class="num">R$ ${fmt(e.income)}/mês</b><span class="tiny muted">${e.monthsLeft} mes(es)</span></div>`).join('') : '<div class="muted">Sem patrocínios ativos. Aumente a fama!</div>'}
+      </div>
+
+      ${p.possessions.length ? `<div class="card" style="margin-top:14px"><div class="h-sec">🎁 Seus bens</div><div>${p.possessions.map((x) => pill(`${x.icon} ${esc(x.name)}`)).join(' ')}</div></div>` : ''}
+    </div>`;
+  },
+  mount(el) {
+    const s = S();
+    el.querySelectorAll('[data-life]').forEach((b) => b.onclick = () => { G.setLifestyle(s, Number(b.dataset.life)); autosave(); renderRoute(); });
+    el.querySelectorAll('[data-buy]').forEach((b) => b.onclick = () => {
+      const r = G.buyItem(s, b.dataset.buy);
+      if (!r.ok) toast(r.msg || 'Não foi possível comprar.', 'error'); else { autosave(); renderRoute(); toast('🛍️ Compra realizada!'); }
+    });
+    const amt = el.querySelector('#inv-amt');
+    el.querySelectorAll('[data-inv]').forEach((b) => b.onclick = () => {
+      const value = Number(amt?.value) || 10000;
+      const r = G.invest(s, b.dataset.inv, value);
+      if (!r.ok) toast(r.msg || 'Erro.', 'error'); else { autosave(); renderRoute(); toast('📈 Investimento aplicado!'); }
+    });
+    el.querySelectorAll('[data-with]').forEach((b) => b.onclick = () => { G.withdrawInvest(s, b.dataset.with); autosave(); renderRoute(); toast('🏦 Resgate feito.'); });
+  },
+};
+
+// ============================================================
+// FAMA
+// ============================================================
+export const fameScreen = {
+  html() {
+    const s = S();
+    const p = s.player;
+    const tny = G.tournamentFor(s.calendar.year);
+    return `
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('star')} FAMA</h1>
+      <p class="muted" style="margin:4px 0 14px">Quanto mais famoso, mais dinheiro, patrocínios e oportunidades.</p>
+
+      <div class="card fame-hero">
+        <div class="fame-stars">${'⭐'.repeat(Math.max(1, Math.ceil(p.fame / 20)))}<span class="muted">${'☆'.repeat(5 - Math.max(1, Math.ceil(p.fame / 20)))}</span></div>
+        <div class="money-big" style="font-size:2rem">${num(p.followers)}</div>
+        <div class="tiny muted">seguidores</div>
+        ${meter('Fama', p.fame, 100, 'var(--gold)')}
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">📱 Suas redes</div>
+        <button class="btn primary block" data-act="post">📱 Postar conteúdo (+fama, +seguidores, −energia)</button>
+        <div class="tiny muted" style="margin-top:6px">Poste uma vez por mês para manter a audiência engajada.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">💡 Como ganhar fama</div>
+        <div class="fame-tips">
+          <div>⚽ Faça gols e atuações nota 8+</div>
+          <div>🏆 Vença títulos e prêmios</div>
+          <div>🦅 Destaque pela seleção</div>
+          <div>🎙️ Aceite entrevistas e podcasts</div>
+          <div>💎 Viva um estilo de vida luxuoso</div>
+        </div>
+      </div>
+
+      ${tny && s.nt.called ? `<div class="banner gold" style="margin-top:12px">🌍 Você está no ${tny.name}! Brilhar lá é a fama máxima.</div>` : ''}
+      ${s.life.posJob ? `<div class="card" style="margin-top:14px"><div class="h-sec">💼 Pós-carreira</div><div class="muted">${p.phase === 'retired' ? `Você agora é ${posJobLabel(s.life.posJob)}.` : ''}</div></div>` : ''}
+    </div>`;
+  },
+  mount(el) {
+    const s = S();
+    el.querySelector('[data-act=post]')?.addEventListener('click', () => {
+      const r = G.postSocial(s);
+      if (!r.ok) toast(r.msg || 'Erro.', 'error'); else { autosave(); renderRoute(); }
+    });
+  },
+};
+
+function posJobLabel(job) {
+  return { comentarista: '🎙️ comentarista de TV', tecnico: '👔 técnico de futebol', empresario: '🏢 empresário' }[job] || job;
+}
+
+// ============================================================
+// MENSAGENS / NOTÍCIAS
+// ============================================================
+export const inboxScreen = {
+  html() {
+    const s = S();
+    return `
+    <div class="vc-screen">
+      <h1 class="h-title">${icon('mail')} MENSAGENS</h1>
+      <p class="muted" style="margin:4px 0 14px">Notícias, decisões e acontecimentos da sua vida.</p>
+      ${s.pending ? `<button class="banner decision" data-open-pending>🎲 DECISÃO PENDENTE — ${esc(s.pending.title)} →</button>` : ''}
+      <div class="card" style="margin-top:6px">
+        <div class="h-sec" style="display:flex;justify-content:space-between">📥 Caixa de entrada ${s.inbox.some((i) => !i.read) ? `<button class="btn small" data-readall>Marcar todas lidas</button>` : ''}</div>
+        ${s.inbox.length ? s.inbox.map((n) => `<div class="news-item ${n.read ? '' : 'unread'}" data-news="${n.id}"><span class="news-ico">${newsIcon(n.type)}</span><div class="news-body"><div class="news-text">${esc(n.text)}</div><div class="tiny muted">${esc(n.date)}</div></div></div>`).join('') : '<div class="muted">Nenhuma mensagem.</div>'}
+      </div>
+    </div>`;
+  },
+  mount(el) {
+    const s = S();
+    el.querySelector('[data-open-pending]')?.addEventListener('click', () => openPendingModal(s));
+    el.querySelector('[data-readall]')?.addEventListener('click', () => { G.markAllRead(s); autosave(); renderRoute(); });
+    el.querySelectorAll('[data-news]').forEach((b) => b.onclick = () => { G.markRead(s, b.dataset.news); renderRoute(); });
+  },
+};
+
+function newsIcon(type) {
+  return { info: '📌', club: '🏟️', vida: '💬', clube: '🏟️', selecao: '🦅', fama: '⭐', money: '💰', star: '⭐', trophy: '🏆', injury: '🤕' }[type] || '📌';
+}
+
+// ============================================================
+// HALL DA FAMA (aposentadoria / falecimento)
+// ============================================================
+export const hallScreen = {
+  html() {
+    const s = S();
+    const p = s.player;
+    const dead = p.phase === 'dead';
+    const retired = p.phase === 'retired';
+    if (!dead && !retired) {
+      return `<div class="vc-screen"><div class="card"><div class="h-sec">🏛️ Hall da Fama</div><div class="muted">Você ainda está jogando! Aposente-se para ver o legado da sua carreira.</div><button class="btn primary block" style="margin-top:12px" data-go="home">${icon('home')} Voltar</button></div></div>`;
     }
-
-    const attrLabel = (k) => ({
-      tactics: 'Tática', training: 'Treino', management: 'Gestão',
-      discipline: 'Disciplina', motivation: 'Motivação',
-      adaptability: 'Adaptabilidade', determination: 'Determinação'
-    }[k] || k);
-
+    const legacy = p.legacy || G.calcLegacy(s);
+    const total = s.career.total;
+    const titles = s.career.history.reduce((a, h) => a + h.titles.length, 0);
+    const awards = s.career.history.reduce((a, h) => a + h.awards.length, 0);
+    const allAwards = s.career.history.flatMap((h) => h.awards);
+    const legacyLabel = legacy >= 85 ? 'LENDÁRIO' : legacy >= 65 ? 'ICONE' : legacy >= 45 ? 'CRAQUE' : legacy >= 30 ? 'BOM JOGADOR' : 'JOGADOR COMUM';
     return `
-    <div class="stack" style="max-width:900px;margin:0 auto">
-      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('chart')} PERFIL DO TREINADOR</span><span></span></header>
-
-      <div class="manager-layout" style="display:grid;grid-template-columns: 1fr 2fr;gap:20px;margin-top:20px">
-        <aside class="stack">
-          <div class="card" style="text-align:center;padding:26px">
-            <div style="width:100px;height:100px;border-radius:50%;margin:0 auto 12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:900;color:#07130b;border:4px solid rgba(255,255,255,0.1)">${esc(m.name.split(' ').map((w) => w[0]).slice(0, 2).join(''))}</div>
-            <div style="font-weight:900;font-size:1.6rem">${esc(m.name)}</div>
-            <div class="muted">${esc(s.db.clubs[s.clubId].name)} • ${esc(countryName(s, m.country))}</div>
-            <div class="pill gold" style="margin-top:10px;font-size:1.1rem;padding:6px 16px">Nível ${m.level}</div>
-            <div style="margin-top:15px">
-              <div class="tiny muted" style="margin-bottom:4px">Experiência (${m.xp} / ${nextLevelXp})</div>
-              <div class="ref-progress" style="height:8px"><i style="width:${xpPct}%;background:var(--accent)"></i></div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="h-sec">Licença Atual</div>
-            <div style="font-weight:700;font-size:1.1rem;color:var(--accent)">${m.level >= 8 ? 'Licença PRO Continental' : m.level >= 5 ? 'Licença Nacional A' : m.level >= 3 ? 'Licença Nacional B' : 'Licença Nacional C'}</div>
-            <p class="tiny muted" style="margin-top:6px">Sua licença define sua reputação base e capacidade de treinar grandes clubes na Europa e América.</p>
-          </div>
-
-          <div class="card">
-            <div class="h-sec">Reputação Mundial</div>
-            <div class="meter"><div class="bar"><i style="width:${m.rep}%"></i></div><span class="val">${Math.round(m.rep)}</span></div>
-            <div class="tiny muted" style="margin-top:8px">${m.rep >= 80 ? 'Ídolo mundial' : m.rep >= 68 ? 'Respeitado' : m.rep >= 55 ? 'Promissor' : 'Iniciante'}</div>
-          </div>
-        </aside>
-
-        <main class="stack">
-          <div class="card">
-            <div class="h-sec">Atributos de Treinador</div>
-            <div class="grid cols-2" style="gap:15px">
-              ${Object.entries(m.attrs || { tactics: 10, training: 10, management: 10, discipline: 10, motivation: 10, adaptability: 10, determination: 10 }).map(([k, v]) => `
-                <div class="attr-row">
-                  <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="tiny">${attrLabel(k)}</span><b class="tiny">${v}</b></div>
-                  <div class="ref-progress" style="height:6px"><i style="width:${v * 5}%;background:var(--blue)"></i></div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="h-sec">Árvore de Habilidades</div>
-            <div class="skill-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px">
-              ${[
-      { id: 'off', n: 'Ataque Total', d: '+5% gols marcados', cost: 2 },
-      { id: 'def', n: 'Retranca', d: '-5% gols sofridos', cost: 2 },
-      { id: 'fit', n: 'Preparador Físico', d: '+10% recuperação', cost: 3 },
-      { id: 'scout', n: 'Olho Clínico', d: 'Ver potencial exato', cost: 3 },
-      { id: 'talk', n: 'Palestra Motivacional', d: '+5 moral pós-jogo', cost: 2 },
-      { id: 'youth', n: 'Mestre da Base', d: 'Melhores jovens', cost: 4 },
-      { id: 'money', n: 'Negociador', d: '-10% preço de compra', cost: 3 },
-      { id: 'loy', n: 'Liderança', d: '+5% lealdade', cost: 2 },
-    ].map(sk => {
-      const active = (m.skills || []).includes(sk.id);
-      return `
-                <button class="skill-card ${active ? 'active' : ''}" style="background:rgba(255,255,255,0.03);border:1px solid ${active ? 'var(--accent)' : 'rgba(255,255,255,0.1)'};padding:10px;border-radius:8px;text-align:left;cursor:pointer">
-                  <div style="font-weight:700;font-size:0.8rem;margin-bottom:4px;color:${active ? 'var(--accent)' : '#fff'}">${sk.n}</div>
-                  <div class="tiny muted" style="line-height:1.2">${sk.d}</div>
-                  <div style="margin-top:8px;font-size:0.7rem;font-weight:700">${active ? '✓ ATIVO' : `Custo: ${sk.cost} PT`}</div>
-                </button>`;
-    }).join('')}
-            </div>
-            <div class="tiny muted" style="margin-top:12px">Você ganha 1 Ponto de Habilidade a cada 2 níveis. Pontos atuais: ${Math.floor(m.level / 2) - (m.skills || []).length}</div>
-          </div>
-
-          <div class="card">
-            <div class="h-sec">Sala de Troféus (${m.titles.length})</div>
-            <div class="trophy-room" style="display:flex;gap:10px;flex-wrap:wrap">
-              ${m.titles.length ? m.titles.map((t) => `
-                <div class="pill gold" style="display:flex;align-items:center;gap:6px">
-                  ${icon('trophy', 'ico small')}
-                  <span><b>${esc(t.comp)}</b> <small>T${t.season}</small></span>
-                </div>
-              `).join('') : '<div class="muted">Sua estante de troféus ainda está vazia. Vença competições para enchê-la!</div>'}
-            </div>
-          </div>
-        </main>
+    <div class="vc-screen hall">
+      <div class="card hall-hero">
+        <div class="hall-ball">${dead ? '🕊️' : '🏆'}</div>
+        <div class="hall-name">${esc(p.name)}</div>
+        <div class="tiny muted">${p.age} anos • ${countryById(p.country)?.flag || ''} ${esc(countryById(p.country)?.name || '')} • ${dead ? 'In memoriam' : 'Aposentado(a)'}</div>
+        <div class="hall-legacy">
+          <div class="legacy-score ${legacy >= 65 ? 'epic' : ''}">${legacy}</div>
+          <div><b>${legacyLabel}</b><div class="tiny muted">Legado — ${dead ? 'vida concluída' : 'carreira concluída'}</div></div>
+        </div>
+        <div class="hall-years tiny muted">${s.career.history.length} temporadas profissionais</div>
       </div>
+
+      <div class="grid cols-4" style="margin-top:14px">
+        <div class="kpi card"><div class="v">${total.apps}</div><div class="l">Jogos</div></div>
+        <div class="kpi card"><div class="v">${total.goals}</div><div class="l">Gols</div></div>
+        <div class="kpi card"><div class="v">${total.assists}</div><div class="l">Assist.</div></div>
+        <div class="kpi card"><div class="v">${titles}</div><div class="l">Títulos</div></div>
+      </div>
+      <div class="grid cols-3" style="margin-top:14px">
+        <div class="kpi card"><div class="v">${awards}</div><div class="l">Prêmios</div></div>
+        <div class="kpi card"><div class="v">${s.nt.caps}</div><div class="l">Jogos na seleção</div></div>
+        <div class="kpi card"><div class="v">${s.nt.goals}</div><div class="l">Gols na seleção</div></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">💎 Conquistas</div>
+        ${allAwards.length ? allAwards.map((a) => pill(awardName(a), 'gold')).join(' ') : '<div class="muted">Sem prêmios individuais.</div>'}
+        <div style="margin-top:8px">${s.career.timeline.filter((x) => x.type === 'title').slice(-8).map((x) => pill(`🏆 ${esc(x.text)}`, 'gold')).join(' ') || '<span class="muted">Sem títulos.</span>'}</div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="h-sec">💰 Ganhos totais</div>
+        <div class="money-big">${money(p.totalEarnings)}</div>
+        <div class="tiny muted">salários, luvas e prêmios somados</div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        ${!dead ? `<button class="btn primary" data-act="life">${icon('heart')} Continuar a vida</button>` : ''}
+        <button class="btn" data-act="menu">${icon('home')} Menu principal</button>
+      </div>
+      ${!dead ? '<div class="tiny muted" style="margin-top:8px">Após a aposentadoria, sua vida continua: família, saúde, novos projetos… até o fim.</div>' : ''}
     </div>`;
   },
   mount(el) {
-    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
-  }
-};
-
-// ============================================================
-// ESTATÍSTICAS (artilharia, histórico, recordes, hall da fama)
-// ============================================================
-let statsTab = 'scorers', statsComp = null;
-export const statsScreen = {
-  html() {
-    const s = S();
-    const comps = s.competitions.filter((c) => Object.keys(c.scorers || {}).length);
-    if (!statsComp || !comps.some((c) => c.id === statsComp)) statsComp = comps[0]?.id;
-    let body = '';
-    if (statsTab === 'scorers') {
-      const comp = comps.find((c) => c.id === statsComp);
-      const rows = comp ? Object.entries(comp.scorers).sort((a, b) => b[1] - a[1]).slice(0, 15) : [];
-      const as = comp ? Object.entries(comp.assists).sort((a, b) => b[1] - a[1]).slice(0, 10) : [];
-      body = `
-      <div class="card"><div class="seg" style="flex-wrap:wrap">${comps.map((c) => `<button class="chip ${c.id === statsComp ? 'active' : ''}" data-comp="${c.id}">${esc(c.short)}</button>`).join('')}</div></div>
-      <div class="grid cols-2">
-        <div class="card"><div class="h-sec">Artilharia ${comp ? '— ' + esc(comp.name) : ''}</div>
-          ${rows.map(([pid, g], i) => { const p = s.db.players[pid]; return `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${p ? `${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''}</div></div><span style="font-weight:900;font-size:1.15rem">${g}</span>` : '—'}</div>`; }).join('') || '<div class="muted">Sem gols ainda.</div>'}
-        </div>
-        <div class="card"><div class="h-sec">Assistências</div>
-          ${as.map(([pid, g], i) => { const p = s.db.players[pid]; return `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${p ? `<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''}</div></div><span style="font-weight:900">${g}</span>` : '—'}</div>`; }).join('') || '<div class="muted">—</div>'}
-        </div>
-      </div>`;
-    } else if (statsTab === 'history') {
-      const byYear = {};
-      s.history.champions.forEach((c) => { (byYear[c.year] = byYear[c.year] || []).push(c); });
-      body = `<div class="card"><div class="h-sec">Histórico de campeões</div>
-      ${Object.keys(byYear).sort((a, b) => b - a).map((y) => `
-        <div style="margin-bottom:14px"><div class="pill gold">${y}</div>
-        <div class="table-wrap" style="margin-top:8px"><table class="data" style="min-width:0"><tbody>
-          ${byYear[y].map((c) => `<tr class="${c.clubId === s.clubId ? 'me' : ''}"><td>${esc(c.name)}</td><td>${clubCell(s, c.clubId)} <b>${esc(s.db.clubs[c.clubId]?.name || '')}</b></td></tr>`).join('')}
-        </tbody></table></div></div>`).join('') || '<div class="muted">Temporada em andamento.</div>'}</div>`;
-    } else if (statsTab === 'records') {
-      const recs = Object.entries(s.history.records);
-      body = `<div class="card"><div class="h-sec">Recordes (artilharia em uma temporada)</div>
-        ${recs.map(([k, r]) => { const p = s.db.players[r.playerId]; return `<div class="hall-card" style="padding:10px 0;border-bottom:1px solid var(--line)">${icon('fire')}<div style="flex:1;margin-left:8px"><b>${esc(k.replace(/^L_|^C_|^CONT_/, ''))}</b><div class="tiny muted">${p ? esc(p.name) : '—'} em ${r.year}</div></div><span style="font-weight:900;color:var(--gold)">${r.goals} gols</span></div>`; }).join('') || '<div class="muted">Os recordes serão definidos ao fim da primeira temporada.</div>'}</div>`;
-    } else if (statsTab === 'awards') {
-      const awards = s.history.awards || [];
-      body = `
-      <div class="card"><div class="h-sec">Premiações Mundiais</div>
-        ${awards.slice().reverse().map(a => `
-          <div style="margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:15px">
-            <div class="pill gold">${a.year}</div>
-            <div class="grid cols-4" style="margin-top:15px;gap:20px">
-              <div style="text-align:center">
-                ${awardIcon('ballonDor', 60)}
-                <div style="font-weight:700;margin-top:8px">Bola de Ouro</div>
-                <div class="tiny muted">${s.db.players[a.ballonDor]?.name || '—'}</div>
-              </div>
-              <div style="text-align:center">
-                ${awardIcon('goldenShoe', 60)}
-                <div style="font-weight:700;margin-top:8px">Chuteira de Ouro</div>
-                <div class="tiny muted">${s.db.players[a.goldenShoe]?.name || '—'}</div>
-              </div>
-              <div style="text-align:center">
-                ${awardIcon('theBest', 60)}
-                <div style="font-weight:700;margin-top:8px">FIFA The Best</div>
-                <div class="tiny muted">${s.db.players[a.theBest]?.name || '—'}</div>
-              </div>
-              <div style="text-align:center">
-                ${awardIcon('puskas', 60)}
-                <div style="font-weight:700;margin-top:8px">Puskas</div>
-                <div class="tiny muted">${s.db.players[a.puskas]?.name || '—'}</div>
-              </div>
-            </div>
-          </div>
-        `).join('') || '<div class="muted">As premiações são entregues ao fim de cada temporada.</div>'}
-      </div>`;
-    } else {
-      const topScorers = Object.values(s.db.players).sort((a, b) => b.career.goals - a.career.goals).slice(0, 10);
-      const topAssists = Object.values(s.db.players).sort((a, b) => b.career.assists - a.career.assists).slice(0, 10);
-      body = `<div class="grid cols-2">
-        <div class="card"><div class="h-sec">⭐ Hall da Fama — Gols na carreira</div>
-          ${topScorers.map((p, i) => `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''} • ${p.pos}</div></div><span style="font-weight:900">${p.career.goals}</span></div>`).join('')}</div>
-        <div class="card"><div class="h-sec">🎯 Assistências na carreira</div>
-          ${topAssists.map((p, i) => `<div class="hall-card" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="hall-num">${i + 1}</span>${avatar(p, 30)}<div style="flex:1"><b>${esc(p.name)}</b><div class="tiny muted">${p.clubId ? esc(s.db.clubs[p.clubId]?.short || '') : ''} • ${p.pos}</div></div><span style="font-weight:900">${p.career.assists}</span></div>`).join('')}</div>
-      </div>`;
-    }
-    return `
-    <div class="stack">
-      <div class="card"><div class="seg" id="stats-tabs">
-        ${[['scorers', 'Artilharia'], ['history', 'Histórico'], ['records', 'Recordes'], ['awards', 'Premiações'], ['hall', 'Hall da Fama']].map(([k, l]) => `<button class="chip ${statsTab === k ? 'active' : ''}" data-st="${k}">${l}</button>`).join('')}
-      </div></div>
-      ${body}
-    </div>`;
-  },
-  mount(el) {
-    el.querySelectorAll('[data-st]').forEach((b) => b.onclick = () => { statsTab = b.dataset.st; renderRoute(); });
-    el.querySelectorAll('[data-comp]').forEach((b) => b.onclick = () => { statsComp = b.dataset.comp; renderRoute(); });
-  },
-};
-
-// ============================================================
-// RANKING MUNDIAL
-// ============================================================
-export const rankingScreen = {
-  html() {
-    const s = S();
-    const rank = G.worldRanking(s).slice(0, 60);
-    const myPos = G.worldRanking(s).findIndex((r) => r.clubId === s.clubId) + 1;
-    return `
-    <div class="stack" style="max-width:800px;margin:0 auto">
-      <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-        <div><div class="h-sec" style="margin:0">Ranking Mundial de Clubes</div><div class="tiny muted">Reputação + títulos conquistados</div></div>
-        <span class="pill gold">Seu clube: #${myPos}</span>
-      </div>
-      <div class="card"><div class="table-wrap"><table class="data">
-        <thead><tr><th>#</th><th>Clube</th><th>País</th><th class="num">Títulos</th><th class="num">Pontos</th></tr></thead>
-        <tbody>${rank.map((r, i) => { const c = s.db.clubs[r.clubId]; return `<tr class="${r.clubId === s.clubId ? 'me' : ''}">
-          <td>${i + 1}</td><td>${clubCell(s, r.clubId)} <b>${esc(c.name)}</b></td><td class="muted">${esc(countryName(s, c.country))}</td>
-          <td class="num">${c.titles.length} 🏆</td><td class="num"><b>${num(r.score)}</b></td></tr>`; }).join('')}</tbody></table></div></div>
-    </div>`;
-  },
-};
-
-// ============================================================
-// AMISTOSOS
-// ============================================================
-const fri = { q: '', opp: null, weekOffset: 1 };
-export const friendliesScreen = {
-  html() {
-    const s = S();
-    const q = fri.q.toLowerCase();
-    const opts = Object.values(s.db.clubs).filter((c) => c.id !== s.clubId && (!q || c.name.toLowerCase().includes(q) || c.short.toLowerCase().includes(q))).slice(0, 14);
-    const opp = fri.opp ? s.db.clubs[fri.opp] : null;
-    const scheduled = s.competitions.filter((c) => c.friendly);
-    return `
-    <div class="stack" style="max-width:760px;margin:0 auto">
-      <div class="card">
-        <div class="h-sec">Agendar amistoso</div>
-        <div class="field"><label>Adversário</label><input class="input" id="fr-q" placeholder="Digite para buscar…" value="${esc(fri.q)}"></div>
-        <div class="chips" id="fr-opts" style="max-height:180px;overflow-y:auto">${opts.map((c) => `<button class="chip ${fri.opp === c.id ? 'active' : ''}" data-opp="${c.id}">${crest(c, 20)} ${esc(c.name)}</button>`).join('')}</div>
-        <div class="field" style="margin-top:14px"><label>Semana do jogo: <b>${s.week + fri.weekOffset}</b> (em ${fri.weekOffset} sem.)</label>
-          <input class="input" type="range" id="fr-wk" min="1" max="6" value="${fri.weekOffset}"></div>
-        <button class="btn primary block" id="fr-go" ${opp ? '' : 'disabled'}>${icon('handshake')} Marcar contra ${opp ? esc(opp.name) : '…'}</button>
-      </div>
-      <div class="card">
-        <div class="h-sec">Amistosos marcados/realizados</div>
-        ${scheduled.length ? scheduled.map((c) => c.fixtures.map((f) => `
-          <div class="tie"><div>${clubCell(s, f.home)} <b style="margin:0 5px">×</b> ${clubCell(s, f.away)}</div>
-          <div class="tscore">${f.played ? `${f.gh} × ${f.ga}` : `<span class="pill">Semana ${f.week}</span>`}</div></div>`).join('')).join('') : '<div class="muted">Nenhum amistoso marcado.</div>'}
-      </div>
-    </div>`;
-  },
-  mount(el) {
-    const s = S();
-    const q = el.querySelector('#fr-q');
-    q.oninput = () => { fri.q = q.value; fri.opp = null; renderRoute(); setTimeout(() => { const nq = document.querySelector('#fr-q'); if (nq) { nq.focus(); nq.setSelectionRange(nq.value.length, nq.value.length); } }, 30); };
-    el.querySelector('[data-fr-search]')?.addEventListener('click', () => { fri.q = q.value; fri.opp = null; renderRoute(); });
-    el.querySelectorAll('[data-opp]').forEach((b) => b.onclick = () => { fri.opp = b.dataset.opp; renderRoute(); });
-    el.querySelector('#fr-wk').oninput = (e) => { fri.weekOffset = Number(e.target.value); renderRoute(); };
-    el.querySelector('#fr-go').onclick = () => {
-      if (!fri.opp) return;
-      G.scheduleFriendly(s, fri.opp, s.week + fri.weekOffset);
-      toast('🤝 Amistoso agendado!');
-      fri.opp = null; fri.q = '';
-      autosave(); renderRoute();
-    };
-  },
-};
-
-// ============================================================
-// CAMPEONATO PERSONALIZADO
-// ============================================================
-const cst = { name: '', format: 'cup', q: '', teams: [] };
-export const customScreen = {
-  html() {
-    const s = S();
-    const q = cst.q.toLowerCase();
-    const opts = Object.values(s.db.clubs).filter((c) => !cst.teams.includes(c.id) && (!q || c.name.toLowerCase().includes(q) || c.short.toLowerCase().includes(q))).slice(0, 12);
-    return `
-    <div class="stack" style="max-width:760px;margin:0 auto">
-      <div class="card">
-        <div class="h-sec">Criar campeonato personalizado</div>
-        <div class="field"><label>Nome do campeonato</label><input class="input" id="cs-name" maxlength="30" placeholder="Ex.: Copa dos Campeões" value="${esc(cst.name)}"></div>
-        <div class="field"><label>Formato</label><div class="seg">
-          <button class="chip ${cst.format === 'cup' ? 'active' : ''}" data-fmt="cup">Mata-mata</button>
-          <button class="chip ${cst.format === 'league' ? 'active' : ''}" data-fmt="league">Pontos corridos (turno único)</button>
-        </div></div>
-        <div class="field"><label>Equipes (${cst.teams.length}) — mínimo 4</label>
-          <div class="chips" style="margin-bottom:10px">${cst.teams.map((id) => `<button class="chip active" data-rm="${id}">${crest(s.db.clubs[id], 18)} ${esc(s.db.clubs[id].short)} ✕</button>`).join('') || '<span class="tiny muted">Adicione seu time e os adversários abaixo…</span>'}</div>
-          <input class="input" id="cs-q" placeholder="Buscar clube…" value="${esc(cst.q)}">
-          <div class="chips" style="margin-top:10px">${opts.map((c) => `<button class="chip" data-add="${c.id}">${crest(c, 18)} ${esc(c.name)}</button>`).join('')}</div>
-        </div>
-        <div style="display:flex;gap:10px">
-          <button class="btn" id="cs-my">${icon('plus')} Incluir meu clube</button>
-          <button class="btn primary" id="cs-go" ${cst.name && cst.teams.length >= 4 ? '' : 'disabled'}>${icon('trophy')} Criar campeonato</button>
-        </div>
-        <div class="tiny muted" style="margin-top:10px">O campeonato entra no seu calendário a partir da próxima semana. Se o seu clube estiver entre as equipes, você disputa normalmente!</div>
-      </div>
-    </div>`;
-  },
-  mount(el) {
-    const s = S();
-    el.querySelector('#cs-name').oninput = (e) => { cst.name = e.target.value; };
-    el.querySelectorAll('[data-fmt]').forEach((b) => b.onclick = () => { cst.format = b.dataset.fmt; renderRoute(); });
-    const q = el.querySelector('#cs-q');
-    q.onchange = () => { cst.q = q.value; renderRoute(); };
-    el.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => { if (cst.teams.length < 32) cst.teams.push(b.dataset.add); renderRoute(); });
-    el.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { cst.teams = cst.teams.filter((x) => x !== b.dataset.rm); renderRoute(); });
-    el.querySelector('#cs-my').onclick = () => { if (!cst.teams.includes(s.clubId)) cst.teams.push(s.clubId); renderRoute(); };
-    el.querySelector('#cs-go').onclick = () => {
-      const r = G.createCustomCompetition(s, { name: cst.name.trim(), teamIds: cst.teams, format: cst.format });
-      if (r.ok) { toast('🏆 Campeonato criado! Veja em Copas.'); cst.name = ''; cst.teams = []; cst.q = ''; autosave(); go('cups'); }
-      else toast(r.msg || 'Erro ao criar.', 'error');
-    };
-  },
-};
-
-// ============================================================
-// EDITOR — CRIAR JOGADOR
-// ============================================================
-const ed = { name: '', pos: 'M', age: 21, ovr: 70, pot: 78, country: 'br', clubId: null, photo: null };
-export const editorScreen = {
-  html() {
-    const s = S();
-    if (!ed.clubId) ed.clubId = s.clubId;
-    const clubsSorted = Object.values(s.db.clubs).sort((a, b) => a.name.localeCompare(b.name));
-    return `
-    <div class="stack" style="max-width:640px;margin:0 auto">
-      <div class="card">
-        <div class="h-sec">Criar novo jogador</div>
-        <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
-          <div id="ed-preview">${ed.photo ? `<img src="${ed.photo}" width="64" height="64" style="border-radius:50%;object-fit:cover">` : avatar({ name: ed.name || 'Novo Jogador', pos: ed.pos }, 64)}</div>
-          <div style="flex:1"><input class="input" id="ed-name" maxlength="28" placeholder="Nome do jogador" value="${esc(ed.name)}"></div>
-        </div>
-        <div class="field"><label>Foto (opcional — redimensionada para 96×96)</label><input class="input" type="file" id="ed-photo" accept="image/*" style="padding:11px"></div>
-        <div class="field"><label>Posição</label><div class="seg">${POS_ORDER.map((p) => `<button class="chip ${ed.pos === p ? 'active' : ''}" data-pos="${p}">${POSITIONS[p]}</button>`).join('')}</div></div>
-        <div class="grid cols-2">
-          <div class="field"><label>Idade: <b id="ed-age-v">${ed.age}</b></label><input class="input" type="range" min="15" max="40" id="ed-age" value="${ed.age}"></div>
-          <div class="field"><label>Nacionalidade</label><select class="input" id="ed-country">${COUNTRIES.map((c) => `<option value="${c.id}" ${ed.country === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
-        </div>
-        <div class="field"><label>Overall: <b id="ed-ovr-v">${ed.ovr}</b></label><input class="input" type="range" min="40" max="99" id="ed-ovr" value="${ed.ovr}"></div>
-        <div class="field"><label>Potencial: <b id="ed-pot-v">${ed.pot}</b></label><input class="input" type="range" min="40" max="99" id="ed-pot" value="${ed.pot}"></div>
-        <div class="field"><label>Clube</label><select class="input" id="ed-club">${clubsSorted.map((c) => `<option value="${c.id}" ${ed.clubId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
-        <button class="btn primary big block" id="ed-create" ${ed.name.trim() ? '' : 'disabled'}>${icon('plus')} Criar jogador</button>
-      </div>
-    </div>`;
-  },
-  mount(el) {
-    const s = S();
-    const name = el.querySelector('#ed-name');
-    name.oninput = () => { ed.name = name.value; el.querySelector('#ed-create').disabled = !ed.name.trim(); el.querySelector('#ed-preview').innerHTML = ed.photo ? `<img src="${ed.photo}" width="64" height="64" style="border-radius:50%;object-fit:cover">` : avatar({ name: ed.name || 'NP', pos: ed.pos }, 64); };
-    el.querySelector('#ed-photo').onchange = (e) => {
-      const f = e.target.files[0];
-      if (f) resizeImage(f, 96, (d) => { ed.photo = d; renderRoute(); });
-    };
-    el.querySelectorAll('[data-pos]').forEach((b) => b.onclick = () => { ed.pos = b.dataset.pos; renderRoute(); });
-    const bindR = (id, key) => { const i = el.querySelector(`#ed-${id}`); i.oninput = () => { ed[key] = Number(i.value); el.querySelector(`#ed-${id}-v`).textContent = i.value; }; };
-    bindR('age', 'age'); bindR('ovr', 'ovr'); bindR('pot', 'pot');
-    el.querySelector('#ed-country').onchange = (e) => ed.country = e.target.value;
-    el.querySelector('#ed-club').onchange = (e) => ed.clubId = e.target.value;
-    el.querySelector('#ed-create').onclick = () => {
-      const value = App.revalue(ed.ovr, ed.age, Math.max(ed.pot, ed.ovr));
-      const p = {
-        id: `pc_${Date.now().toString(36)}`,
-        name: ed.name.trim(), clubId: ed.clubId, age: ed.age,
-        height: 172 + Math.round(Math.random() * 20), weight: 70 + Math.round(Math.random() * 15),
-        country: ed.country, pos: ed.pos, ovr: ed.ovr, pot: Math.max(ed.pot, ed.ovr),
-        salary: Math.round(value / 1100 / 100) * 100 || 5000, contractYears: 3, value,
-        personality: 'Profissional', fitness: 95, injuredWeeks: 0, suspended: 0, yellow: 0,
-        number: 0, foot: 'D', morale: 75, xp: 20, form: 60, photo: ed.photo,
-        stats: { games: 0, goals: 0, assists: 0, yellow: 0, red: 0, ratingSum: 0, cleanSheets: 0 },
-        career: { games: 0, goals: 0, assists: 0 }, history: [], listed: false, loan: null, formHistory: [],
-      };
-      const used = new Set(G.clubPlayers(s.db, ed.clubId).map((x) => x.number));
-      let n = 30; while (used.has(n)) n++; p.number = n;
-      s.db.players[p.id] = p;
-      toast(`✅ ${esc(p.name)} criado e adicionado ao ${esc(s.db.clubs[ed.clubId].short)}!`);
-      autosave(); go(`player/${p.id}`);
-    };
+    el.querySelector('[data-act=life]')?.addEventListener('click', () => go('home'));
+    el.querySelector('[data-act=menu]')?.addEventListener('click', () => {
+      if (App.state) autosave();
+      go('menu');
+    });
+    el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
   },
 };
 
@@ -966,19 +870,11 @@ export const settingsScreen = {
         <div class="field"><label>Cor de destaque</label><div class="chips">
           ${[['laranja', '#ff7700'], ['verde', '#22c55e'], ['azul', '#38bdf8'], ['roxo', '#a78bfa'], ['dourado', '#f5c542'], ['vermelho', '#fb7185']].map(([k, c]) => `<button class="chip ${st.accent === k ? 'active' : ''}" data-set="accent:${k}"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c};margin-right:6px;vertical-align:-2px"></span>${k}</button>`).join('')}
         </div></div>
-        <div class="field"><label>Velocidade da simulação ao vivo: <b>${['Lenta', 'Normal', 'Rápida'][st.speed - 1]}</b></label><input class="input" type="range" min="1" max="3" id="set-speed" value="${st.speed}"></div>
         <div class="field"><label>Volume dos efeitos: <b id="vol-v">${st.volume}</b></label><input class="input" type="range" min="0" max="100" id="set-vol" value="${st.volume}"></div>
         <div class="field"><label>Qualidade gráfica</label><div class="seg">
           <button class="chip ${st.quality === 'alta' ? 'active' : ''}" data-set="quality:alta">Alta (animações)</button>
           <button class="chip ${st.quality === 'baixa' ? 'active' : ''}" data-set="quality:baixa">Baixa (desempenho)</button>
         </div></div>
-        <div class="field"><label>Dinheiro Infinito</label><div class="seg">
-          <button class="chip ${st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:true">Ligado</button>
-          <button class="chip ${!st.infiniteMoney ? 'active' : ''}" data-set="infiniteMoney:false">Desligado</button>
-        </div></div>
-        <div class="field" style="margin-top:6px"><label>Valor do dinheiro infinito (quando ligado)</label>
-          <input class="input" type="number" id="inf-val" value="${st.infiniteMoneyValue || 999999999}" min="1" step="1000000" style="width:220px">
-        </div>
         <div class="tiny muted">As configurações são salvas automaticamente.</div>
         ${App.state ? '' : `<button class="btn ghost block" data-back>${icon('back')} Voltar ao menu</button>`}
       </div>
@@ -988,43 +884,20 @@ export const settingsScreen = {
     const st = S() ? S().settings : App.bootSettings;
     const persist = () => {
       const s = S();
-      if (s) {
-        if (s.settings && (s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true')) {
-          s.finances.balance = Number(s.settings.infiniteMoneyValue) || 999999999;
-        }
-        autosave();
-      } else {
-        try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {}
-      }
+      if (s) autosave(); else { try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {} }
       applySettingsToBody();
       if (!s) renderRoute();
     };
     el.querySelectorAll('[data-set]').forEach((b) => b.onclick = () => {
       const [k, v] = b.dataset.set.split(':');
-      let val = v;
-      if (v === 'true') val = true;
-      else if (v === 'false') val = false;
-      st[k] = val;
+      st[k] = v === 'true' ? true : v === 'false' ? false : v;
       applySettingsToBody();
       persist();
       renderRoute();
     });
-    el.querySelector('#set-speed').oninput = (e) => { st.speed = Number(e.target.value); persist(); renderRoute(); };
     const vol = el.querySelector('#set-vol');
     vol.oninput = () => { st.volume = Number(vol.value); el.querySelector('#vol-v').textContent = vol.value; persist(); };
     vol.onchange = () => tone(700, 0.15, 'triangle');
-    const infVal = el.querySelector('#inf-val');
-    if (infVal) {
-      infVal.oninput = () => {
-        st.infiniteMoneyValue = Number(infVal.value) || 0;
-        const s = S();
-        if (s && s.settings && (s.settings.infiniteMoney === true || s.settings.infiniteMoney === 'true')) {
-          s.finances.balance = st.infiniteMoneyValue;
-        }
-        if (s) autosave();
-        else { try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {} }
-      };
-    }
     el.querySelector('[data-back]')?.addEventListener('click', () => go('menu'));
   },
 };
@@ -1045,7 +918,7 @@ export const savesScreen = {
           return `<div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
             <span class="pill ${id === 'auto' ? 'blue' : ''}">${id === 'auto' ? 'AUTO' : id.replace('slot', 'Slot ')}</span>
             <div style="flex:1;min-width:160px">
-              ${sl ? `<b>${esc(sl.clubName)}</b><div class="tiny muted">${esc(sl.manager)} • Temporada ${sl.season} • Semana ${sl.week} • ${new Date(sl.savedAt).toLocaleString('pt-BR')}</div>` : '<span class="muted">vazio</span>'}
+              ${sl ? `<b>${esc(sl.playerName)}</b><div class="tiny muted">${sl.age} anos • OVR ${sl.ovr}${sl.club ? ' • ' + esc(sl.club) : ''} • ${new Date(sl.savedAt).toLocaleString('pt-BR')}</div>` : '<span class="muted">vazio</span>'}
             </div>
             <div style="display:flex;gap:8px">
               ${App.state ? `<button class="btn small" data-save="${id}">${icon('save')} Salvar</button>` : ''}
@@ -1085,8 +958,8 @@ export const savesScreen = {
     });
     el.querySelector('[data-exp]')?.addEventListener('click', async () => {
       const packed = await compressText(G.serialize(S()));
-      const club = S().db.clubs[S().clubId].short;
-      downloadFile(`fmsave_${club}_T${S().season}_S${S().week}.fmsave.json`, packed);
+      const nm = S().player.name.replace(/\W+/g, '_').slice(0, 18);
+      downloadFile(`vc26_${nm}_${S().calendar.year}.fmsave.json`, packed);
       toast('⬇️ Save exportado.');
     });
     el.querySelector('#imp-file')?.addEventListener('change', async (e) => {
@@ -1105,22 +978,27 @@ export const savesScreen = {
 };
 
 // ============================================================
-// CRÉDITOS
+// COMO JOGAR
 // ============================================================
-export const creditsScreen = {
+export const howtoScreen = {
   html() {
     return `
-    <div class="menu-wrap" style="text-align:left;max-width:520px">
-      <div style="text-align:center"><img src="public/favicon.svg" width="64" height="64" alt="">
-      <div class="menu-title" style="font-size:1.5rem;margin:10px 0 16px">CRÉ<span>DITOS</span></div></div>
-      <div class="card" style="line-height:1.65">
-        <p><b>Futebol Manager 26</b> — jogo original de gerenciamento de futebol para navegador, inspirado nas mecânicas clássicas dos managers de texto.</p>
-        <br>
-        <p class="muted">• Motor de simulação, interface e banco de dados 100% próprios, escritos em HTML, CSS e JavaScript puros — sem frameworks, sem build.<br>
-        • Os <b>escudos exibidos pertencem aos seus respectivos clubes</b>; os arquivos foram obtidos de páginas públicas da Wikipedia/Wikimedia apenas para referência visual em uso pessoal e não comercial. Se um clube não tiver imagem (ex.: clubes que você criar), o jogo gera um escudo alternativo automaticamente. Os <b>jogadores são fictícios</b>, criados por algoritmo — nenhum dado real de atletas é usado.<br>
-        • Todo o progresso fica salvo apenas no seu dispositivo (localStorage), com compressão gzip.</p>
-        <br>
-        <p class="tiny muted">Feito com ⚽ e JavaScript. Bom jogo, treinador!</p>
+    <div class="menu-wrap" style="text-align:left;max-width:560px">
+      <div style="text-align:center"><span style="font-size:3rem">⚽</span>
+      <div class="menu-title" style="font-size:1.5rem;margin:8px 0 16px">COMO <span>JOGAR</span></div></div>
+      <div class="card stack">
+        <div class="h-sec">1. Sua vida</div>
+        <p class="muted" style="line-height:1.6">Cada <b>Avançar mês</b> faz o tempo passar. Você envelhece, recebe salário, recupera energia e recebe <b>decisões de vida</b> (eventos) — escolha sabiamente, elas mudam sua história.</p>
+        <div class="h-sec">2. Futebol</div>
+        <p class="muted" style="line-height:1.6">Com clube, você tem partidas todo mês: <b>Jogar</b> (narrativa minuto a minuto) ou <b>Simular</b>. Sua nota (0–10) define forma, fama, valor de mercado e convocação para a seleção.</p>
+        <div class="h-sec">3. Treino</div>
+        <p class="muted" style="line-height:1.6">Uma vez por mês, escolha <b>foco</b> (finalização, drible, físico…) e <b>intensidade</b>. Jovens evoluem rápido; depois dos 30 o corpo começa a cobrar. Use <b>Descanso</b> quando a energia estiver baixa.</p>
+        <div class="h-sec">4. Mercado</div>
+        <p class="muted" style="line-height:1.6">Janelas em <b>janeiro, julho e agosto</b>. Aceite propostas, renove contratos ou peça transferência. Cláusulas e luvas contam como dinheiro na conta.</p>
+        <div class="h-sec">5. Vida pessoal</div>
+        <p class="muted" style="line-height:1.6">Família, namoro, filhos, amigos, fama e dinheiro: tudo interage. Felicidade baixa derruba moral e desempenho. Invista, compre e viva — mas sem exagerar na farra.</p>
+        <div class="h-sec">6. Fim de carreira</div>
+        <p class="muted" style="line-height:1.6">A partir dos 32 anos você pode se aposentar e ver seu <b>Legado</b> no Hall da Fama. Depois, a vida continua: saúde, família e novos projetos.</p>
       </div>
       <div style="margin-top:14px"><button class="btn ghost block" data-back>${icon('back')} Voltar</button></div>
     </div>`;
@@ -1129,263 +1007,25 @@ export const creditsScreen = {
 };
 
 // ============================================================
-// TREINOS — planejador semanal com efeitos reais + histórico
+// CRÉDITOS
 // ============================================================
-export const trainingScreen = {
+export const creditsScreen = {
   html() {
-    const s = S();
-    const tr = s.training || { focus: 'fisico', done: false };
-    const plan = Array.isArray(tr.plan) && tr.plan.length === 7 ? tr.plan : G.defaultTrainPlan();
-    const squad = G.clubPlayers(s.db, s.clubId);
-    const avgFit = Math.round(squad.reduce((x, p) => x + p.fitness, 0) / Math.max(1, squad.length));
-    const avgMor = Math.round(squad.reduce((x, p) => x + p.morale, 0) / Math.max(1, squad.length));
-    const avgForm = Math.round(squad.reduce((x, p) => x + p.form, 0) / Math.max(1, squad.length));
-    const chemNow = Math.round(s.chemistry || 70);
-    const injuredCount = squad.filter((p) => p.injuredWeeks > 0).length;
-    const focus = G.TRAINING_FOCUS[tr.focus] || G.TRAINING_FOCUS.fisico;
-    // Recomendação dinâmica da comissão, calculada pelo estado real do elenco
-    const recKey = avgFit < 70 ? 'fisico' : chemNow < 66 ? 'tatica' : avgForm < 58 ? 'tecnica' : avgMor < 62 ? 'descanso' : 'tecnica';
-    const recReason = avgFit < 70 ? 'Elenco abaixo da condição ideal para a sequência.'
-      : chemNow < 66 ? 'O grupo ainda não absorveu o plano de jogo.'
-        : avgForm < 58 ? 'O ritmo de jogo está caindo; fundamentos ajudam.'
-          : avgMor < 62 ? 'O ambiente do vestiário pede leveza.'
-            : 'Semana equilibrada: mantenha a evolução técnica.';
-    const rec = G.TRAINING_FOCUS[recKey];
-    const totals = G.planTotals(plan);
-    const history = Array.isArray(tr.history) ? tr.history : [];
-    const fmtSigned = (v) => `${v > 0 ? '+' : ''}${Math.round(v)}`;
-    const activityOptions = Object.entries(G.TRAIN_ACTIVITIES);
-    const typeRows = activityOptions.map(([k, v]) => [v.label, v.desc]);
-
     return `
-    <div class="ref-training">
-      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à Central</span></button><span class="ref-page-nav-title">${icon('whistle')} CENTRO DE TREINAMENTO</span><button class="ref-view-squad" data-ref-squad>Ver elenco</button></header>
-      <section class="ref-training-hero"><div><h1>Prepare. Recupere. Evolua.</h1><p>Planeje cada sessão e encontre o equilíbrio entre desempenho, desgaste e risco.</p></div>${crest(s.db.clubs[s.clubId], 76)}</section>
-      <section class="ref-training-kpis">
-        <div><span>${icon('medical')}<b>CONDIÇÃO</b></span><strong>${avgFit}%</strong><i><b style="width:${avgFit}%"></b></i></div>
-        <div><span>${icon('fire')}<b>RITMO</b></span><strong>${avgForm}%</strong><i><b style="width:${avgForm}%"></b></i></div>
-        <div><span>${icon('star')}<b>MORAL</b></span><strong>${avgMor}%</strong><i><b style="width:${avgMor}%"></b></i></div>
-        <div><span>${icon('target')}<b>ENTROSAMENTO</b></span><strong>${chemNow}%</strong><i><b style="width:${chemNow}%"></b></i></div>
-      </section>
-      <section class="ref-training-recommendation">
-        <div class="ref-recommendation-copy"><span class="ref-section-label">${icon('star')} RECOMENDAÇÃO DA COMISSÃO</span><strong>${rec.label}</strong><small>${esc(recReason)}${injuredCount ? ` ${injuredCount} atleta(s) no DM.` : ''}</small></div>
-        <label><span>Prioridade semanal</span><select data-focus-select>${Object.entries(G.TRAINING_FOCUS).map(([k, v]) => `<option value="${k}" ${tr.focus === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
-        <label><span>Efeito do foco</span><i class="ref-focus-effect">${esc(focus.desc)}</i></label>
-        <button class="ref-apply-training" data-train ${tr.done ? 'disabled' : ''}>${tr.done ? 'Treino aplicado' : 'Aplicar à semana'}</button>
-      </section>
-
-      <section class="ref-card ref-week-planner">
-        <div class="ref-card-head"><span class="ref-section-label">${icon('calendar')} PRÓXIMOS SETE DIAS</span><h2>Planejamento da semana</h2><small>Cada sessão altera condição, ritmo, entrosamento e risco.</small></div>
-        <div class="ref-training-days">${plan.map((day, index) => {
-          const date = refDateInfo(s.week, s.year, index);
-          const act = G.TRAIN_ACTIVITIES[day.activity] || G.TRAIN_ACTIVITIES.tecnica;
-          const mult = G.intensityMult(day.intensity);
-          const eff = (v) => Math.round(v * mult);
-          return `<article class="ref-training-day">
-            <b>${date.weekday} · ${date.day} DE ${date.month}</b>
-            <strong>${esc(act.label)}</strong>
-            <label>Atividade<select data-day-act="${index}">${activityOptions.map(([k, v]) => `<option value="${k}" ${day.activity === k ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></label>
-            <label>Intensidade<select data-day-int="${index}">${['leve', 'normal', 'alta'].map((it) => `<option value="${it}" ${day.intensity === it ? 'selected' : ''}>${it.charAt(0).toUpperCase() + it.slice(1)}</option>`).join('')}</select></label>
-            <div class="ref-training-tags"><span>Condição ${fmtSigned(eff(act.cond))}</span><span>Ritmo ${fmtSigned(eff(act.ritmo))}</span><small>Risco ${Math.round(act.risk * mult)}%</small></div>
-            <p>${esc(act.desc)}${act.morale ? ` Moral ${fmtSigned(eff(act.morale))}.` : ''}${act.chem ? ` Entrosamento ${fmtSigned(eff(act.chem))}.` : ''}</p>
-          </article>`;
-        }).join('')}</div>
-        <div class="ref-week-forecast">
-          <span>${icon('pulse')} <b>PREVISÃO DA SEMANA</b></span>
-          <em class="${totals.cond >= 0 ? 'pos' : 'neg'}">Condição ${fmtSigned(totals.cond)}</em>
-          <em class="${totals.ritmo >= 0 ? 'pos' : 'neg'}">Ritmo ${fmtSigned(totals.ritmo)}</em>
-          <em class="${totals.morale >= 0 ? 'pos' : 'neg'}">Moral ${fmtSigned(totals.morale)}</em>
-          <em class="pos">Entrosamento ${fmtSigned(totals.chem)}</em>
-          <em class="${totals.risk > 0 ? 'neg' : 'pos'}">Risco de lesão ${Math.round(totals.risk)}%</em>
-          ${tr.done ? '<i class="rf-done">✓ Semana já treinada — novo plano após avançar</i>' : ''}
-        </div>
-      </section>
-
-      <section class="ref-training-bottom">
-        <section class="ref-card ref-session-types"><div class="ref-card-head"><span class="ref-section-label">${icon('pulse')} TIPOS DE SESSÃO</span><h2>Objetivo de cada atividade</h2></div>${typeRows.map(([title, desc]) => `<div class="ref-session-row">${icon('shield')}<span><strong>${title}</strong><small>${desc}</small></span></div>`).join('')}</section>
-        <section class="ref-card ref-session-history"><div class="ref-card-head"><span class="ref-section-label">${icon('clock')} HISTÓRICO</span><h2>Últimas sessões <small>${history.length}</small></h2></div>
-          <div class="ref-history-list">${history.length ? history.map((h) => {
-            const counts = {};
-            (h.plan || []).forEach((a) => { counts[a] = (counts[a] || 0) + 1; });
-            const summary = Object.entries(counts).map(([a, n]) => `${n}× ${G.TRAIN_ACTIVITIES[a]?.label || a}`).join(', ');
-            return `<div class="ref-history-row">
-              <span class="rh-week">S${h.week} · T${h.season}</span>
-              <span class="rh-info"><strong>Foco: ${esc(G.TRAINING_FOCUS[h.focus]?.label || h.focus)}${h.injury ? ` · 🤕 ${esc(h.injury)}` : ''}</strong><small>${esc(summary)}</small></span>
-              <span class="rh-gains"><em class="${h.gains?.cond >= 0 ? 'pos' : 'neg'}">C ${fmtSigned(h.gains?.cond || 0)}</em><em class="${h.gains?.ritmo >= 0 ? 'pos' : 'neg'}">R ${fmtSigned(h.gains?.ritmo || 0)}</em></span>
-            </div>`;
-          }).join('') : '<div class="ref-history-empty">Nenhuma sessão registrada ainda. Monte o plano acima e aplique o primeiro treino da carreira.</div>'}</div>
-        </section>
-      </section>
+    <div class="menu-wrap" style="text-align:left;max-width:520px">
+      <div style="text-align:center"><span style="font-size:3rem">⚽</span>
+      <div class="menu-title" style="font-size:1.5rem;margin:8px 0 16px">CRÉ<span>DITOS</span></div></div>
+      <div class="card" style="line-height:1.65">
+        <p><b>Vida de Craque 26</b> — modo carreira de jogador (BitLife × FIFA) para navegador. Evolução do Futebol Manager 26.</p>
+        <br>
+        <p class="muted">• Motor de simulação, eventos de vida, interface e banco de dados 100% próprios, em HTML, CSS e JavaScript puros — sem frameworks, sem build.<br>
+        • Todos os jogadores, clubes e histórias são fictícios ou referências genéricas de futebol.<br>
+        • Todo o progresso fica salvo apenas no seu dispositivo (localStorage), com compressão gzip.</p>
+        <br>
+        <p class="tiny muted">Feito com ⚽ e JavaScript. Bom jogo, craque!</p>
+      </div>
+      <div style="margin-top:14px"><button class="btn ghost block" data-back>${icon('back')} Voltar</button></div>
     </div>`;
   },
-  mount(el) {
-    const s = S();
-    const tr = s.training || (s.training = { focus: 'fisico', done: false, plan: G.defaultTrainPlan(), history: [] });
-    if (!Array.isArray(tr.plan) || tr.plan.length !== 7) tr.plan = G.defaultTrainPlan();
-    if (!Array.isArray(tr.history)) tr.history = [];
-    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
-    el.querySelector('[data-ref-squad]')?.addEventListener('click', () => go('squad'));
-    el.querySelector('[data-focus-select]')?.addEventListener('change', (e) => { tr.focus = e.target.value; autosave(); renderRoute(); });
-    el.querySelectorAll('[data-day-act]').forEach((sel) => sel.addEventListener('change', () => {
-      tr.plan[Number(sel.dataset.dayAct)].activity = sel.value;
-      autosave(); renderRoute();
-    }));
-    el.querySelectorAll('[data-day-int]').forEach((sel) => sel.addEventListener('change', () => {
-      tr.plan[Number(sel.dataset.dayInt)].intensity = sel.value;
-      autosave(); renderRoute();
-    }));
-    el.querySelector('[data-train]')?.addEventListener('click', () => {
-      const r = G.doTraining(s, tr.focus);
-      if (r.ok) {
-        const g = r.gains || {};
-        toast(`✅ Semana treinada! Plano: ${g.cond >= 0 ? '+' : ''}${g.cond} condição, ${g.ritmo >= 0 ? '+' : ''}${g.ritmo} ritmo, +${g.chem} entrosamento.${g.injury ? ` 🤕 ${g.injury} no DM (1 sem.)` : ''}`);
-      } else toast(r.msg || 'Treino indisponível.', 'error');
-      autosave(); renderRoute();
-    });
-  },
-};
-
-// ============================================================
-// CENTRAL DE MENSAGENS — caixa de entrada reinventada
-// Categorias com contadores, filtros, mensagens expansíveis
-// (estilo conversa) e ações contextuais reais por tipo.
-// ============================================================
-const inboxCatOf = (type) => (
-  ['bid', 'offerAccepted', 'offerCounter', 'offerRejected'].includes(type) ? 'mercado'
-    : type === 'jobOffer' ? 'carreira'
-      : type === 'contract' ? 'elenco' : 'clube'
-);
-const INBOX_CATS = {
-  mercado: { label: 'Mercado', icon: 'cart', who: 'Empresários & clubes' },
-  carreira: { label: 'Carreira', icon: 'star', who: 'Diretorias interessadas' },
-  elenco: { label: 'Elenco', icon: 'users', who: 'Comissão técnica' },
-  clube: { label: 'Clube', icon: 'building', who: 'Administração' },
-};
-let inboxFilter = 'all';
-let inboxOpenId = null;
-
-export const inboxScreen = {
-  html() {
-    const s = S();
-    const unread = s.inbox.filter((i) => !i.read).length;
-    const counts = { all: s.inbox.length, unread };
-    for (const cat of Object.keys(INBOX_CATS)) counts[cat] = s.inbox.filter((i) => inboxCatOf(i.type) === cat).length;
-    const list = s.inbox.filter((i) => {
-      if (inboxFilter === 'all') return true;
-      if (inboxFilter === 'unread') return !i.read;
-      return inboxCatOf(i.type) === inboxFilter;
-    });
-    const chip = (key, label, ico) => `<button class="ibf-chip ${inboxFilter === key ? 'active' : ''}" data-f="${key}">${ico ? icon(ico) : ''}${label}<b>${counts[key] || 0}</b></button>`;
-
-    return `
-    <div class="ibx">
-      <header class="ibx-header">
-        <div class="ibx-title">
-          <span class="ref-eyebrow">CENTRAL DO CLUBE</span>
-          <h1>${icon('mail')} Mensagens <em class="ibx-count">${unread ? `${unread} nova(s)` : 'em dia'}</em></h1>
-        </div>
-        <div class="ibx-tools">
-          <button class="btn small ghost" data-readall>${icon('check')} Marcar tudo como lido</button>
-          <button class="btn small ghost" data-clear>${icon('x')} Limpar lidas</button>
-        </div>
-      </header>
-
-      <nav class="ibx-filters">
-        ${chip('all', 'Todas', 'mail')}${chip('unread', 'Não lidas', 'bell')}
-        ${Object.entries(INBOX_CATS).map(([k, c]) => chip(k, c.label, c.icon)).join('')}
-      </nav>
-
-      <section class="ibx-list">
-        ${list.length ? list.map((i) => {
-          const cat = inboxCatOf(i.type);
-          const meta = INBOX_CATS[cat];
-          const open = inboxOpenId === i.id;
-          const p = i.playerId ? s.db.players[i.playerId] : null;
-          const hasActions = (i.type === 'bid' && p) || i.type === 'offerAccepted' || i.type === 'offerCounter' || i.type === 'jobOffer';
-          return `
-          <article class="ibx-item cat-${cat} ${i.read ? '' : 'unread'} ${open ? 'open' : ''}" data-msg="${i.id}">
-            <span class="ibx-ico">${icon(meta.icon)}</span>
-            <div class="ibx-main">
-              <div class="ibx-head">
-                <strong>${esc(i.title)}</strong>
-                <span class="ibx-meta"><i class="ibx-cat">${esc(meta.label)}</i><i class="ibx-dot" title="Não lida"></i><time>S${i.week} · T${s.season}</time></span>
-              </div>
-              <p>${esc(i.text)}</p>
-              <div class="ibx-extra">
-                <div class="ibx-who">${icon(meta.icon)} ${esc(meta.who)}${p ? ` · <b>${esc(p.name)}</b> (${p.pos} · OVR ${p.ovr})` : ''}</div>
-                <div class="inbox-actions">
-                  ${i.type === 'bid' && p ? `
-                    <button class="btn small primary" data-bid="${i.offerId}:accept">Vender ${icon('check')}</button>
-                    <button class="btn small" data-bid="${i.offerId}:counter">Negociar +15%</button>
-                    <button class="btn small danger" data-bid="${i.offerId}:reject">Recusar</button>` : ''}
-                  ${i.type === 'offerAccepted' ? `<button class="btn small primary" data-confirm="${i.offerId}">${icon('check')} Confirmar contratação</button>` : ''}
-                  ${i.type === 'offerCounter' ? `<button class="btn small primary" data-goto-market>Aceitar contraproposta no Mercado</button>` : ''}
-                  ${i.type === 'jobOffer' ? `
-                    <button class="btn small primary" data-job="${i.id}:1">${icon('check')} Aceitar e assumir o clube</button>
-                    <button class="btn small danger" data-job="${i.id}:0">Recusar</button>` : ''}
-                  ${p ? `<button class="btn small ghost" data-player="${p.id}">${icon('users')} Ver jogador</button>` : ''}
-                  ${!hasActions ? `<button class="btn small ghost" data-del="${i.id}">${icon('x')} Excluir mensagem</button>` : ''}
-                </div>
-              </div>
-            </div>
-            <span class="ibx-chev">›</span>
-          </article>`;
-        }).join('') : `
-        <div class="card empty">${icon('mail')}
-          <div style="font-weight:700;margin:6px 0 2px">${inboxFilter === 'all' ? 'Caixa vazia por aqui.' : 'Nada nesta categoria.'}</div>
-          <div class="tiny muted">Propostas de transferência, ofertas de emprego e avisos da diretoria aparecem aqui.</div>
-        </div>`}
-      </section>
-    </div>`;
-  },
-  mount(el) {
-    const s = S();
-    // Filtros
-    el.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { inboxFilter = b.dataset.f; renderRoute(); });
-    // Expandir/recolher (estilo conversa)
-    el.querySelectorAll('[data-msg]').forEach((card) => {
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return; // ações não colapsam
-        inboxOpenId = inboxOpenId === card.dataset.msg ? null : card.dataset.msg;
-        renderRoute();
-      });
-    });
-    // Ações de mercado
-    el.querySelectorAll('[data-bid]').forEach((b) => b.onclick = (e) => {
-      e.stopPropagation();
-      const [id, act] = b.dataset.bid.split(':');
-      G.respondBid(s, id, act);
-      toast(act === 'accept' ? '💰 Jogador vendido!' : act === 'counter' ? '🔁 Contraproposta enviada.' : 'Proposta recusada.');
-      autosave(); renderRoute();
-    });
-    el.querySelectorAll('[data-confirm]').forEach((b) => b.onclick = (e) => {
-      e.stopPropagation();
-      const r = G.confirmBuy(s, b.dataset.confirm);
-      toast(r.ok ? '✅ Reforço confirmado!' : (r.msg || 'Falhou'), r.ok ? 'ok' : 'error');
-      autosave(); renderRoute();
-    });
-    el.querySelectorAll('[data-goto-market]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); mkt.tab = 'pending'; go('market'); }));
-    // Proposta de emprego — trocar de clube de verdade!
-    el.querySelectorAll('[data-job]').forEach((b) => b.onclick = (e) => {
-      e.stopPropagation();
-      const [id, accept] = b.dataset.job.split(':');
-      const r = G.respondJobOffer(s, id, accept === '1');
-      if (r.ok && r.club) toast(`🧳 Você é o novo treinador do ${esc(r.club)}!`);
-      else if (r.ok) toast('Proposta recusada. Você segue no cargo.');
-      else toast(r.msg || 'Falhou.', 'error');
-      autosave(); renderRoute();
-    });
-    el.querySelectorAll('[data-player]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); go(`player/${b.dataset.player}`); });
-    el.querySelectorAll('[data-del]').forEach((b) => b.onclick = (e) => {
-      e.stopPropagation();
-      s.inbox = s.inbox.filter((i) => i.id !== b.dataset.del);
-      if (inboxOpenId === b.dataset.del) inboxOpenId = null;
-      autosave(); renderRoute();
-    });
-    // Ferramentas
-    el.querySelector('[data-readall]').onclick = () => { s.inbox.forEach((i) => { i.read = true; }); autosave(); renderRoute(); };
-    el.querySelector('[data-clear]').onclick = () => { s.inbox = s.inbox.filter((i) => !i.read); inboxOpenId = null; autosave(); renderRoute(); };
-    // Marca como lidas automaticamente ao visualizar (o selo some da topbar)
-    setTimeout(() => { s.inbox.forEach((i) => { i.read = true; }); }, 900);
-  },
+  mount(el) { el.querySelector('[data-back]').onclick = () => history.back(); },
 };

@@ -204,6 +204,7 @@ export const homeScreen = {
         <div class="ph-right">
           <div class="ph-ovr-box">
             ${ovrBadge(p.ovr, 68)}
+            <span class="ph-tier ${ovrTierClass(p.ovr)}">${ovrTierLabel(p.ovr)}</span>
             <div class="ph-pot tiny muted">POT <b>${p.pot}</b></div>
           </div>
           <div class="ph-club">
@@ -321,6 +322,22 @@ export const homeScreen = {
 };
 
 function inFootballPhase(s) { return ['base', 'pro', 'vet'].includes(s.player.phase); }
+
+// Patamar do jogador (estilo "O FENÔMENO")
+function ovrTierLabel(ovr) {
+  if (ovr >= 90) return 'O FENÔMENO';
+  if (ovr >= 82) return 'CRAQUE';
+  if (ovr >= 72) return 'DESTAQUE';
+  if (ovr >= 60) return 'PROFISSIONAL';
+  return 'PROMESSA';
+}
+function ovrTierClass(ovr) {
+  if (ovr >= 90) return 'tier-legend';
+  if (ovr >= 82) return 'tier-star';
+  if (ovr >= 72) return 'tier-pro';
+  if (ovr >= 60) return 'tier-solid';
+  return 'tier-rookie';
+}
 
 function fixtureRow(s, f, upcoming) {
   const opp = G.oppInfo(s, f);

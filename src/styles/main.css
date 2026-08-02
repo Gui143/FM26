@@ -540,3 +540,580 @@ body[data-screen] .ref-training { display: none !important; }
 
 /* Final polish: all interactive elements */
 button, .qa, .nav-item, .chip { transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1); }
+
+/* ============================================================================
+   VIDA DE CRAQUE 26 — CAREER MODE UI & STADIUM GLOW OVERHAUL
+   EA SPORTS + FOOTBALL MANAGER INDIE GLASSMORPHISM SYSTEM
+   ANTI-AI TEMPLATE DESIGN (PROFUNDIDADE, CAIXA ALTA, DESTAQUES E HOVERS FLUIDOS)
+   ============================================================================ */
+
+/* 1. GLASSMORPHISM CORE & INNER DEPTH (ESPECULAR + SOMBRAS INTERNAS) */
+.card, .glass, .panel, .life-meter, .action-card, .kpi, .post, .fixture-row, .modal, .sheet, .save-slot-card, .lifestyle-card, .shop-card, .squad-card, .alert-banner {
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.card::before, .glass::before, .panel::before, .action-card::before, .life-meter::before, .save-slot-card::before, .alert-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.01) 100%);
+  pointer-events: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  z-index: 1;
+}
+
+/* 2. TYPOGRAPHY & VISUAL HIERARCHY */
+.lm-label, .attr-label, .action-title, .action-title-lg, .h-sec, .ph-eyebrow, .alert-title {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-2);
+}
+
+.lm-val, .ph-value, .num, .val-big, .val, .ph-age, .ph-name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.25);
+}
+
+/* 3. DYNAMIC STATUS GLOW (ILUMINAÇÃO DE ESTÁDIO) */
+.life-meter.status-critical, .life-meter.low, .status-critical {
+  border-color: rgba(248, 113, 113, 0.55) !important;
+  box-shadow: 0 10px 35px rgba(248, 113, 113, 0.25),
+              0 0 22px rgba(248, 113, 113, 0.35),
+              inset 0 1px 0 rgba(248, 113, 113, 0.45) !important;
+}
+.life-meter.status-critical .lm-val, .life-meter.low .lm-val {
+  color: var(--red);
+  text-shadow: 0 0 14px rgba(248, 113, 113, 0.65);
+}
+
+.life-meter.status-warn, .life-meter.warn, .status-warn {
+  border-color: rgba(251, 191, 36, 0.48) !important;
+  box-shadow: 0 10px 35px rgba(251, 191, 36, 0.18),
+              0 0 18px rgba(251, 191, 36, 0.25),
+              inset 0 1px 0 rgba(251, 191, 36, 0.35) !important;
+}
+.life-meter.status-warn .lm-val, .life-meter.warn .lm-val {
+  color: var(--yellow);
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+}
+
+.life-meter.status-excellent, .life-meter.excellent, .status-excellent {
+  border-color: rgba(52, 211, 153, 0.52) !important;
+  box-shadow: 0 10px 35px rgba(52, 211, 153, 0.22),
+              0 0 24px rgba(52, 211, 153, 0.35),
+              inset 0 1px 0 rgba(52, 211, 153, 0.4) !important;
+}
+.life-meter.status-excellent .lm-val, .life-meter.excellent .lm-val {
+  color: var(--green);
+  text-shadow: 0 0 14px rgba(52, 211, 153, 0.65);
+}
+
+/* Neon glow drop-shadows on bars and primary buttons */
+.bar i {
+  box-shadow: 0 0 12px currentColor;
+  border-radius: 999px;
+}
+.btn.primary {
+  box-shadow: 0 0 22px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* 4. MICROINTERAÇÕES E ESTADOS DE HOVER */
+button, .btn, .action-card, .qa, .inv-option, .shop-card, .squad-card, .fixture-row, .nav-item, .tab, .chip, .age-card, .life-meter.interactive, .save-slot-card {
+  transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  cursor: pointer;
+}
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+.action-card:hover:not(:disabled),
+.qa:hover:not(:disabled),
+.inv-option:hover,
+.fixture-row:hover,
+.nav-item:hover,
+.chip:hover,
+.age-card:hover,
+.save-slot-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65),
+              0 0 20px rgba(255, 255, 255, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+.action-card:active:not(:disabled),
+.qa:active:not(:disabled),
+.inv-option:active,
+.fixture-row:active,
+.chip:active,
+.age-card:active {
+  transform: scale(0.985) translateY(0);
+}
+
+/* 5. PLAYER HERO SECTION */
+.player-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px;
+}
+.ph-left {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex: 1;
+  min-width: 260px;
+  z-index: 2;
+}
+.ph-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ph-eyebrow {
+  font-size: 0.74rem;
+  color: var(--text-2);
+}
+.ph-name {
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  background: linear-gradient(95deg, #fff 65%, var(--accent-light));
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.ph-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+.ph-age {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--gold);
+}
+.ph-phase {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+}
+.ph-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  z-index: 2;
+}
+.ph-ovr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ph-pot {
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.ph-club {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.ph-clubname {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.ph-contract {
+  font-size: 0.75rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+.ph-value {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--green);
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+.ph-stats-grid {
+  display: flex;
+  gap: 8px;
+}
+.ph-stats-grid .kpi {
+  padding: 10px 14px;
+  min-width: 74px;
+  text-align: center;
+}
+.ph-stats-grid .kpi .v {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--accent);
+}
+.ph-stats-grid .kpi .l {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+/* 6. ATRIBUTOS VITAIS DO ATLETA (.life-grid) */
+.life-grid-wrapper {
+  padding: 22px;
+}
+.life-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+.life-meter {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: var(--radius-sm);
+  z-index: 2;
+}
+.lm-ico {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.25));
+}
+.lm-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lm-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+/* 7. PAINEL CENTRAL DE COMANDO ASSIMÉTRICO (PARTIDAS EM DESTAQUE) */
+.action-dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1.65fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+  margin: 20px 0;
+}
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 22px;
+  text-align: left;
+  border-radius: var(--radius);
+  background: var(--panel-glass);
+  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+}
+.action-side {
+  gap: 12px;
+}
+.action-center.action-primary {
+  background: linear-gradient(145deg, rgba(255, 107, 0, 0.28) 0%, rgba(230, 92, 0, 0.12) 100%);
+  border: 1px solid rgba(255, 160, 80, 0.48);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6),
+              0 0 35px var(--accent-soft),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transform: scale(1.025);
+  padding: 24px 28px;
+  z-index: 5;
+}
+.action-center.action-primary:hover:not(:disabled) {
+  transform: scale(1.045) translateY(-3px);
+  border-color: rgba(255, 180, 100, 0.8);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.75),
+              0 0 45px var(--accent-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.action-highlight {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  padding: 3px 10px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+.action-ico {
+  font-size: 1.6rem;
+  color: var(--accent);
+}
+.action-ico-lg {
+  font-size: 2.3rem;
+  color: var(--accent-light);
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 14px var(--accent-glow));
+}
+.action-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.action-title-lg {
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 0 16px rgba(255, 107, 0, 0.5);
+}
+.action-sub {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+.action-sub-lg {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+.action-arrow {
+  position: absolute;
+  bottom: 18px;
+  right: 20px;
+  font-size: 1.4rem;
+  color: var(--accent);
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+.action-center:hover .action-arrow {
+  transform: translateX(4px);
+  opacity: 1;
+}
+
+/* 8. PRÓXIMAS PARTIDAS (.fixtures-card, .fixture-row) */
+.fixtures-card {
+  padding: 22px;
+}
+.fixtures-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.fixture-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  z-index: 2;
+}
+.fx-crest {
+  display: flex;
+  align-items: center;
+}
+.fx-info {
+  flex: 1;
+}
+.fx-name {
+  font-weight: 800;
+  font-size: 0.96rem;
+}
+.fx-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fx-res {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+}
+.fx-res.win { background: rgba(34, 197, 94, 0.22); color: var(--green); border: 1px solid rgba(34, 197, 94, 0.4); }
+.fx-res.loss { background: rgba(248, 113, 113, 0.22); color: var(--red); border: 1px solid rgba(248, 113, 113, 0.4); }
+
+/* 9. FAMA E FINANÇAS (.fame-card) */
+.fame-card {
+  padding: 22px;
+}
+.fame-row {
+  margin-top: 12px;
+}
+.fame-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.f-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.f-item span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-2);
+}
+
+/* 10. NOTÍCIAS (.news-card) */
+.news-card {
+  padding: 22px;
+}
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.news-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  align-items: center;
+  transition: all 0.2s ease;
+}
+.news-item.unread {
+  border-left: 4px solid var(--accent);
+  background: rgba(255, 107, 0, 0.08);
+}
+.news-ico {
+  font-size: 1.4rem;
+}
+.news-body {
+  flex: 1;
+}
+.news-text {
+  font-size: 0.92rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* 11. ALERTA PENDENTE (.alert-banner) */
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-color: rgba(251, 191, 36, 0.6) !important;
+  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.25),
+              0 0 20px rgba(251, 191, 36, 0.25),
+              inset 0 1px 0 rgba(251, 191, 36, 0.35) !important;
+}
+.alert-ico {
+  font-size: 2rem;
+}
+.alert-body {
+  flex: 1;
+}
+.alert-title {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--yellow);
+}
+
+/* 12. TELAS ADICIONAIS (.vc-screen, .shop-grid, .squad-grid, .live-box) */
+.vc-screen {
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.shop-grid, .squad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.shop-card, .squad-card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2;
+}
+.live-box {
+  padding: 24px;
+  text-align: center;
+}
+.money-hero {
+  padding: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* 13. RESPONSIVE DESIGN FOR MOBILE & DESKTOP */
+@media (max-width: 719px) {
+  .action-dashboard {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .action-center.action-primary {
+    grid-column: 1 / -1;
+    order: -1;
+    padding: 22px;
+  }
+  .ph-left, .ph-right {
+    min-width: 100%;
+    justify-content: space-between;
+  }
+  .ph-stats-grid {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .life-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 960px) {
+  .action-dashboard {
+    grid-template-columns: 1fr 1.65fr 1fr;
+  }
+}

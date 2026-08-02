@@ -28,6 +28,13 @@ export function prepareDb(db) {
     club.tier = LEAGUE_TIER[club.leagueId] || 3;
     const lg = LEAGUES.find((l) => l.id === club.leagueId);
     club.league = lg ? lg.name : club.leagueId;
+    // A Série D 2026 tem 16 grupos oficiais de seis clubes. Os rows br4
+    // estão na mesma ordem do sorteio publicado pela CBF (A1…A16).
+    if (club.leagueId === 'br4') {
+      const match = String(club.id).match(/_(\d+)$/);
+      club.serieDGroup = match ? Math.floor(Number(match[1]) / 6) + 1 : null;
+      club.serieDGroupLabel = club.serieDGroup ? `A${club.serieDGroup}` : null;
+    }
     club.filler = false;
   }
   return db;
@@ -154,13 +161,14 @@ export function createNewGame(cfg, settings, db) {
     name: (cfg.name || genName(rng, country, gender, used)).trim(),
     gender,
     country,
-    city: cfg.city || (CITIES[country] ? rng.pick(CITIES[country]) : 'Sua cidade'),
+    city: String(cfg.city || '').trim().slice(0, 48) || (CITIES[country] ? rng.pick(CITIES[country]) : 'Sua cidade'),
     birthMonth,
     birthYear,
     age: startAge,
     height: cfg.height || rng.int(165, 188),
     weight: cfg.weight || 0,
-    foot: rng.chance(0.72) ? 'D' : 'E',
+    foot: ['D', 'E', 'AMB'].includes(cfg.foot) ? cfg.foot : (rng.chance(0.72) ? 'D' : 'E'),
+    preferredClubId: cfg.clubId || null,
     position: cfg.position || 'ATA',
     traits: cfg.traits && cfg.traits.length ? cfg.traits : [rng.pick(TRAITS).id],
     skills: baseSkillsFor(cfg.position || 'ATA', startAge, rng),
@@ -170,6 +178,8 @@ export function createNewGame(cfg, settings, db) {
     value: 0,
     phase: startAge < 12 ? 'child' : startAge < 16 ? 'teen' : startAge < 18 ? 'base' : 'pro',
     academy: startAge >= 12, // quem começa com 12+ já está na escolinha
+    trialAttempts: 0,
+    trialBestScore: 0,
     injured: 0, // meses de lesão restantes
     totalEarnings: 0,
     possessions: [],
@@ -201,7 +211,7 @@ export function createNewGame(cfg, settings, db) {
     inbox: [],
     pending: null,
     meta: { createdAt: Date.now(), savedAt: Date.now() },
-    settings: settings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' },
+    settings: { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, musicVolume: 35, musicMuted: false, quality: 'alta', ...(settings || {}) },
   };
 
   // famílias começam com mesada pra criança
@@ -234,12 +244,20 @@ export function createNewGame(cfg, settings, db) {
   return state;
 }
 
+function preferredOrRandomClub(state, rng, candidates) {
+  const preferred = state.player?.preferredClubId ? clubOf(state, state.player.preferredClubId) : null;
+  // A user-selected club is a starting preference, not a bypass for the
+  // trial system. It is honored only when a contract is being created at
+  // 16/18; children and teens still have to earn the badge at a peneira.
+  return preferred || rng.pick(candidates);
+}
+
 function startProContract(state, rng) {
   const p = state.player;
   refreshPlayer(state);
   let tier = p.ovr >= 75 ? 5 : p.ovr >= 62 ? 4 : 3;
   const candidates = allClubs(state).filter((c) => c.tier === tier || c.tier === tier + 1);
-  const club = rng.pick(candidates);
+  const club = preferredOrRandomClub(state, rng, candidates);
   state.career.clubId = club.id;
   const offer = makeOffer(state, club, 'transfer');
   state.career.contract = {
@@ -258,7 +276,7 @@ function startYouthContract(state, rng) {
   const ovr = p.ovr;
   let tier = ovr >= 62 ? 4 : ovr >= 50 ? 3 : 2;
   const candidates = allClubs(state).filter((c) => c.tier === tier || c.tier === tier + 1 || c.tier === tier - 1);
-  const club = rng ? rng.pick(candidates) : candidates[Math.floor(Math.random() * candidates.length)];
+  const club = preferredOrRandomClub(state, rng || makeRng(Date.now()), candidates);
   state.career.clubId = club.id;
   const base = 1500 + ovr * 120;
   state.career.contract = {
@@ -337,14 +355,24 @@ export function buildLeague(state) {
   const club = clubOf(state, state.career.clubId);
   if (!club) return;
   const rng = makeRng(hashStr(`lg_${state.calendar.year}_${club.league}_${club.id}`));
-  const realTeams = allClubs(state).filter((c) => c.leagueId === club.leagueId);
+  const isSerieC = club.leagueId === 'br3';
+  const isSerieD = club.leagueId === 'br4';
+
+  // Série C 2026: grupo único com 20 clubes e apenas um turno.
+  // Série D 2026: o clube disputa exclusivamente o seu grupo A1…A16,
+  // com seis clubes e ida/volta (10 rodadas). As demais ligas seguem o
+  // calendário genérico de pontos corridos do motor.
+  let realTeams = allClubs(state).filter((c) => c.leagueId === club.leagueId);
+  if (isSerieD) {
+    realTeams = realTeams.filter((c) => c.serieDGroup === club.serieDGroup);
+  }
   let teams = realTeams.slice();
-  const target = realTeams.length >= 10 ? realTeams.length : 12;
+  const target = isSerieD ? 6 : isSerieC ? 20 : (realTeams.length >= 10 ? realTeams.length : 12);
   if (teams.length < target) {
     teams = teams.concat(fillerClubs(club.league, club.country, club.tier, target - teams.length, rng));
   }
-  teams = teams.slice(0, 20);
-  // round robin duplo
+  teams = teams.slice(0, isSerieD ? 6 : 20);
+
   const list = teams.map((c) => c.id);
   const n = list.length;
   const rounds = [];
@@ -360,29 +388,30 @@ export function buildLeague(state) {
     rounds.push(pairs);
     arr.splice(1, 0, arr.pop());
   }
+
   const fixtures = [];
   rounds.forEach((pairs, r) => {
-    pairs.forEach(([h, a]) => {
-      fixtures.push({ r: r + 1, home: h, away: a, gh: null, ga: null, played: false, round: r + 1 });
-    });
+    pairs.forEach(([h, a]) => fixtures.push({ r: r + 1, home: h, away: a, gh: null, ga: null, played: false, round: r + 1 }));
   });
-  // segundo turno
-  const count = rounds.length;
-  rounds.forEach((pairs, r) => {
-    pairs.forEach(([h, a]) => {
-      fixtures.push({ r: count + r + 1, home: a, away: h, gh: null, ga: null, played: false, round: count + r + 1 });
+  // A Série D precisa de 10 rodadas (cinco em cada mando); outras ligas
+  // usam ida e volta, exceto a primeira fase da Série C, que é turno único.
+  const doubleRound = isSerieD || (!isSerieC && !isSerieD);
+  if (doubleRound) {
+    const count = rounds.length;
+    rounds.forEach((pairs, r) => {
+      pairs.forEach(([h, a]) => fixtures.push({ r: count + r + 1, home: a, away: h, gh: null, ga: null, played: false, round: count + r + 1 }));
     });
-  });
-  // simula tudo; jogos do time do jogador ficam pendentes
+  }
+
+  // Simula os jogos que não envolvem o jogador; os seus ficam pendentes.
   const myId = state.career.clubId;
   const table = {};
-  teams.forEach((c) => table[c.id] = { clubId: c.id, pts: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, played: 0 });
-  const myStr = teamStrength(state);
+  teams.forEach((c) => { table[c.id] = { clubId: c.id, pts: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, played: 0 }; });
   for (const f of fixtures) {
     const hc = teams.find((c) => c.id === f.home), ac = teams.find((c) => c.id === f.away);
+    if (!hc || !ac) continue;
     if (f.home === myId || f.away === myId) {
       f.pending = true;
-      // resultado será definido quando o jogador atuar (ou simulando)
       continue;
     }
     const res = simTeamMatch(rng, hc.rep + rng.int(-2, 2), ac.rep + rng.int(-2, 2));
@@ -390,18 +419,27 @@ export function buildLeague(state) {
     applyResult(table[f.home], f.gh, f.ga);
     applyResult(table[f.away], f.ga, f.gh);
   }
-  state.career.league = { teams, table, fixtures, round: 1, monthByRound: {} };
-  // distribui rodadas pelos meses 1-11
-  const totalRounds = count * 2;
-  const perMonth = Math.ceil(totalRounds / 11);
-  for (let m = 1; m <= 11; m++) {
+
+  const totalRounds = rounds.length * (doubleRound ? 2 : 1);
+  state.career.league = {
+    teams, table, fixtures, round: 1, monthByRound: {},
+    competitionId: club.leagueId,
+    format: isSerieC ? 'serie-c-2026' : isSerieD ? 'serie-d-2026' : 'pontos-corridos',
+    groupId: isSerieD ? club.serieDGroupLabel : null,
+    phase: 'first',
+  };
+  // Calendário oficial de 2026: C e D começam em abril; a D termina em
+  // setembro e a C em outubro. As outras ligas usam a distribuição genérica.
+  const seasonMonths = isSerieC ? [4, 5, 6, 7, 8, 9, 10] : isSerieD ? [4, 5, 6, 7, 8, 9] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const perMonth = Math.ceil(totalRounds / seasonMonths.length);
+  seasonMonths.forEach((month, monthIndex) => {
     const roundsThisMonth = [];
     for (let r = 0; r < perMonth; r++) {
-      const round = (m - 1) * perMonth + r + 1;
+      const round = monthIndex * perMonth + r + 1;
       if (round <= totalRounds) roundsThisMonth.push(round);
     }
-    state.career.league.monthByRound[m] = roundsThisMonth;
-  }
+    state.career.league.monthByRound[month] = roundsThisMonth;
+  });
 }
 
 function applyResult(row, gf, ga) {
@@ -827,8 +865,11 @@ function applyCompOutcome(state, fx) {
 }
 
 export function tournamentFor(year) {
+  // Calendário usado pelos saves iniciados em 2026: Mundial em 2026 e
+  // torneios continentais no ciclo seguinte de 2028 (não inventa uma copa
+  // continental em 2027).
   if (year % 4 === 2) return { name: 'Copa do Mundo', id: 'mundial' };
-  if (year % 4 === 3) return { name: 'Copa Continental', id: 'continental' };
+  if (year % 4 === 0) return { name: 'Copa Continental', id: 'continental' };
   return null;
 }
 
@@ -1365,6 +1406,7 @@ function birthday(state, r) {
   }
   if (p.age === 16 && p.phase === 'teen') {
     if (!p.academy) pendingEvent(state, eventById('peneira_tarde'));
+    else if ((p.trialAttempts || 0) > 0 && !state.career.clubId) pendingEvent(state, eventById('peneira'));
   }
   if (p.age === 17 && p.phase === 'base') {
     const club = clubOf(state, state.career.clubId);
@@ -1441,6 +1483,42 @@ function ev(opt) { return { ...opt }; }
 function eventById(id) { return EVENTS.find((e) => e.id === id); }
 
 const N = (s) => s.player.name.split(' ')[0];
+
+// Peneira: o caminho de entrada na base é deliberadamente raro. O número
+// exibido no evento é uma leitura de desempenho do dia; não é um passe
+// automático baseado apenas no OVR. Clubes escolhidos pelo jogador podem ser
+// alvos, mas aumentam a exigência quando têm uma estrutura de base melhor.
+function trialAttempt(state, coached = true) {
+  const p = state.player;
+  const targetClub = p.preferredClubId ? clubOf(state, p.preferredClubId) : null;
+  const difficulty = (coached ? 73 : 80) + (targetClub ? clamp(Math.round((targetClub.rep - 55) * 0.08), 0, 7) : 0);
+  const readiness = Math.round(
+    p.ovr * 0.72 + p.form * 0.12 + (p.skills.DET || 40) * 0.08 +
+    (p.skills.PHY || 40) * 0.04 + (p.skills.COM || 40) * 0.04 +
+    (coached ? 3 : 0) + (p.traits.includes('prof') ? 2 : 0),
+  );
+  const rng = makeRng(hashStr(`peneira_${p.name}_${state.calendar.year}_${p.trialAttempts || 0}_${coached}`));
+  const gap = readiness - difficulty;
+  // Mesmo preparado, a peneira continua competitiva: 2–14% de chance.
+  const odds = clamp(0.02 + gap * 0.008, 0.02, 0.14);
+  const passed = readiness >= difficulty - 4 && rng.f() < odds;
+  p.trialAttempts = (p.trialAttempts || 0) + 1;
+  p.trialBestScore = Math.max(p.trialBestScore || 0, readiness);
+  if (passed) {
+    const candidates = allClubs(state).filter((c) => c.tier >= 2 && c.tier <= 4);
+    const club = targetClub || rng.pick(candidates);
+    if (!club) return { passed: false, readiness, difficulty, odds };
+    p.academy = true;
+    p.phase = 'base';
+    p.preferredClubId = club.id;
+    startYouthContract(state, rng);
+    p.happiness = clamp(p.happiness + 10, 0, 100);
+    buildLeague(state);
+    return { passed: true, club, readiness, difficulty, odds };
+  }
+  p.happiness = clamp(p.happiness - 6, 0, 100);
+  return { passed: false, readiness, difficulty, odds };
+}
 
 const EVENTS = [
   // ================= INFÂNCIA =================
@@ -1532,12 +1610,12 @@ const EVENTS = [
     ],
   }),
   ev({
-    id: 'peneira', phase: ['teen'], min: 15, max: 15, w: 99,
+    id: 'peneira', phase: ['teen'], min: 15, max: 16, w: 99,
     title: (s) => '🔍 Peneira no clube',
     text: (s) => `O técnico da escolinha indicou ${N(s)} para uma peneira de um clube profissional! É a chance de entrar na base.`,
     hint: (s) => 'Momento decisivo da carreira.',
     choices: [
-      { label: (s) => 'Ir com tudo 🔥', hint: 'Entra na base de um clube', run: (s) => { const rng = makeRng(hashStr(`pen_${s.player.name}_${s.calendar.year}`)); const ok = s.player.ovr + rng.int(-6, 12) >= 50; if (ok) { s.player.academy = true; s.player.phase = 'base'; startYouthContract(s, rng); s.player.happiness = clamp(s.player.happiness + 10, 0, 100); buildLeague(s); return { news: `🎉 PASSOU NA PENEIRA! ${s.player.name} é o novo talento da base do ${myClubName(s)}!` }; } s.player.happiness = clamp(s.player.happiness - 6, 0, 100); return { news: '😔 Não passou desta vez. O técnico disse para treinar mais.' }; } },
+      { label: (s) => 'Ir com tudo 🔥', hint: 'Chance real, mas extremamente difícil — base profissional seleciona poucos', run: (s) => { const result = trialAttempt(s, true); if (result.passed) return { news: `🎉 PASSOU NA PENEIRA! ${s.player.name} é o novo talento da base do ${myClubName(s)}!` }; return { news: `😔 Não passou desta vez. A avaliação foi ${result.readiness}/${result.difficulty}; o técnico disse para treinar mais e tentar outra oportunidade.` }; } },
       { label: (s) => 'Ainda não 🫣', hint: 'Esperar mais um pouco', run: (s) => { s.player.happiness = clamp(s.player.happiness - 3, 0, 100); return { news: '🫣 Medo de não passar. A escola ainda domina sua rotina.' }; } },
     ],
   }),
@@ -1546,7 +1624,7 @@ const EVENTS = [
     title: (s) => '🔍 Convite para peneira',
     text: (s) => `Um professor de educação física insistiu que ${N(s)} fosse a uma peneira. Ele vê potencial mesmo sem você treinar em escolinha.`,
     choices: [
-      { label: (s) => 'Aceitar o desafio 🔥', run: (s) => { const rng = makeRng(hashStr(`pent_${s.player.name}_${s.calendar.year}`)); const ok = s.player.ovr + rng.int(-6, 12) >= 50; if (ok) { s.player.academy = true; s.player.phase = 'base'; startYouthContract(s, rng); s.player.happiness = clamp(s.player.happiness + 10, 0, 100); buildLeague(s); return { news: `🎉 INACREDITÁVEL! Passou na peneira de primeira! Bem-vindo à base do ${myClubName(s)}!` }; } s.player.happiness = clamp(s.player.happiness - 6, 0, 100); return { news: '😔 Não rolou. O professor disse que talento existe, mas falta ritmo.' }; } },
+      { label: (s) => 'Aceitar o desafio 🔥', hint: 'Sem escolinha a exigência é ainda maior', run: (s) => { const result = trialAttempt(s, false); if (result.passed) return { news: `🎉 INACREDITÁVEL! Passou na peneira de primeira! Bem-vindo à base do ${myClubName(s)}!` }; return { news: `😔 Não rolou. A avaliação foi ${result.readiness}/${result.difficulty}; talento existe, mas falta ritmo e consistência.` }; } },
       { label: (s) => 'Ficar nos estudos 📚', run: (s) => { s.player.intelligence = clamp(s.player.intelligence + 3, 0, 100); return { news: '📚 A escola é o caminho por enquanto.' }; } },
     ],
   }),
@@ -1762,7 +1840,7 @@ const EVENTS = [
     text: (s) => `Sem contrato, ${N(s)} precisa encontrar um time. O empresário listou as opções.`,
     choices: [
       { label: (s) => 'Procurar clube menor 🔍', run: (s) => { generateOffers(s); const offers = s.transfers.offers.filter((o) => o.type !== 'endorse'); if (offers.length) return { news: `🔍 ${offers.length} proposta(s) chegaram! Confira no Mercado.` }; s.player.morale = clamp(s.player.morale - 4, 10, 99); return { news: '🔍 Nada ainda. Treinar e esperar é o caminho.' }; } },
-      { label: (s) => 'Fazer testes 🧪', run: (s) => { const rng = makeRng(Date.now()); const ok = s.player.ovr + rng.int(-6, 10) >= 58; if (ok) { const candidates = allClubs(s).filter((c) => c.tier >= 2 && c.tier <= 4); const club = rng.pick(candidates); const offer = makeOffer(stateForRun(s), club, 'free'); s.transfers.offers.push(offer); return { news: `🧪 Passou nos testes do ${club.name}! Proposta de contrato no mercado.` }; } s.player.morale = clamp(s.player.morale - 5, 10, 99); return { news: '🧪 Não vingou. A caminhada continua.' }; } },
+      { label: (s) => 'Fazer testes 🧪', hint: 'Peneira profissional: aprovação rara', run: (s) => { const rng = makeRng(hashStr(`testes_${s.player.name}_${s.calendar.year}_${s.calendar.month}`)); const readiness = s.player.ovr + Math.round(s.player.form * 0.12) + Math.round((s.player.skills.DET || 40) * 0.08); const difficulty = 66; const ok = readiness >= difficulty && rng.f() < 0.12; s.player.trialAttempts = (s.player.trialAttempts || 0) + 1; if (ok) { const candidates = allClubs(s).filter((c) => c.tier >= 2 && c.tier <= 4); const club = rng.pick(candidates); const offer = makeOffer(stateForRun(s), club, 'free'); s.transfers.offers.push(offer); return { news: `🧪 Passou nos testes do ${club.name}! Proposta de contrato no mercado.` }; } s.player.morale = clamp(s.player.morale - 5, 10, 99); return { news: `🧪 Não vingou (${readiness}/${difficulty}). A caminhada continua — o mercado é cruel.` }; } },
     ],
   }),
 
@@ -1997,9 +2075,9 @@ function transferTick(state, r) {
     // FIX: Only clear clubId if truly free agent and no active club affiliation
     addNews(state, `📭 Seu contrato com ${clubOf(state, state.career.clubId)?.name} terminou. Você está livre no mercado!`, 'info', 'clube');
     state.career.contract = null;
-    // Keep clubId temporarily so "Sem clube" does not flash incorrectly during season
-    // Only null clubId if player explicitly chooses free agency or signs elsewhere
-    // state.career.clubId = null;   // REMOVED — prevents false "Sem clube"
+    // Contrato encerrado realmente libera o jogador para o mercado. Manter
+    // clubId aqui bloqueava a geração de propostas de agente livre.
+    state.career.clubId = null;
     state.career.league = null;
     state.matches = [];
   }

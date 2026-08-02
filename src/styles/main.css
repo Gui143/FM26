@@ -1362,3 +1362,67 @@ b, strong { font-weight: 700; }
   .ph-stats-grid .kpi { min-width: 64px; padding: 8px 10px; }
   .menu-buttons .btn { min-height: 50px; }
 }
+
+/* ============================================================================
+   MERCADO DE TRANSFERÊNCIAS / PRESENÇA SOCIAL
+   ============================================================================ */
+.transfer-market-hero { overflow: hidden; }
+.current-club-line { display: flex; align-items: center; gap: 13px; min-height: 58px; }
+.current-club-line > div:nth-child(2) { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.current-contract { margin-left: auto; color: var(--green); white-space: nowrap; }
+.current-contract b { font-size: 1.08rem; }
+.transfer-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.transfer-offer { display: grid; grid-template-columns: minmax(190px, 1fr) auto auto; align-items: center; gap: 14px; padding: 13px 14px; margin-top: 10px; background: rgba(255,255,255,.025); box-shadow: none; }
+.transfer-offer-main { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.transfer-offer-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.transfer-offer-copy b, .transfer-offer-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transfer-offer-money { display: flex; flex-direction: column; gap: 2px; text-align: right; white-space: nowrap; }
+.transfer-offer-money b { color: var(--green); }
+.transfer-offer-money small { color: var(--text-2); font-size: .7rem; font-weight: 600; }
+.transfer-offer-actions { display: flex; gap: 7px; }
+.sponsor-offer { display: flex; justify-content: space-between; }
+.empty-state { padding: 8px 0 2px; }
+.account-chip { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: transparent; color: var(--text-2); cursor: pointer; font-size: .75rem; font-weight: 700; }
+.account-chip:hover { border-color: var(--accent); color: var(--accent-light); background: var(--accent-soft); }
+.account-chip .ico { width: 15px; height: 15px; }
+.online-card { padding-bottom: 15px; }
+.online-player { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+.online-player:last-child { border-bottom: 0; }
+.online-player > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.online-player b, .online-player .tiny { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.online-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(74,222,128,.12), 0 0 12px var(--green); }
+.remote-post { border-color: rgba(74,222,128,.18); }
+.family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.family-card { padding: 15px 16px; }
+.family-card-head { display: flex; align-items: center; gap: 10px; }
+.family-card-head > div { min-width: 0; }
+.family-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+
+@media (max-width: 640px) {
+  .transfer-offer { grid-template-columns: 1fr auto; gap: 9px; }
+  .transfer-offer-money { text-align: left; align-items: flex-end; }
+  .transfer-offer-actions { grid-column: 1 / -1; }
+  .transfer-offer-actions .btn { flex: 1; }
+  .current-contract { font-size: .8rem; }
+  .account-chip span { display: none; }
+}
+.two-col-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 620px) { .two-col-fields { grid-template-columns: 1fr; } }
+
+/* Referências de competições 2026 */
+.competition-list { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+.competition-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid var(--line-soft); border-radius: 10px; background: rgba(255,255,255,.02); }
+.competition-item > div { display: flex; flex-direction: column; gap: 3px; }
+.comp-detail { margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--line); }
+.comp-detail p { line-height: 1.5; margin-top: 5px; }
+.comp-detail a { color: var(--accent-light); }
+.table-scroll { overflow-x: auto; margin-top: 10px; }
+.standings-table { width: 100%; border-collapse: collapse; min-width: 390px; font-size: .8rem; }
+.standings-table th { color: var(--text-3); text-align: left; font-size: .66rem; letter-spacing: .1em; padding: 8px 7px; border-bottom: 1px solid var(--line-strong); }
+.standings-table td { padding: 8px 7px; border-bottom: 1px solid var(--line-soft); }
+.standings-table tr.mine { background: var(--accent-soft); color: var(--accent-light); }
+.serie-d-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+.serie-d-groups details { border: 1px solid var(--line-soft); border-radius: 9px; padding: 8px 10px; background: rgba(255,255,255,.02); }
+.serie-d-groups summary { cursor: pointer; font-weight: 800; display: flex; justify-content: space-between; }
+.group-team { display: block; margin-top: 5px; }
+@media (max-width: 540px) { .serie-d-groups { grid-template-columns: 1fr; } .competition-item { align-items: flex-start; } }

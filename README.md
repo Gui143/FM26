@@ -2,6 +2,7 @@
 
 **BitLife × FIFA** — viva a vida de um jogador de futebol, do campinho de terra ao topo do mundo. Jogo completo que roda **100% no navegador** — sem servidor, sem build, sem dependências. HTML + CSS + JavaScript puros (ES Modules), pronto para publicar no Netlify.
 
+- **Mundo real restaurado**: 232 clubes com **escudos reais**, ligas reais (Brasileirão Série A–D, Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Liga Portugal, Eredivisie, Argentina) e **5.000+ jogadores com nomes e fotos reais** — o elenco do seu clube aparece com as fotos na aba Carreira → Elenco
 - **Nascimento → Lenda**: crie seu personagem (nome, país, posição, traços, idade inicial) e avance **mês a mês** pela vida — infância, escola, escolinha, peneira, base, profissional, veteranato, aposentadoria e a vida depois dela (até o fim).
 - **Decisões de vida (BitLife)**: eventos aleatórios com escolhas que mudam sua história — escola, festas, namoro, casamento, filhos, escândalos, patrocínios, investimentos, lesões, propostas da Arábia…
 - **Carreira de jogador (FIFA)**: atributos (ritmo, chute, passe, drible, defesa, físico, mental), overall e potencial, treinos mensais com foco e intensidade, partidas com **narrativa minuto a minuto e nota 0–10**.
@@ -54,7 +55,10 @@ O progresso é **salvo automaticamente** a cada mês (slot `auto`).
 | Arquivo | Papel |
 |---|---|
 | `src/js/game.js` | Motor do jogo: vida, tempo, treino, partidas, transferências, seleção, eventos, aposentadoria, saves |
-| `src/js/data.js` | Dados estáticos: países, nomes, posições, atributos, traços, clubes, prêmios, eventos de narração |
+| `src/js/data.js` | Dados estáticos: países, ligas, clubes, nomes, posições, atributos, traços, prêmios, narração |
+| `src/js/gen.js` | Gera o banco real: 232 clubes, 5.000+ jogadores (com fotos), escudos SVG, avatares |
+| `src/js/realsquads.js` | Elencos reais por clube (nomes, números, posições e fotos) |
+| `src/js/logos.js` | Manifesto de escudos reais (`src/assets/logos/`) |
 | `src/js/screens.js` | Telas: menu, criação de personagem, home, decisões |
 | `src/js/screens2.js` | Telas: treino, partidas, carreira, mercado, família, dinheiro, fama, mensagens, hall da fama |
 | `src/js/ui.js` | Framework de UI: rotas, navegação, modais, toasts, sons |

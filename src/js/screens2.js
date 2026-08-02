@@ -5,12 +5,12 @@
 // ============================================================
 import {
   App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num,
-  avatarEl, crest, ovrBadge, posBadge, meter, lifeMeter, pill, autosave, t,
+  avatarEl, avatar, crest, ovrBadge, posBadge, meter, lifeMeter, pill, autosave, t,
   renderRoute, applySettingsToBody, tone, goalSound,
 } from './ui.js';
 import * as G from './game.js';
 import {
-  COUNTRIES, countryById, positionById, clubById,
+  COUNTRIES, countryById, positionById,
   TRAININGS, SKILLS, LIFESTYLES, PURCHASES, AWARDS,
 } from './data.js';
 import { downloadFile, readUploadedFile, compressText, decompressText } from './saveio.js';
@@ -144,7 +144,7 @@ export const matchScreen = {
 };
 
 function matchRow(s, f, played = false) {
-  const opp = G.oppInfo(f);
+  const opp = G.oppInfo(s, f);
   const isNT = f.type === 'nt';
   const club = G.myClub(s);
   const score = f.played ? `<b class="fx-big">${f.gh} × ${f.ga}</b>` : 'VS';
@@ -154,7 +154,7 @@ function matchRow(s, f, played = false) {
     <div class="mr-teams">
       <span class="mr-club">${club ? crest(club, 30) : ''} <b>${club ? esc(club.short) : 'Você'}</b></span>
       <span class="mr-score">${score}</span>
-      <span class="mr-club">${isNT ? `${countryById(f.oppCountry)?.flag || ''} <b>${esc(f.oppName)}</b>` : `${crest(clubById(f.oppId) || { name: f.oppName, short: f.oppName.slice(0, 3).toUpperCase() }, 30)} <b>${esc(f.oppName)}</b>`}</span>
+      <span class="mr-club">${isNT ? `${countryById(f.oppCountry)?.flag || ''} <b>${esc(f.oppName)}</b>` : `${crest((s.db.clubs || {})[f.oppId] || { name: f.oppName, short: f.oppName.slice(0, 3).toUpperCase(), colors: ['#2a2a33', '#16161b'] }, 30)} <b>${esc(f.oppName)}</b>`}</span>
     </div>
     <div class="mr-meta tiny muted">${esc(f.compName)} • ${f.home ? '🏟️ Casa' : '✈️ Fora'}</div>
     ${!played ? `<div class="mr-actions"><button class="btn small primary" data-play="${f.id}">${icon('play')} Jogar</button><button class="btn small" data-quick="${f.id}">Simular</button></div>`
@@ -163,7 +163,7 @@ function matchRow(s, f, played = false) {
 }
 
 function matchLiveHTML(s, fx) {
-  const opp = G.oppInfo(fx);
+  const opp = G.oppInfo(s, fx);
   const club = G.myClub(s);
   return `
   <div class="vc-screen">
@@ -172,7 +172,7 @@ function matchLiveHTML(s, fx) {
       <div class="live-teams">
         <div class="lt">${club ? crest(club, 48) : ''}<b>${club ? esc(club.name) : 'Você'}</b></div>
         <div class="ls" id="live-score">—</div>
-        <div class="lt">${fx.type === 'nt' ? `${countryById(fx.oppCountry)?.flag || ''}<b>${esc(fx.oppName)}</b>` : `${crest(clubById(fx.oppId) || { name: fx.oppName, short: '???' }, 48)}<b>${esc(fx.oppName)}</b>`}</div>
+        <div class="lt">${fx.type === 'nt' ? `${countryById(fx.oppCountry)?.flag || ''}<b>${esc(fx.oppName)}</b>` : `${crest((s.db.clubs || {})[fx.oppId] || { name: fx.oppName, short: '???', colors: ['#2a2a33', '#16161b'] }, 48)}<b>${esc(fx.oppName)}</b>`}</div>
       </div>
       <div class="live-progress"><div class="spinner small"></div> <span id="live-status">A bola está rolando…</span></div>
     </div>
@@ -249,7 +249,7 @@ export const careerScreen = {
     const p = s.player;
     const total = s.career.total;
     const season = s.career.season;
-    const tabs = [['stats', '📊 Estatísticas'], ['hist', '📜 História'], ['awards', '🏆 Prêmios'], ['nt', '🦅 Seleção']];
+    const tabs = [['stats', '📊 Estatísticas'], ['elenco', '👥 Elenco'], ['hist', '📜 História'], ['awards', '🏆 Prêmios'], ['nt', '🦅 Seleção']];
     return `
     <div class="vc-screen">
       <h1 class="h-title">${icon('chart')} CARREIRA</h1>
@@ -305,6 +305,28 @@ function carBodyHTML(s, tab) {
       </div>
     </div>
     ${s.career.history.length === 0 ? '<div class="muted" style="margin-top:12px">Nenhuma temporada completa ainda.</div>' : ''}`;
+  }
+  if (tab === 'elenco') {
+    const club = G.myClub(s);
+    if (!club) return '<div class="card"><div class="muted">Você está sem clube. Assine um contrato para ver o elenco.</div></div>';
+    const squad = Object.values(s.db.players).filter((p) => p.clubId === club.id && !p.loan);
+    const order = { G: 0, D: 1, M: 2, A: 3 };
+    squad.sort((a, b) => (order[a.pos] ?? 9) - (order[b.pos] ?? 9) || b.ovr - a.ovr);
+    return `
+    <div class="card">
+      <div class="h-sec">${crest(club, 36)} ${esc(club.name)} — Elenco (${squad.length})</div>
+      <div class="squad-grid">
+        ${squad.map((p) => `
+          <div class="squad-card">
+            ${avatar(p, 44)}
+            <div class="sq-body">
+              <div class="sq-name">${esc(p.name)}</div>
+              <div class="tiny muted">${posDb(p.pos)}${p.number ? ` • Camisa ${p.number}` : ''} • ${p.age} anos</div>
+            </div>
+            ${ovrBadge(p.ovr, 34)}
+          </div>`).join('')}
+      </div>
+    </div>`;
   }
   if (tab === 'hist') {
     const timeline = [...s.career.timeline].reverse();
@@ -367,6 +389,10 @@ function carBodyHTML(s, tab) {
     </div>`;
   }
   return '';
+}
+
+function posDb(pos) {
+  return { G: '🧤 Goleiro', D: '🛡️ Defensor', M: '🧭 Meio-campo', A: '🎯 Atacante' }[pos] || pos;
 }
 
 function awardName(id) {
@@ -475,7 +501,7 @@ export const marketScreen = {
 };
 
 function offerCard(s, o) {
-  const club = clubById(o.clubId);
+  const club = (s.db.clubs || {})[o.clubId];
   if (!club) return '';
   return `
   <div class="offer-card">

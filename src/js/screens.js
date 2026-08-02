@@ -8,7 +8,7 @@ import {
   renderRoute, applySettingsToBody, tone, goalSound,
 } from './ui.js';
 import * as G from './game.js';
-import { COUNTRIES, countryById, POSITIONS, TRAITS, positionById, clubById, TRAININGS } from './data.js';
+import { COUNTRIES, countryById, CAREER_POSITIONS, TRAITS, positionById, TRAININGS } from './data.js';
 
 const S = () => App.state;
 
@@ -52,7 +52,7 @@ const wizard = { name: '', gender: 'M', country: 'br', position: 'ATA', traits: 
 
 export const newGameScreen = {
   html() {
-    const pos = POSITIONS.find((p) => p.id === wizard.position) || POSITIONS[0];
+    const pos = CAREER_POSITIONS.find((p) => p.id === wizard.position) || CAREER_POSITIONS[0];
     return `
     <div class="menu-wrap" style="max-width:680px;text-align:left">
       <div style="text-align:center;margin-bottom:16px">
@@ -77,7 +77,7 @@ export const newGameScreen = {
         </div>
         <div class="field">
           <label>4. Posição</label>
-          <div class="chips" id="w-pos">${POSITIONS.map((p) => `<button class="chip ${wizard.position === p.id ? 'active' : ''}" data-p="${p.id}" title="${esc(p.desc)}">${p.icon} ${esc(p.name)}</button>`).join('')}</div>
+          <div class="chips" id="w-pos">${CAREER_POSITIONS.map((p) => `<button class="chip ${wizard.position === p.id ? 'active' : ''}" data-p="${p.id}" title="${esc(p.desc)}">${p.icon} ${esc(p.name)}</button>`).join('')}</div>
           <div class="tiny muted" id="w-posdesc">${esc(pos.desc)}</div>
         </div>
         <div class="field">
@@ -121,13 +121,7 @@ export const newGameScreen = {
       const menuRoot = document.getElementById('menu-root');
       menuRoot.innerHTML = `<div class="menu-wrap"><div class="sim-loading"><div class="spinner"></div><div class="muted">Nascendo… ${esc(name)} está chegando ao mundo ⚽</div></div></div>`;
       setTimeout(() => {
-        const state = G.createNewGame({ ...wizard, name }, { ...App.bootSettings });
-        G.writeSlot(App.storage, 'auto', state);
-        App.state = state;
-        applySettingsToBody();
-        go('home');
-        renderRoute();
-        toast(`👶 ${state.player.name} nasceu em ${state.player.city}!`);
+        App.onNewGame({ ...wizard, name });
       }, 50);
     };
   },
@@ -282,13 +276,14 @@ export const homeScreen = {
 function inFootballPhase(s) { return ['base', 'pro', 'vet'].includes(s.player.phase); }
 
 function fixtureRow(s, f, upcoming) {
-  const opp = G.oppInfo(f);
+  const opp = G.oppInfo(s, f);
   const res = f.result === 'W' ? '<span class="fx-res win">VITÓRIA</span>' : f.result === 'L' ? '<span class="fx-res loss">DERROTA</span>' : f.result === 'D' ? '<span class="fx-res">EMPATE</span>' : '';
   const isNT = f.type === 'nt';
   const badge = isNT ? `<span class="pill blue">${f.compName}</span>` : `<span class="pill">${f.compName}</span>`;
+  const oppClub = (s.db.clubs || {})[f.oppId] || { id: f.oppId, name: f.oppName, short: f.oppName.slice(0, 3).toUpperCase(), colors: ['#2a2a33', '#16161b'] };
   return `
   <div class="fixture-row ${upcoming ? '' : 'played'}">
-    <div class="fx-crest">${isNT ? `<span class="avatar" style="width:34px;height:34px">${countryById(f.oppCountry)?.flag || '🌍'}</span>` : crest(clubById(f.oppId) || { id: f.oppId, name: f.oppName, short: f.oppName.slice(0, 3).toUpperCase() }, 34)}</div>
+    <div class="fx-crest">${isNT ? `<span class="avatar" style="width:34px;height:34px">${countryById(f.oppCountry)?.flag || '🌍'}</span>` : crest(oppClub, 34)}</div>
     <div class="fx-info">
       <div class="fx-name">${isNT ? `${countryById(f.oppCountry)?.flag || ''} ${esc(f.oppName)}` : esc(f.oppName)}</div>
       <div class="tiny muted">${badge} ${f.home ? '🏟️ Casa' : '✈️ Fora'}${f.played ? ` • ${f.gh}×${f.ga}` : ''}</div>

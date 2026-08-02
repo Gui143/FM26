@@ -3,7 +3,9 @@
 // toasts, sons. Não conhece as telas (registradas pelo app.js).
 // ============================================================
 import { fmtMoney, fmtNum, escapeHtml, clamp } from './util.js';
-import { T as i18n, clubById } from './data.js';
+import { T as i18n } from './data.js';
+import { LOGOS } from './logos.js';
+import { crestSVG, avatarSVG } from './gen.js';
 
 // -------------------- ÍCONES (SVG inline, estilo stroke) --------------------
 const P = {
@@ -82,11 +84,23 @@ export function avatarEl(name, size = 48, extra = '') {
   return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px;${extra}">${esc(initials || '?')}</span>`;
 }
 
-// Escudo do clube (iniciais)
+// Escudo do clube: imagem real (src/assets/logos/<id>.png) ou SVG procedural
 export function crest(club, size = 40, extra = '') {
   if (!club) return '<span class="muted">—</span>';
+  const hasLogo = club.id && LOGOS.has(club.id);
+  if (hasLogo) {
+    return `<img class="club-logo" src="src/assets/logos/${club.id}.png" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px;object-fit:contain;${extra}" title="${esc(club.name)}">`;
+  }
+  if (club.colors) return crestSVG(club, size);
   const short = club.short || String(club.name || '?').slice(0, 3).toUpperCase();
   return `<span class="club-crest" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.3)}px;${extra}" title="${esc(club.name)}">${esc(short)}</span>`;
+}
+
+// Avatar de jogador do banco (foto real quando existir)
+export function avatar(player, size = 40) {
+  if (!player) return avatarEl('?', size);
+  if (player.face || player.photo) return avatarSVG(player, size);
+  return avatarEl(player.name, size);
 }
 
 export function ovrBadge(ovr, size = 44) {
@@ -220,7 +234,7 @@ function renderChrome(active) {
   const s = App.state;
   if (!s) return;
   const p = s.player;
-  const club = s.career.clubId ? clubById(s.career.clubId) : null;
+  const club = s.career.clubId ? (s.db.clubs || {})[s.career.clubId] : null;
   const unread = s.inbox.filter((i) => !i.read).length;
   const hasPending = !!s.pending;
   document.getElementById('topbar').innerHTML = `

@@ -8,14 +8,30 @@
 import { makeRng, clamp, uid, hashStr } from './util.js';
 import { compressText, decompressText } from './saveio.js';
 import {
-  COUNTRIES, CITIES, NAME_POOLS, POOL_BY_COUNTRY, POSITIONS, positionById,
+  COUNTRIES, CITIES, NAME_POOLS, POOL_BY_COUNTRY, CAREER_POSITIONS, positionById,
   SKILLS, TECH_SKILLS, PHYS_SKILLS, MENTAL_SKILLS, TRAITS, TRAININGS,
-  CLUBS, clubById, clubsByLeague, AWARDS, BRANDS, LIFESTYLES, PURCHASES,
+  LEAGUES, LEAGUE_TIER, AWARDS, BRANDS, LIFESTYLES, PURCHASES,
   NARRATIVE,
 } from './data.js';
+import { buildDatabase } from './gen.js';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const LS_KEY = 'vidacraque_saves_v1';
+
+// Acesso a clubes a partir do banco real (gen.js)
+const clubOf = (state, id) => ((state && state.db && state.db.clubs) || {})[id];
+const allClubs = (state) => Object.values((state && state.db && state.db.clubs) || {});
+
+// Prepara o banco real para o modo carreira: tier 1-6 + nome da liga
+export function prepareDb(db) {
+  for (const club of Object.values(db.clubs)) {
+    club.tier = LEAGUE_TIER[club.leagueId] || 3;
+    const lg = LEAGUES.find((l) => l.id === club.leagueId);
+    club.league = lg ? lg.name : club.leagueId;
+    club.filler = false;
+  }
+  return db;
+}
 
 export const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 export const MONTHS_FULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -123,8 +139,10 @@ function makePartner(s, rng, used) {
   return { id: uid('par'), name, gender: g, age: s.player.age + rng.int(-2, 2), love: rng.int(55, 80), together: false, married: false, pregnant: false, since: null };
 }
 
-export function createNewGame(cfg, settings) {
+export function createNewGame(cfg, settings, db) {
   const rng = makeRng(hashStr(`vc_${Date.now()}_${Math.random()}`));
+  if (!db) db = prepareDb(buildDatabase(2026));
+  else prepareDb(db);
   const used = new Set();
   const gender = cfg.gender || 'M';
   const country = cfg.country || 'br';
@@ -163,6 +181,7 @@ export function createNewGame(cfg, settings) {
 
   const state = {
     version: SAVE_VERSION,
+    db,
     player,
     life: { bank: 0, lifestyle: 0, investments: [], endorsements: [], usedActions: {} },
     career: {
@@ -204,12 +223,12 @@ export function createNewGame(cfg, settings) {
 
   if (startAge >= 18) {
     startProContract(state, rng);
-    addNews(state, `✍️ ${player.name} assinou contrato profissional com ${clubById(state.career.clubId).name}!`, 'club', 'clube');
+    addNews(state, `✍️ ${player.name} assinou contrato profissional com ${clubOf(state, state.career.clubId).name}!`, 'club', 'clube');
     buildLeague(state);
   } else if (startAge >= 16) {
     // começa na base de um clube compatível
     startYouthContract(state, rng);
-    addNews(state, `📝 Assinou contrato juvenil com ${clubById(state.career.clubId).name}!`, 'club', 'clube');
+    addNews(state, `📝 Assinou contrato juvenil com ${clubOf(state, state.career.clubId).name}!`, 'club', 'clube');
     buildLeague(state);
   }
   return state;
@@ -219,7 +238,7 @@ function startProContract(state, rng) {
   const p = state.player;
   refreshPlayer(state);
   let tier = p.ovr >= 75 ? 5 : p.ovr >= 62 ? 4 : 3;
-  const candidates = CLUBS.filter((c) => c.tier === tier || c.tier === tier + 1);
+  const candidates = allClubs(state).filter((c) => c.tier === tier || c.tier === tier + 1);
   const club = rng.pick(candidates);
   state.career.clubId = club.id;
   const offer = makeOffer(state, club, 'transfer');
@@ -238,7 +257,7 @@ function startYouthContract(state, rng) {
   refreshPlayer(state);
   const ovr = p.ovr;
   let tier = ovr >= 62 ? 4 : ovr >= 50 ? 3 : 2;
-  const candidates = CLUBS.filter((c) => c.tier === tier || c.tier === tier + 1 || c.tier === tier - 1);
+  const candidates = allClubs(state).filter((c) => c.tier === tier || c.tier === tier + 1 || c.tier === tier - 1);
   const club = rng ? rng.pick(candidates) : candidates[Math.floor(Math.random() * candidates.length)];
   state.career.clubId = club.id;
   const base = 1500 + ovr * 120;
@@ -301,7 +320,7 @@ function fillerClubs(leagueName, country, tier, need, rng) {
       id: `filler_${leagueName.replace(/\W+/g, '').toLowerCase()}_${i}`,
       name: `${city}${suffix ? ` ${String.fromCharCode(65 + suffix)}` : ''} FC`,
       short: city.slice(0, 3).toUpperCase() + (suffix ? String.fromCharCode(65 + suffix) : ''),
-      country, city,
+      colors: ['#33334a', '#16161b'], country, city,
       rep: clamp(tier * 11 + (rng ? rng.int(-8, 8) : 0) + (i % 5) * 3, 35, 85),
       tier, league: leagueName, filler: true,
     });
@@ -311,12 +330,12 @@ function fillerClubs(leagueName, country, tier, need, rng) {
 }
 
 export function buildLeague(state) {
-  const club = clubById(state.career.clubId);
+  const club = clubOf(state, state.career.clubId);
   if (!club) return;
   const rng = makeRng(hashStr(`lg_${state.calendar.year}_${club.league}_${club.id}`));
-  const realTeams = clubsByLeague(club.league);
+  const realTeams = allClubs(state).filter((c) => c.leagueId === club.leagueId);
   let teams = realTeams.slice();
-  const target = realTeams.length >= 12 ? realTeams.length : 12;
+  const target = realTeams.length >= 10 ? realTeams.length : 12;
   if (teams.length < target) {
     teams = teams.concat(fillerClubs(club.league, club.country, club.tier, target - teams.length, rng));
   }
@@ -367,7 +386,7 @@ export function buildLeague(state) {
     applyResult(table[f.home], f.gh, f.ga);
     applyResult(table[f.away], f.ga, f.gh);
   }
-  state.career.league = { teams: teams.map((c) => c.id), table, fixtures, round: 1, monthByRound: {} };
+  state.career.league = { teams, table, fixtures, round: 1, monthByRound: {} };
   // distribui rodadas pelos meses 1-11
   const totalRounds = count * 2;
   const perMonth = Math.ceil(totalRounds / 11);
@@ -387,7 +406,7 @@ function applyResult(row, gf, ga) {
 }
 
 export function teamStrength(state) {
-  const club = clubById(state.career.clubId);
+  const club = clubOf(state, state.career.clubId);
   if (!club) return 50;
   const p = state.player;
   let boost = 0;
@@ -400,10 +419,10 @@ export function teamStrength(state) {
 }
 
 function pickOpponent(state, minTier, maxTier, excludeLeague, rng) {
-  let pool = CLUBS.filter((c) => c.tier >= minTier && c.tier <= maxTier);
+  let pool = allClubs(state).filter((c) => c.tier >= minTier && c.tier <= maxTier);
   if (excludeLeague) pool = pool.filter((c) => c.league !== excludeLeague || c.id !== state.career.clubId);
   pool = pool.filter((c) => c.id !== state.career.clubId);
-  if (!pool.length) pool = CLUBS.filter((c) => c.id !== state.career.clubId);
+  if (!pool.length) pool = allClubs(state).filter((c) => c.id !== state.career.clubId);
   return rng.pick(pool);
 }
 
@@ -418,7 +437,7 @@ function pickCountryOpponent(state, rng) {
 export function generateMonthFixtures(state) {
   const rng = makeRng(hashStr(`fix_${state.calendar.year}_${state.calendar.month}_${state.career.clubId}_${state.player.name}`));
   const m = state.calendar.month;
-  const club = clubById(state.career.clubId);
+  const club = clubOf(state, state.career.clubId);
   const out = [];
   if (inFootball(state) && club) {
     // Liga
@@ -428,7 +447,7 @@ export function generateMonthFixtures(state) {
       const fs = lg.fixtures.filter((f) => f.round === r && (f.home === club.id || f.away === club.id));
       for (const f of fs) {
         const oppId = f.home === club.id ? f.away : f.home;
-        const opp = clubById(oppId) || lg.teams.includes(oppId) && { id: oppId, name: oppId, rep: 60 };
+        const opp = clubOf(state, oppId) || (lg.teams && lg.teams.find((t) => t.id === oppId)) || { id: oppId, name: oppId, rep: 60, short: '???', colors: ['#2a2a33', '#16161b'] };
         out.push(mkFixture(state, 'league', club.league, opp, f.home === club.id, { lgFixture: f }));
       }
     }
@@ -487,17 +506,17 @@ function mkFixture(state, type, compName, opp, home, extra = {}) {
   };
 }
 
-export function oppInfo(fx) {
+export function oppInfo(state, fx) {
   if (fx.type === 'nt') return { name: `${countryFlag(fx.oppCountry)} ${fx.oppName}`, short: fx.oppName, rep: fx.oppRep };
-  const c = clubById(fx.oppId);
+  const c = clubOf(state, fx.oppId);
   return { name: c ? c.name : fx.oppName, short: c ? c.short : fx.oppName, rep: fx.oppRep, city: c?.city, country: c?.country };
 }
 
 export function myClubName(s) {
-  const c = clubById(s.career.clubId);
+  const c = clubOf(s, s.career.clubId);
   return c ? c.name : 'Sem clube';
 }
-export function myClub(s) { return clubById(s.career.clubId); }
+export function myClub(s) { return clubOf(s, s.career.clubId); }
 
 // -------------------- Partida do jogador --------------------
 const R = NARRATIVE;
@@ -530,7 +549,7 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
   const p = state.player;
   const rng = makeRng(hashStr(`pm_${fixtureId}_${Date.now()}`) + Math.floor(Math.random() * 1e6));
   const narrative = [];
-  const opp = oppInfo(fx);
+  const opp = oppInfo(state, fx);
 
   const myStr = teamStrength(state);
   const oppStr = fx.oppRep + rng.int(-3, 3);
@@ -1091,13 +1110,13 @@ export function generateOffers(state) {
   let maxRep = clamp(minRep + 25, 40, 99);
   if (p.ovr >= 85) { minRep = 80; maxRep = 99; }
   if (p.ovr <= 50) { minRep = 30; maxRep = 65; }
-  let pool = CLUBS.filter((c) => c.rep >= minRep && c.rep <= maxRep && c.id !== current);
+  let pool = allClubs(state).filter((c) => c.rep >= minRep && c.rep <= maxRep && c.id !== current);
   if (p.phase === 'base' || p.phase === 'teen') {
-    pool = CLUBS.filter((c) => c.tier >= 2 && c.tier <= 4 && c.id !== current);
+    pool = allClubs(state).filter((c) => c.tier >= 2 && c.tier <= 4 && c.id !== current);
   }
   const freeAgent = !state.career.clubId && inFootball(state);
   if (freeAgent) {
-    pool = CLUBS.filter((c) => c.rep >= Math.min(minRep, 50) && c.rep <= Math.max(maxRep, 80) && c.id !== current);
+    pool = allClubs(state).filter((c) => c.rep >= Math.min(minRep, 50) && c.rep <= Math.max(maxRep, 80) && c.id !== current);
   }
   if (!pool.length) return;
   // quantidade de ofertas
@@ -1122,8 +1141,8 @@ export function generateOffers(state) {
 export function acceptClubOffer(state, offerId) {
   const o = state.transfers.offers.find((x) => x.id === offerId && x.type !== 'endorse');
   if (!o) return { ok: false, msg: 'Oferta não encontrada.' };
-  const club = clubById(o.clubId);
-  const old = state.career.clubId ? clubById(state.career.clubId) : null;
+  const club = clubOf(state, o.clubId);
+  const old = state.career.clubId ? clubOf(state, state.career.clubId) : null;
   state.career.clubId = o.clubId;
   state.career.contract = {
     salary: o.salary, years: o.years, until: o.until,
@@ -1154,7 +1173,7 @@ export function acceptClubOffer(state, offerId) {
 
 export function renewContract(state) {
   const con = state.career.contract;
-  const club = clubById(state.career.clubId);
+  const club = clubOf(state, state.career.clubId);
   if (!con || !club) return { ok: false, msg: 'Sem contrato vigente.' };
   const o = makeOffer(state, club, 'transfer');
   state.career.contract = {
@@ -1209,7 +1228,7 @@ export function ntTick(state, r) {
 export function seasonEnd(state, r) {
   const p = state.player;
   const season = state.career.season;
-  const club = clubById(state.career.clubId);
+  const club = clubOf(state, state.career.clubId);
   const league = state.career.league;
 
   // título da liga
@@ -1341,7 +1360,7 @@ function birthday(state, r) {
   }
   if (p.age === 17 && p.phase === 'base') {
     // promovido ao profissional se for bom
-    const club = clubById(state.career.clubId);
+    const club = clubOf(state, state.career.clubId);
     refreshPlayer(state);
     if (p.ovr >= 58 && club) {
       p.phase = 'pro';
@@ -1669,10 +1688,10 @@ const EVENTS = [
   }),
   ev({
     id: 'saudita', phase: ['pro', 'vet'], min: 25, max: 99, w: 1,
-    title: (s) => '🤑 Proposta da Arábia',
-    text: (s) => `Um clube da Arábia Saudita ofereceu um salário astronômico para ${N(s)} jogar lá. Seria um dinheiro que muda a vida da família.`,
+    title: (s) => '🤑 Proposta bilionária',
+    text: (s) => `Um magnata bilionário quer te levar para um gigante do exterior. O salário seria astronômico — dinheiro que muda a vida da família.`,
     choices: [
-      { label: (s) => 'Aceitar 🤑', hint: 'Muito dinheiro, menos visibilidade', run: (s) => { const club = clubById('hil'); const offer = makeOffer(stateForRun(s), club, 'transfer'); offer.salary = Math.round(offer.salary * 3 / 100) * 100; s.transfers.offers.push(offer); return { news: `🤑 Proposta de R$ ${offer.salary.toLocaleString('pt-BR')}/mês do Al-Hilal recebida! Ela está no mercado para você aceitar.` }; } },
+      { label: (s) => 'Aceitar 🤑', hint: 'Muito dinheiro, menos visibilidade', run: (s) => { const top = allClubs(s).filter((c) => c.tier >= 5).sort((a, b) => b.rep - a.rep); const club = top[Math.floor(Math.random() * Math.min(6, top.length))]; const offer = makeOffer(stateForRun(s), club, 'transfer'); offer.salary = Math.round(offer.salary * 3 / 100) * 100; s.transfers.offers.push(offer); return { news: `🤑 Proposta de R$ ${offer.salary.toLocaleString('pt-BR')}/mês do ${club.name} recebida! Ela está no mercado para você aceitar.` }; } },
       { label: (s) => 'Recusar 🏟️', hint: 'Prefere a Europa/América', run: (s) => { s.player.morale = clamp(s.player.morale + 1, 10, 99); return { news: '🏟️ "Quero disputar os maiores campeonatos", você disse. Respeitado.' }; } },
     ],
   }),
@@ -1690,7 +1709,7 @@ const EVENTS = [
     title: (s) => '🔄 Mudança de posição?',
     text: (s) => `O técnico acha que ${N(s)} renderia mais jogando em outra posição.`,
     choices: [
-      { label: (s) => 'Aceitar 🔄', run: (s) => { const pos = s.player.position; const options = POSITIONS.filter((p) => p.id !== pos); const novo = options[Math.floor(Math.random() * options.length)]; s.player.position = novo.id; s.player.form = clamp(s.player.form - 3, 10, 99); return { news: `🔄 Agora você joga como ${novo.name}! Tempo de adaptação.` }; } },
+      { label: (s) => 'Aceitar 🔄', run: (s) => { const pos = s.player.position; const options = CAREER_POSITIONS.filter((p) => p.id !== pos); const novo = options[Math.floor(Math.random() * options.length)]; s.player.position = novo.id; s.player.form = clamp(s.player.form - 3, 10, 99); return { news: `🔄 Agora você joga como ${novo.name}! Tempo de adaptação.` }; } },
       { label: (s) => 'Recusar ✋', run: (s) => { s.player.morale = clamp(s.player.morale - 2, 10, 99); return { news: '✋ Você quer seguir na sua posição. O técnico respeitou.' }; } },
     ],
   }),
@@ -1707,10 +1726,10 @@ const EVENTS = [
   }),
   ev({
     id: 'ligas_menores', phase: ['vet'], min: 32, max: 99, w: 1,
-    title: (s) => '🌴 Liga menor e muito dinheiro?',
-    text: (s) => `Um clube da MLS e outro do Catar ofereceram contratos gordos para uma última aventura.`,
+    title: (s) => '🌴 Mercados alternativos?',
+    text: (s) => `Clubes de ligas menores e mercados alternativos ofereceram contratos gordos para uma última aventura.`,
     choices: [
-      { label: (s) => 'Ir para o exterior 🌴', run: (s) => { const candidates = CLUBS.filter((c) => c.id === 'mia' || c.id === 'laf' || c.id === 'mon2' || c.id === 'ame' || c.id === 'hil' || c.id === 'nass'); const club = candidates[Math.floor(Math.random() * candidates.length)]; const offer = makeOffer(stateForRun(s), club, 'transfer'); s.transfers.offers.push(offer); return { news: `🌴 Oferta de R$ ${offer.salary.toLocaleString('pt-BR')}/mês do ${club.name} está no mercado!` }; } },
+      { label: (s) => 'Ir para outro mercado 🌴', run: (s) => { const pool = allClubs(s).filter((c) => c.tier === 2 || c.tier === 3 || c.tier === 4); const club = pool[Math.floor(Math.random() * pool.length)]; const offer = makeOffer(stateForRun(s), club, 'transfer'); s.transfers.offers.push(offer); return { news: `🌴 Oferta de R$ ${offer.salary.toLocaleString('pt-BR')}/mês do ${club.name} (${club.league}) está no mercado!` }; } },
       { label: (s) => 'Ficar 🇧🇷', run: (s) => { return { news: '🇧🇷 Sua história termina aqui, onde começou.' }; } },
     ],
   }),
@@ -1729,7 +1748,7 @@ const EVENTS = [
     text: (s) => `Sem contrato, ${N(s)} precisa encontrar um time. O empresário listou as opções.`,
     choices: [
       { label: (s) => 'Procurar clube menor 🔍', run: (s) => { generateOffers(s); const offers = s.transfers.offers.filter((o) => o.type !== 'endorse'); if (offers.length) return { news: `🔍 ${offers.length} proposta(s) chegaram! Confira no Mercado.` }; s.player.morale = clamp(s.player.morale - 4, 10, 99); return { news: '🔍 Nada ainda. Treinar e esperar é o caminho.' }; } },
-      { label: (s) => 'Fazer testes 🧪', run: (s) => { const rng = makeRng(Date.now()); const ok = s.player.ovr + rng.int(-6, 10) >= 58; if (ok) { const candidates = CLUBS.filter((c) => c.tier >= 2 && c.tier <= 4); const club = rng.pick(candidates); const offer = makeOffer(stateForRun(s), club, 'free'); s.transfers.offers.push(offer); return { news: `🧪 Passou nos testes do ${club.name}! Proposta de contrato no mercado.` }; } s.player.morale = clamp(s.player.morale - 5, 10, 99); return { news: '🧪 Não vingou. A caminhada continua.' }; } },
+      { label: (s) => 'Fazer testes 🧪', run: (s) => { const rng = makeRng(Date.now()); const ok = s.player.ovr + rng.int(-6, 10) >= 58; if (ok) { const candidates = allClubs(s).filter((c) => c.tier >= 2 && c.tier <= 4); const club = rng.pick(candidates); const offer = makeOffer(stateForRun(s), club, 'free'); s.transfers.offers.push(offer); return { news: `🧪 Passou nos testes do ${club.name}! Proposta de contrato no mercado.` }; } s.player.morale = clamp(s.player.morale - 5, 10, 99); return { news: '🧪 Não vingou. A caminhada continua.' }; } },
     ],
   }),
 
@@ -1915,7 +1934,7 @@ function monthlyRecovery(state, r) {
   p.morale = clamp(p.morale + Math.sign(targetMorale - p.morale) * 2, 10, 99);
   // felicidade afetada por fatores
   let happ = p.happiness;
-  const club = clubById(state.career.clubId);
+  const club = clubOf(state, state.career.clubId);
   if (club && isPro(state)) {
     const ambition = p.traits.includes('amb') ? 1 : 0.5;
     const repGap = club.rep - (p.ovr * 1.05);
@@ -1951,7 +1970,7 @@ function transferTick(state, r) {
   const con = state.career.contract;
   if (con && con.until === state.calendar.year && m === 11 && !state.transfers.renewalShown) {
     state.transfers.renewalShown = true;
-    const club = clubById(state.career.clubId);
+    const club = clubOf(state, state.career.clubId);
     if (club) {
       const offer = makeOffer(state, club, 'transfer');
       state.transfers.offers.push({ ...offer, renewal: true });
@@ -1961,7 +1980,7 @@ function transferTick(state, r) {
   if (m === 1) state.transfers.renewalShown = false;
   // fim de contrato
   if (con && con.until < state.calendar.year && state.career.clubId) {
-    addNews(state, `📭 Seu contrato com ${clubById(state.career.clubId)?.name} terminou. Você está livre no mercado!`, 'info', 'clube');
+    addNews(state, `📭 Seu contrato com ${clubOf(state, state.career.clubId)?.name} terminou. Você está livre no mercado!`, 'info', 'clube');
     state.career.contract = null;
     state.career.clubId = null;
     state.career.league = null;
@@ -2043,7 +2062,7 @@ export async function writeSlot(storage, slotId, state) {
       playerName: state.player.name,
       age: state.player.age,
       ovr: state.player.ovr,
-      club: state.career.clubId ? clubById(state.career.clubId)?.short : null,
+      club: state.career.clubId ? clubOf(state, state.career.clubId)?.short : null,
       phase: state.player.phase,
       data: packed,
     };

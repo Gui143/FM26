@@ -11,6 +11,7 @@ import {
   savesScreen, creditsScreen, howtoScreen,
 } from './screens2.js';
 import { createNewGame, writeSlot, readSlot } from './game.js';
+import { buildDatabase } from './gen.js';
 
 // Registro de rotas
 registerScreens({
@@ -47,13 +48,14 @@ function startGame(state) {
 // Novo jogo: cria o personagem e o mundo da vida
 App.onNewGame = (cfg) => {
   const menuRoot = document.getElementById('menu-root');
-  menuRoot.innerHTML = `<div class="menu-wrap"><div class="sim-loading"><div class="spinner"></div><div class="muted">Nascendo… ${cfg.name}</div></div></div>`;
+  menuRoot.innerHTML = `<div class="menu-wrap"><div class="sim-loading"><div class="spinner"></div><div class="muted">Gerando o mundo do futebol…<br>232 clubes • 5.000+ jogadores reais</div></div></div>`;
   setTimeout(() => {
-    const state = createNewGame(cfg, { ...App.bootSettings });
+    const db = buildDatabase(2026);
+    const state = createNewGame(cfg, { ...App.bootSettings }, db);
     writeSlot(App.storage, 'auto', state);
     startGame(state);
     toast(`👶 Bem-vindo ao mundo, ${state.player.name}!`);
-  }, 40);
+  }, 60);
 };
 
 App.onContinue = async () => {

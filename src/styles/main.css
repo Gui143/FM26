@@ -1573,3 +1573,12 @@ table.data th, table.data td { padding: 8px 10px; }
   .skill-grid { grid-template-columns: repeat(2, 1fr); }
   .quick-actions { grid-template-columns: 1fr; }
 }
+
+/* Elenco do clube (carreira) */
+.squad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 9px; margin-top: 6px; }
+.squad-card {
+  display: flex; align-items: center; gap: 10px; background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 11px;
+}
+.squad-card .sq-body { flex: 1; min-width: 0; }
+.squad-card .sq-name { font-weight: 800; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

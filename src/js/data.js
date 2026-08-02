@@ -1,68 +1,316 @@
 // ============================================================
 // data.js — Banco de dados estático do jogo
-// Vida de Craque 26 — Modo Carreira de Jogador (BitLife × FIFA)
-// Países, cidades, nomes, posições, atributos, traços, clubes,
-// ligas, prêmios, marcas, estilos de vida e i18n
+// Países, ligas, clubes, nomes, formações, patrocinadores, i18n
 // ============================================================
 
-export const DB_VERSION = 2;
+export const DB_VERSION = 1;
 
-// -------------------- PAÍSES --------------------
+// -------------------- PAÍSES / CONFEDERAÇÕES --------------------
 export const COUNTRIES = [
-  { id: 'br', name: 'Brasil', flag: '🇧🇷', confed: 'CONMEBOL', ntRep: 86 },
-  { id: 'ar', name: 'Argentina', flag: '🇦🇷', confed: 'CONMEBOL', ntRep: 90 },
-  { id: 'uy', name: 'Uruguai', flag: '🇺🇾', confed: 'CONMEBOL', ntRep: 78 },
-  { id: 'co', name: 'Colômbia', flag: '🇨🇴', confed: 'CONMEBOL', ntRep: 79 },
-  { id: 'pt', name: 'Portugal', flag: '🇵🇹', confed: 'UEFA', ntRep: 86 },
-  { id: 'es', name: 'Espanha', flag: '🇪🇸', confed: 'UEFA', ntRep: 91 },
-  { id: 'en', name: 'Inglaterra', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', confed: 'UEFA', ntRep: 90 },
-  { id: 'fr', name: 'França', flag: '🇫🇷', confed: 'UEFA', ntRep: 90 },
-  { id: 'de', name: 'Alemanha', flag: '🇩🇪', confed: 'UEFA', ntRep: 87 },
-  { id: 'it', name: 'Itália', flag: '🇮🇹', confed: 'UEFA', ntRep: 85 },
-  { id: 'nl', name: 'Holanda', flag: '🇳🇱', confed: 'UEFA', ntRep: 82 },
-  { id: 'be', name: 'Bélgica', flag: '🇧🇪', confed: 'UEFA', ntRep: 80 },
-  { id: 'hr', name: 'Croácia', flag: '🇭🇷', confed: 'UEFA', ntRep: 80 },
-  { id: 'rs', name: 'Sérvia', flag: '🇷🇸', confed: 'UEFA', ntRep: 75 },
-  { id: 'us', name: 'EUA', flag: '🇺🇸', confed: 'CONCACAF', ntRep: 73 },
-  { id: 'mx', name: 'México', flag: '🇲🇽', confed: 'CONCACAF', ntRep: 74 },
-  { id: 'jp', name: 'Japão', flag: '🇯🇵', confed: 'AFC', ntRep: 76 },
-  { id: 'kr', name: 'Coreia do Sul', flag: '🇰🇷', confed: 'AFC', ntRep: 75 },
-  { id: 'ng', name: 'Nigéria', flag: '🇳🇬', confed: 'CAF', ntRep: 77 },
-  { id: 'sn', name: 'Senegal', flag: '🇸🇳', confed: 'CAF', ntRep: 76 },
-  { id: 'ma', name: 'Marrocos', flag: '🇲🇦', confed: 'CAF', ntRep: 77 },
-  { id: 'eg', name: 'Egito', flag: '🇪🇬', confed: 'CAF', ntRep: 74 },
+  { id: 'br', name: 'Brasil', flag: '🇧🇷', confed: 'america', ntRep: 86 },
+  { id: 'ar', name: 'Argentina', flag: '🇦🇷', confed: 'america', ntRep: 90 },
+  { id: 'uy', name: 'Uruguai', flag: '🇺🇾', confed: 'america', ntRep: 78 },
+  { id: 'co', name: 'Colômbia', flag: '🇨🇴', confed: 'america', ntRep: 79 },
+  { id: 'mx', name: 'México', flag: '🇲🇽', confed: 'america', ntRep: 74 },
+  { id: 'us', name: 'EUA', flag: '🇺🇸', confed: 'america', ntRep: 73 },
+  { id: 'pt', name: 'Portugal', flag: '🇵🇹', confed: 'europa', ntRep: 86 },
+  { id: 'es', name: 'Espanha', flag: '🇪🇸', confed: 'europa', ntRep: 91 },
+  { id: 'en', name: 'Inglaterra', flag: '🏴', confed: 'europa', ntRep: 90 },
+  { id: 'fr', name: 'França', flag: '🇫🇷', confed: 'europa', ntRep: 90 },
+  { id: 'de', name: 'Alemanha', flag: '🇩🇪', confed: 'europa', ntRep: 87 },
+  { id: 'it', name: 'Itália', flag: '🇮🇹', confed: 'europa', ntRep: 85 },
+  { id: 'nl', name: 'Holanda', flag: '🇳🇱', confed: 'europa', ntRep: 82 },
+  { id: 'be', name: 'Bélgica', flag: '🇧🇪', confed: 'europa', ntRep: 80 },
+  { id: 'hr', name: 'Croácia', flag: '🇭🇷', confed: 'europa', ntRep: 80 },
+  { id: 'rs', name: 'Sérvia', flag: '🇷🇸', confed: 'europa', ntRep: 75 },
+  { id: 'jp', name: 'Japão', flag: '🇯🇵', confed: 'asia', ntRep: 76 },
+  { id: 'kr', name: 'Coreia do Sul', flag: '🇰🇷', confed: 'asia', ntRep: 75 },
+  { id: 'ng', name: 'Nigéria', flag: '🇳🇬', confed: 'africa', ntRep: 77 },
+  { id: 'sn', name: 'Senegal', flag: '🇸🇳', confed: 'africa', ntRep: 76 },
+  { id: 'ma', name: 'Marrocos', flag: '🇲🇦', confed: 'africa', ntRep: 77 },
+  { id: 'eg', name: 'Egito', flag: '🇪🇬', confed: 'africa', ntRep: 74 },
 ];
 
-export const countryById = (id) => COUNTRIES.find((c) => c.id === id);
+// -------------------- LIGAS --------------------
+// tier 1 = primeira divisão; tier 2 = segunda (com acesso/rebaixamento)
+export const LEAGUES = [
+  { id: 'br1', country: 'br', name: 'Campeonato Brasileiro Série A', tier: 1, teams: 20, relegation: 4 },
+  { id: 'br2', country: 'br', name: 'Campeonato Brasileiro Série B', tier: 2, teams: 20, relegation: 4 },
+  { id: 'br3', country: 'br', name: 'Campeonato Brasileiro Série C', tier: 3, teams: 20, relegation: 4 },
+  { id: 'br4', country: 'br', name: 'Campeonato Brasileiro Série D', tier: 4, teams: 20 },
+  { id: 'ar1', country: 'ar', name: 'Liga Profesional Argentina', tier: 1, teams: 20 },
+  { id: 'en1', country: 'en', name: 'Premier League', tier: 1, teams: 20 },
+  { id: 'es1', country: 'es', name: 'La Liga', tier: 1, teams: 20 },
+  { id: 'it1', country: 'it', name: 'Serie A Italiana', tier: 1, teams: 20 },
+  { id: 'de1', country: 'de', name: 'Bundesliga', tier: 1, teams: 18 },
+  { id: 'fr1', country: 'fr', name: 'Ligue 1', tier: 1, teams: 18 },
+  { id: 'pt1', country: 'pt', name: 'Liga Portugal', tier: 1, teams: 18 },
+  { id: 'nl1', country: 'nl', name: 'Eredivisie', tier: 1, teams: 18 },
+];
 
-// Cidades por país (flavor)
-export const CITIES = {
-  br: ['Rio de Janeiro', 'São Paulo', 'Belo Horizonte', 'Porto Alegre', 'Salvador', 'Fortaleza', 'Curitiba', 'Recife', 'Santos', 'Goiânia', 'Niterói', 'Campinas', 'Manaus', 'Cuiabá', 'Vitória', 'Belém'],
-  ar: ['Buenos Aires', 'Rosário', 'Córdoba', 'La Plata', 'Mendoza'],
-  uy: ['Montevidéu', 'Paysandú', 'Salto'],
-  co: ['Bogotá', 'Medellín', 'Cali', 'Barranquilla'],
-  pt: ['Lisboa', 'Porto', 'Braga', 'Faro', 'Coimbra'],
-  es: ['Madrid', 'Barcelona', 'Sevilha', 'Valência', 'Bilbao'],
-  en: ['Londres', 'Manchester', 'Liverpool', 'Birmingham', 'Leeds'],
-  fr: ['Paris', 'Lyon', 'Marselha', 'Lille', 'Nice'],
-  de: ['Munique', 'Berlim', 'Dortmund', 'Hamburgo', 'Leipzig'],
-  it: ['Roma', 'Milão', 'Nápoles', 'Turim', 'Florença'],
-  nl: ['Amsterdã', 'Roterdã', 'Eindhoven'],
-  be: ['Bruxelas', 'Antuérpia', 'Gante'],
-  hr: ['Zagreb', 'Split', 'Rijeka'],
-  rs: ['Belgrado', 'Novi Sad', 'Niš'],
-  us: ['Miami', 'Los Angeles', 'Nova York', 'Atlanta', 'Seattle'],
-  mx: ['Cidade do México', 'Monterrey', 'Guadalajara'],
-  jp: ['Tóquio', 'Osaka', 'Yokohama'],
-  kr: ['Seul', 'Busan', 'Incheon'],
-  ng: ['Lagos', 'Abuja', 'Kano'],
-  sn: ['Dacar', 'Touba', 'Thiès'],
-  ma: ['Casablanca', 'Rabat', 'Marraquexe'],
-  eg: ['Cairo', 'Alexandria', 'Gizé'],
+// -------------------- CLUBES --------------------
+// Formato: [nome, abrev, cidade, cor1, cor2, reputação(1-99), estádio, capacidade]
+// Os escudos são gerados proceduralmente em SVG (ver gen.js) a partir das cores/abrev.
+export const CLUBS = {
+  br1: [
+    ['Flamengo', 'FLA', 'Rio de Janeiro', '#c1121f', '#111111', 93, 'Maracanã', 78],
+    ['Palmeiras', 'PAL', 'São Paulo', '#006437', '#ffffff', 91, 'Allianz Parque', 43],
+    ['São Paulo', 'SAO', 'São Paulo', '#e30613', '#111111', 88, 'Morumbis', 66],
+    ['Corinthians', 'COR', 'São Paulo', '#111111', '#ffffff', 89, 'Neo Química Arena', 49],
+    ['Fluminense', 'FLU', 'Rio de Janeiro', '#7a003c', '#006437', 86, 'Maracanã', 78],
+    ['Botafogo', 'BOT', 'Rio de Janeiro', '#111111', '#ffffff', 85, 'Nilton Santos', 46],
+    ['Atlético Mineiro', 'CAM', 'Belo Horizonte', '#111111', '#ffffff', 86, 'Arena MRV', 46],
+    ['Grêmio', 'GRE', 'Porto Alegre', '#0d80bf', '#111111', 86, 'Arena do Grêmio', 55],
+    ['Internacional', 'INT', 'Porto Alegre', '#d40000', '#ffffff', 85, 'Beira-Rio', 50],
+    ['Cruzeiro', 'CRU', 'Belo Horizonte', '#003aaf', '#ffffff', 85, 'Mineirão', 61],
+    ['Athletico Paranaense', 'CAP', 'Curitiba', '#d40000', '#111111', 82, 'Ligga Arena', 42],
+    ['Fortaleza', 'FOR', 'Fortaleza', '#1c4f9c', '#e30613', 79, 'Castelão', 63],
+    ['Red Bull Bragantino', 'RBB', 'Bragança Paulista', '#e30613', '#ffffff', 78, 'Nabi Abi Chedid', 17],
+    ['Santos', 'SAN', 'Santos', '#ffffff', '#111111', 84, 'Vila Belmiro', 16],
+    ['Vasco da Gama', 'VAS', 'Rio de Janeiro', '#111111', '#ffffff', 83, 'São Januário', 21],
+    ['Bahia', 'BAH', 'Salvador', '#003aaf', '#e30613', 80, 'Arena Fonte Nova', 47],
+    ['Cuiabá', 'CUI', 'Cuiabá', '#086b33', '#f5d100', 70, 'Arena Pantanal', 44],
+    ['Juventude', 'JUV', 'Caxias do Sul', '#006437', '#ffffff', 68, 'Alfredo Jaconi', 19],
+    ['Vitória', 'VIT', 'Salvador', '#e30613', '#111111', 74, 'Barradão', 34],
+    ['Ceará', 'CEA', 'Fortaleza', '#111111', '#ffffff', 72, 'Castelão', 63],
+  ],
+  br2: [
+    ['Coritiba', 'CFC', 'Curitiba', '#006437', '#ffffff', 74, 'Couto Pereira', 40],
+    ['Sport Recife', 'SPO', 'Recife', '#e30613', '#111111', 75, 'Ilha do Retiro', 32],
+    ['América Mineiro', 'AME', 'Belo Horizonte', '#006437', '#ffffff', 72, 'Independência', 23],
+    ['Goiás', 'GOI', 'Goiânia', '#006437', '#ffffff', 72, 'Serrinha', 14],
+    ['Ponte Preta', 'PON', 'Campinas', '#111111', '#ffffff', 70, 'Moisés Lucarelli', 19],
+    ['Guarani', 'GUA', 'Campinas', '#006437', '#ffffff', 70, 'Brinco de Ouro', 29],
+    ['CRB', 'CRB', 'Maceió', '#e30613', '#ffffff', 66, 'Rei Pelé', 17],
+    ['Vila Nova', 'VIL', 'Goiânia', '#e30613', '#ffffff', 68, 'Onésio Brasileiro Alvarenga', 8],
+    ['Chapecoense', 'CHA', 'Chapecó', '#008f4c', '#ffffff', 70, 'Arena Condá', 20],
+    ['Avaí', 'AVA', 'Florianópolis', '#0068b7', '#ffffff', 68, 'Ressacada', 17],
+    ['Criciúma', 'CRI', 'Criciúma', '#f5d100', '#111111', 68, 'Heriberto Hülse', 19],
+    ['Mirassol', 'MIR', 'Mirassol', '#006437', '#f5d100', 67, 'José Maria de Campos Maia', 15],
+    ['Novorizontino', 'NOV', 'Novo Horizonte', '#f5d100', '#111111', 66, 'Jorge Ismael de Biasi', 16],
+    ['Paysandu', 'PAY', 'Belém', '#0d80bf', '#ffffff', 70, 'Curuzu', 16],
+    ['Botafogo-SP', 'BSP', 'Ribeirão Preto', '#e30613', '#111111', 64, 'Santa Cruz', 29],
+    ['Operário Ferroviário', 'OPE', 'Ponta Grossa', '#111111', '#ffffff', 62, 'Germano Krüger', 10],
+    ['Ituano', 'ITU', 'Itu', '#e30613', '#111111', 62, 'Novelli Júnior', 18],
+    ['ABC', 'ABC', 'Natal', '#111111', '#ffffff', 63, 'Frasqueirão', 15],
+    ['Londrina', 'LON', 'Londrina', '#0d80bf', '#ffffff', 63, 'Estádio do Café', 30],
+    ['Sampaio Corrêa', 'SAM', 'São Luís', '#e30613', '#f5d100', 62, 'Castelão (MA)', 40],
+  ],
+  br3: [
+    ['Náutico', 'NAU', 'Recife', '#e30613', '#ffffff', 65, 'Aflitos', 20],
+    ['Remo', 'REM', 'Belém', '#003aaf', '#ffffff', 64, 'Baenão', 13],
+    ['CSA', 'CSA', 'Maceió', '#003aaf', '#ffffff', 63, 'Rei Pelé', 17],
+    ['Figueirense', 'FIG', 'Florianópolis', '#111111', '#ffffff', 62, 'Orlando Scarpelli', 19],
+    ['Botafogo-PB', 'BPB', 'João Pessoa', '#111111', '#ffffff', 61, 'Almeidão', 25],
+    ['Volta Redonda', 'VRE', 'Volta Redonda', '#f5d100', '#111111', 60, 'Raulino de Oliveira', 18],
+    ['Confiança', 'CON', 'Aracaju', '#003aaf', '#ffffff', 59, 'Batistão', 15],
+    ['Ferroviária', 'AFE', 'Araraquara', '#7a003c', '#ffffff', 60, 'Fonte Luminosa', 12],
+    ['São Bernardo', 'SBE', 'São Bernardo', '#f5d100', '#111111', 59, 'Primeiro de Maio', 15],
+    ['Ypiranga', 'YPI', 'Erechim', '#f5d100', '#003aaf', 58, 'Colosso da Lagoa', 22],
+    ['Aparecidense', 'APA', 'Aparecida', '#003aaf', '#ffffff', 57, 'Anníbal Batista de Toledo', 5],
+    ['Caxias', 'CAX', 'Caxias do Sul', '#7a003c', '#ffffff', 58, 'Centenário', 22],
+    ['Floresta', 'FLO', '#006437', '#ffffff', 56, 'Presidente Vargas', 20],
+    ['Tombense', 'TOM', 'Tombos', '#e30613', '#ffffff', 57, 'Almeidão', 5],
+    ['São José', 'SJO', 'Porto Alegre', '#003aaf', '#ffffff', 55, 'Passo dAreia', 10],
+    ['Altos', 'ALT', 'Altos', '#006437', '#ffffff', 54, 'Lindolfo Monteiro', 5],
+    ['Anápolis', 'ANA', 'Anápolis', '#111111', '#ffffff', 54, 'Jonas Duarte', 10],
+    ['Retrô', 'RET', 'Camaragibe', '#003aaf', '#f5d100', 55, 'Arena Pernambuco', 44],
+    ['Itabaiana', 'ITA', 'Itabaiana', '#003aaf', '#e30613', 53, 'Etelvino Mendonça', 10],
+    ['Maringá', 'MAR', 'Maringá', '#111111', '#ffffff', 56, 'Willie Davids', 16],
+  ],
+  br4: [
+    ['Cianorte', 'CIA', 'Cianorte', '#003aaf', '#ffffff', 52, 'Albino Turbay', 3],
+    ['Avenida', 'AVE', 'Santa Cruz do Sul', '#006437', '#ffffff', 51, 'Eucaliptos', 3],
+    ['FC Cascavel', 'CAS', 'Cascavel', '#f5d100', '#111111', 52, 'Olímpico Regional', 28],
+    ['Novo Hamburgo', 'NHA', 'Novo Hamburgo', '#003aaf', '#ffffff', 51, 'Estádio do Vale', 5],
+    ['Hercílio Luz', 'HER', 'Tubarão', '#e30613', '#ffffff', 52, 'Aníbal Costa', 3],
+    ['Brasil de Pelotas', 'BPE', 'Pelotas', '#e30613', '#111111', 54, 'Bento Freitas', 10],
+    ['Concórdia', 'CON', 'Concórdia', '#e30613', '#ffffff', 50, 'Domingos Lima', 3],
+    ['Joinville', 'JEC', 'Joinville', '#e30613', '#111111', 53, 'Arena Joinville', 20],
+    ['Maricá', 'MAR', 'Maricá', '#003aaf', '#ffffff', 50, 'Municipal de Maricá', 3],
+    ['Portuguesa-RJ', 'PRJ', 'Rio de Janeiro', '#006437', '#e30613', 53, 'Luso-Brasileiro', 5],
+    ['Nova Iguaçu', 'NIG', 'Nova Iguaçu', '#ff7700', '#ffffff', 54, 'Laranjão', 3],
+    ['Resende', 'RES', 'Resende', '#111111', '#ffffff', 50, 'Trabalhador', 4],
+    ['Iporá', 'IPO', 'Iporá', '#f5d100', '#003aaf', 49, 'Ferreirão', 3],
+    ['Crac', 'CRA', 'Catalão', '#003aaf', '#ffffff', 50, 'Genervino da Fonseca', 8],
+    ['Goianésia', 'GOI', 'Goianésia', '#003aaf', '#ffffff', 49, 'Valdeir de Oliveira', 4],
+    ['Real Brasília', 'REA', 'Brasília', '#003aaf', '#f5d100', 50, 'Defelê', 1],
+    ['Brasiliense', 'BRA', 'Brasília', '#f5d100', '#111111', 54, 'Serejão', 27],
+    ['Gama', 'GAM', 'Brasília', '#006437', '#ffffff', 53, 'Bezerrão', 20],
+    ['Mixto', 'MIX', 'Cuiabá', '#111111', '#ffffff', 51, 'Arena Pantanal', 44],
+    ['Operário-MS', 'OPE', 'Campo Grande', '#111111', '#ffffff', 50, 'Morenão', 30],
+  ],
+  ar1: [
+    ['Boca Juniors', 'BOC', 'Buenos Aires', '#003aaf', '#f5d100', 90, 'La Bombonera', 54],
+    ['River Plate', 'RIV', 'Buenos Aires', '#e30613', '#ffffff', 90, 'Monumental de Núñez', 84],
+    ['Racing', 'RAC', 'Avellaneda', '#0d80bf', '#ffffff', 80, 'El Cilindro', 55],
+    ['Independiente', 'IND', 'Avellaneda', '#e30613', '#ffffff', 80, 'Libertadores de América', 48],
+    ['San Lorenzo', 'SLO', 'Buenos Aires', '#5b2a86', '#e30613', 78, 'Nuevo Gasómetro', 47],
+    ['Estudiantes', 'EST', 'La Plata', '#e30613', '#ffffff', 78, 'Jorge Luis Hirschi', 30],
+    ['Vélez Sarsfield', 'VEL', 'Buenos Aires', '#003aaf', '#ffffff', 77, 'José Amalfitani', 49],
+    ["Newell's Old Boys", 'NOB', 'Rosario', '#e30613', '#111111', 74, 'Marcelo Bielsa', 42],
+    ['Rosario Central', 'ROS', 'Rosario', '#003aaf', '#f5d100', 74, 'Gigante de Arroyito', 41],
+    ['Talleres', 'TAL', 'Córdoba', '#003aaf', '#ffffff', 74, 'Mario Alberto Kempes', 57],
+    ['Lanús', 'LAN', 'Lanús', '#7a003c', '#ffffff', 72, 'La Fortaleza', 47],
+    ['Banfield', 'BAN', 'Banfield', '#006437', '#ffffff', 68, 'Florencio Sola', 34],
+    ['Defensa y Justicia', 'DYJ', 'Florencio Varela', '#006437', '#f5d100', 70, 'Norberto Tomaghello', 12],
+    ['Argentinos Juniors', 'ARG', 'Buenos Aires', '#e30613', '#ffffff', 69, 'Diego Armando Maradona', 25],
+    ['Huracán', 'HUR', 'Buenos Aires', '#e30613', '#ffffff', 69, 'Tomás Adolfo Ducó', 48],
+    ['Gimnasia LP', 'GIM', 'La Plata', '#003aaf', '#ffffff', 68, 'Juan Carmelo Zerillo', 24],
+    ['Platense', 'PLA', 'Vicente López', '#7a003c', '#ffffff', 63, 'Ciudad de Vicente López', 28],
+    ['Tigre', 'TIG', 'Victoria', '#003aaf', '#e30613', 64, 'José Dellagiovanna', 26],
+    ['Belgrano', 'BEL', 'Córdoba', '#0d80bf', '#111111', 67, 'Julio César Villagra', 30],
+    ['Instituto', 'INS', 'Córdoba', '#e30613', '#ffffff', 62, 'Juan Domingo Perón', 26],
+  ],
+  en1: [
+    ['Manchester City', 'MCI', 'Manchester', '#6cabdd', '#ffffff', 95, 'Etihad Stadium', 53],
+    ['Liverpool', 'LIV', 'Liverpool', '#c1121f', '#ffffff', 93, 'Anfield', 61],
+    ['Arsenal', 'ARS', 'Londres', '#e30613', '#ffffff', 92, 'Emirates Stadium', 60],
+    ['Manchester United', 'MUN', 'Manchester', '#c1121f', '#f5d100', 90, 'Old Trafford', 74],
+    ['Chelsea', 'CHE', 'Londres', '#003aaf', '#ffffff', 89, 'Stamford Bridge', 40],
+    ['Tottenham Hotspur', 'TOT', 'Londres', '#ffffff', '#111111', 87, 'Tottenham Hotspur Stadium', 62],
+    ['Newcastle United', 'NEW', 'Newcastle', '#111111', '#ffffff', 84, "St James' Park", 52],
+    ['Aston Villa', 'AVL', 'Birmingham', '#5b2a86', '#7ab8e0', 83, 'Villa Park', 42],
+    ['West Ham United', 'WHU', 'Londres', '#7a003c', '#7ab8e0', 80, 'London Stadium', 62],
+    ['Brighton', 'BHA', 'Brighton', '#003aaf', '#ffffff', 79, 'Amex Stadium', 31],
+    ['Everton', 'EVE', 'Liverpool', '#003aaf', '#ffffff', 79, 'Goodison Park', 39],
+    ['Crystal Palace', 'CRY', 'Londres', '#003aaf', '#e30613', 76, 'Selhurst Park', 25],
+    ['Fulham', 'FUL', 'Londres', '#ffffff', '#e30613', 75, 'Craven Cottage', 24],
+    ['Wolverhampton', 'WOL', 'Wolverhampton', '#f5a800', '#111111', 75, 'Molineux Stadium', 31],
+    ['Brentford', 'BRE', 'Londres', '#e30613', '#111111', 74, 'Gtech Community Stadium', 17],
+    ['Bournemouth', 'BOU', 'Bournemouth', '#e30613', '#111111', 73, 'Vitality Stadium', 11],
+    ['Nottingham Forest', 'NFO', 'Nottingham', '#c1121f', '#ffffff', 75, 'City Ground', 30],
+    ['Leicester City', 'LEI', 'Leicester', '#003aaf', '#f5d100', 74, 'King Power Stadium', 32],
+    ['Leeds United', 'LEE', 'Leeds', '#f5d100', '#003aaf', 74, 'Elland Road', 37],
+    ['Sunderland', 'SUN', 'Sunderland', '#e30613', '#ffffff', 73, 'Stadium of Light', 48],
+  ],
+  es1: [
+    ['Real Madrid', 'RMA', 'Madri', '#ffffff', '#f5d100', 97, 'Santiago Bernabéu', 81],
+    ['Barcelona', 'BAR', 'Barcelona', '#a50044', '#003aaf', 95, 'Camp Nou', 99],
+    ['Atlético de Madrid', 'ATM', 'Madri', '#e30613', '#ffffff', 91, 'Cívitas Metropolitano', 70],
+    ['Sevilla', 'SEV', 'Sevilha', '#e30613', '#ffffff', 84, 'Ramón Sánchez-Pizjuán', 43],
+    ['Real Betis', 'BET', 'Sevilha', '#006437', '#ffffff', 80, 'Benito Villamarín', 60],
+    ['Villarreal', 'VIL', 'Villarreal', '#f5d100', '#003aaf', 82, 'La Cerámica', 23],
+    ['Athletic Club', 'ATH', 'Bilbao', '#e30613', '#ffffff', 82, 'San Mamés', 53],
+    ['Real Sociedad', 'RSO', 'San Sebastián', '#003aaf', '#ffffff', 81, 'Reale Arena', 39],
+    ['Valencia', 'VAL', 'Valência', '#f5d100', '#111111', 79, 'Mestalla', 49],
+    ['Celta de Vigo', 'CEL', 'Vigo', '#7ab8e0', '#ffffff', 75, 'Balaídos', 29],
+    ['Getafe', 'GET', 'Getafe', '#003aaf', '#ffffff', 72, 'Coliseum', 16],
+    ['Osasuna', 'OSA', 'Pamplona', '#e30613', '#003aaf', 73, 'El Sadar', 23],
+    ['Girona', 'GIR', 'Girona', '#e30613', '#ffffff', 76, 'Montilivi', 14],
+    ['Rayo Vallecano', 'RAY', 'Madri', '#e30613', '#ffffff', 70, 'Vallecas', 14],
+    ['Mallorca', 'MAL', 'Palma', '#e30613', '#f5d100', 70, 'Son Moix', 23],
+    ['Alavés', 'ALA', 'Vitoria-Gasteiz', '#003aaf', '#ffffff', 69, 'Mendizorroza', 19],
+    ['Espanyol', 'ESP', 'Barcelona', '#003aaf', '#ffffff', 71, 'RCDE Stadium', 40],
+    ['Levante', 'LEV', 'Valência', '#e30613', '#003aaf', 67, 'Ciutat de València', 26],
+    ['Real Oviedo', 'OVI', 'Oviedo', '#003aaf', '#ffffff', 65, 'Carlos Tartiere', 30],
+    ['Elche', 'ELC', 'Elche', '#006437', '#ffffff', 66, 'Martínez Valero', 33],
+  ],
+  it1: [
+    ['Inter', 'INT', 'Milão', '#003aaf', '#111111', 92, 'San Siro', 75],
+    ['Milan', 'MIL', 'Milão', '#e30613', '#111111', 91, 'San Siro', 75],
+    ['Juventus', 'JUV', 'Turim', '#111111', '#ffffff', 91, 'Allianz Stadium', 41],
+    ['Napoli', 'NAP', 'Nápoles', '#0d80bf', '#ffffff', 89, 'Diego Armando Maradona', 54],
+    ['Roma', 'ROM', 'Roma', '#8e1f2f', '#f5a800', 86, 'Estádio Olímpico', 70],
+    ['Lazio', 'LAZ', 'Roma', '#7ab8e0', '#ffffff', 84, 'Estádio Olímpico', 70],
+    ['Atalanta', 'ATA', 'Bérgamo', '#003aaf', '#111111', 85, 'Gewiss Stadium', 25],
+    ['Fiorentina', 'FIO', 'Florença', '#5b2a86', '#ffffff', 81, 'Artemio Franchi', 43],
+    ['Bologna', 'BOL', 'Bolonha', '#8e1f2f', '#003aaf', 78, "Renato Dall'Ara", 36],
+    ['Torino', 'TOR', 'Turim', '#7a003c', '#f5d100', 74, 'Olímpico Grande Torino', 27],
+    ['Genoa', 'GEN', 'Gênova', '#e30613', '#003aaf', 73, 'Luigi Ferraris', 33],
+    ['Sampdoria', 'SMP', 'Gênova', '#003aaf', '#e30613', 72, 'Luigi Ferraris', 33],
+    ['Udinese', 'UDI', 'Údine', '#111111', '#ffffff', 71, 'Bluenergy Stadium', 25],
+    ['Monza', 'MON', 'Monza', '#e30613', '#ffffff', 70, 'U-Power Stadium', 18],
+    ['Lecce', 'LEC', 'Lecce', '#f5d100', '#e30613', 68, 'Via del Mare', 31],
+    ['Cagliari', 'CAG', 'Cagliari', '#8e1f2f', '#003aaf', 69, 'Unipol Domus', 16],
+    ['Hellas Verona', 'VER', 'Verona', '#f5d100', '#003aaf', 69, "Marcantonio Bentegodi", 39],
+    ['Parma', 'PAR', 'Parma', '#f5d100', '#003aaf', 71, 'Ennio Tardini', 27],
+    ['Como', 'COM', 'Como', '#003aaf', '#ffffff', 68, 'Giuseppe Sinigaglia', 13],
+    ['Sassuolo', 'SAS', 'Sassuolo', '#006437', '#111111', 70, 'Mapei Stadium', 21],
+  ],
+  de1: [
+    ['Bayern München', 'BAY', 'Munique', '#c1121f', '#ffffff', 96, 'Allianz Arena', 75],
+    ['Borussia Dortmund', 'BVB', 'Dortmund', '#f5d100', '#111111', 90, 'Signal Iduna Park', 81],
+    ['Bayer Leverkusen', 'B04', 'Leverkusen', '#e30613', '#111111', 87, 'BayArena', 30],
+    ['RB Leipzig', 'RBL', 'Leipzig', '#e30613', '#ffffff', 86, 'Red Bull Arena', 47],
+    ['Eintracht Frankfurt', 'SGE', 'Frankfurt', '#e30613', '#111111', 81, 'Deutsche Bank Park', 51],
+    ['VfL Wolfsburg', 'WOB', 'Wolfsburg', '#006437', '#ffffff', 76, 'Volkswagen Arena', 30],
+    ["Borussia M'gladbach", 'BMG', "Mönchengladbach", '#006437', '#111111', 76, 'Borussia-Park', 54],
+    ['VfB Stuttgart', 'VFB', 'Stuttgart', '#e30613', '#ffffff', 79, 'MHPArena', 60],
+    ['SC Freiburg', 'SCF', 'Friburgo', '#e30613', '#ffffff', 76, 'Europa-Park Stadion', 34],
+    ['Union Berlin', 'FCU', 'Berlim', '#e30613', '#f5d100', 75, 'An der Alten Försterei', 22],
+    ['Werder Bremen', 'SVW', 'Bremen', '#006437', '#ffffff', 74, 'Weserstadion', 42],
+    ['Mainz 05', 'M05', 'Mainz', '#e30613', '#ffffff', 71, 'Mewa Arena', 33],
+    ['Hoffenheim', 'TSG', 'Sinsheim', '#003aaf', '#ffffff', 71, 'PreZero Arena', 30],
+    ['FC Köln', 'KOE', 'Colônia', '#e30613', '#ffffff', 72, 'RheinEnergieStadion', 50],
+    ['Hamburger SV', 'HSV', 'Hamburgo', '#003aaf', '#ffffff', 74, 'Volksparkstadion', 57],
+    ['FC St. Pauli', 'STP', 'Hamburgo', '#6b4423', '#ffffff', 67, 'Millerntor-Stadion', 29],
+    ['FC Augsburg', 'FCA', 'Augsburg', '#e30613', '#006437', 69, 'WWK Arena', 30],
+    ['Heidenheim', 'HEI', 'Heidenheim', '#e30613', '#003aaf', 64, 'Voith-Arena', 15],
+  ],
+  fr1: [
+    ['Paris Saint-Germain', 'PSG', 'Paris', '#003aaf', '#e30613', 93, 'Parc des Princes', 48],
+    ['Olympique Marseille', 'OM', 'Marselha', '#7ab8e0', '#ffffff', 85, 'Orange Vélodrome', 67],
+    ['AS Monaco', 'ASM', 'Mônaco', '#e30613', '#ffffff', 84, 'Stade Louis-II', 18],
+    ['Lille', 'LIL', 'Lille', '#e30613', '#003aaf', 82, 'Stade Pierre-Mauroy', 50],
+    ['Lyon', 'OL', 'Lyon', '#ffffff', '#e30613', 82, 'Groupama Stadium', 59],
+    ['Nice', 'NCE', 'Nice', '#e30613', '#111111', 76, 'Allianz Riviera', 36],
+    ['Rennes', 'REN', 'Rennes', '#e30613', '#111111', 76, 'Roazhon Park', 29],
+    ['Lens', 'RCL', 'Lens', '#e30613', '#f5d100', 77, 'Stade Bollaert-Delelis', 38],
+    ['Strasbourg', 'STR', 'Estrasburgo', '#003aaf', '#ffffff', 73, 'Stade de la Meinau', 26],
+    ['Nantes', 'NAN', 'Nantes', '#f5d100', '#006437', 70, 'Stade de la Beaujoire', 35],
+    ['Toulouse', 'TOU', 'Toulouse', '#5b2a86', '#ffffff', 71, 'Stadium de Toulouse', 33],
+    ['Montpellier', 'MON', 'Montpellier', '#003aaf', '#e30613', 68, 'Stade de la Mosson', 32],
+    ['Brest', 'BRE', 'Brest', '#e30613', '#ffffff', 70, 'Stade Francis-Le Blé', 15],
+    ['Reims', 'REI', 'Reims', '#e30613', '#ffffff', 69, 'Stade Auguste-Delaune', 21],
+    ['Auxerre', 'AUX', 'Auxerre', '#003aaf', '#ffffff', 68, "Stade de l'Abbé-Deschamps", 21],
+    ['Angers', 'ANG', 'Angers', '#111111', '#ffffff', 64, 'Stade Raymond Kopa', 18],
+    ['Le Havre', 'HAC', 'Le Havre', '#003aaf', '#7ab8e0', 64, 'Stade Océane', 25],
+    ['Lorient', 'LOR', 'Lorient', '#f5a800', '#111111', 66, 'Stade du Moustoir', 18],
+  ],
+  pt1: [
+    ['Benfica', 'BEN', 'Lisboa', '#e30613', '#ffffff', 89, 'Estádio da Luz', 64],
+    ['Porto', 'POR', 'Porto', '#003aaf', '#ffffff', 88, 'Estádio do Dragão', 50],
+    ['Sporting CP', 'SCP', 'Lisboa', '#006437', '#ffffff', 87, 'Estádio José Alvalade', 50],
+    ['Braga', 'BRA', 'Braga', '#e30613', '#ffffff', 79, 'Estádio Municipal de Braga', 30],
+    ['Vitória Guimarães', 'VSC', 'Guimarães', '#111111', '#ffffff', 73, 'Estádio D. Afonso Henriques', 30],
+    ['Boavista', 'BOA', 'Porto', '#111111', '#ffffff', 67, 'Estádio do Bessa', 28],
+    ['Gil Vicente', 'GIL', 'Barcelos', '#e30613', '#003aaf', 64, 'Estádio Cidade de Barcelos', 12],
+    ['Famalicão', 'FAM', 'Vila Nova de Famalicão', '#003aaf', '#ffffff', 66, 'Estádio Municipal 22 de Junho', 5],
+    ['Estoril', 'EST', 'Estoril', '#f5d100', '#003aaf', 64, 'Estádio António Coimbra da Mota', 8],
+    ['Casa Pia', 'CAS', 'Lisboa', '#111111', '#ffffff', 63, 'Estádio Municipal de Rio Maior', 7],
+    ['Rio Ave', 'RIO', 'Vila do Conde', '#006437', '#ffffff', 65, 'Estádio dos Arcos', 9],
+    ['Arouca', 'ARO', 'Arouca', '#f5d100', '#003aaf', 63, 'Estádio Municipal de Arouca', 5],
+    ['Moreirense', 'MOR', 'Moreira de Cónegos', '#006437', '#ffffff', 62, 'Parque Joaquim de Almeida Freitas', 6],
+    ['Nacional', 'NAC', 'Funchal', '#111111', '#ffffff', 62, 'Estádio da Madeira', 5],
+    ['Santa Clara', 'STC', 'Ponta Delgada', '#e30613', '#ffffff', 63, 'Estádio de São Miguel', 13],
+    ['Farense', 'FAR', 'Faro', '#111111', '#f5d100', 60, 'Estádio de São Luís', 7],
+    ['Estrela Amadora', 'EAM', 'Amadora', '#006437', '#e30613', 59, 'Estádio José Gomes', 9],
+    ['AVS', 'AVS', 'Vila das Aves', '#e30613', '#f5d100', 58, 'Estádio do CD Aves', 8],
+  ],
+  nl1: [
+    ['Ajax', 'AJA', 'Amsterdã', '#e30613', '#ffffff', 88, 'Johan Cruyff Arena', 55],
+    ['PSV Eindhoven', 'PSV', 'Eindhoven', '#e30613', '#ffffff', 87, 'Philips Stadion', 35],
+    ['Feyenoord', 'FEY', 'Roterdã', '#e30613', '#111111', 86, 'De Kuip', 51],
+    ['AZ Alkmaar', 'AZ', 'Alkmaar', '#e30613', '#111111', 79, 'AFAS Stadion', 19],
+    ['FC Twente', 'TWE', 'Enschede', '#e30613', '#ffffff', 75, 'De Grolsch Veste', 30],
+    ['Utrecht', 'UTR', 'Utrecht', '#e30613', '#ffffff', 71, 'Stadion Galgenwaard', 23],
+    ['Heerenveen', 'HEE', 'Heerenveen', '#003aaf', '#ffffff', 68, 'Abe Lenstra Stadion', 27],
+    ['NEC Nijmegen', 'NEC', 'Nijmegen', '#e30613', '#006437', 68, 'Goffertstadion', 12],
+    ['Sparta Rotterdam', 'SPA', 'Roterdã', '#e30613', '#ffffff', 67, 'Sparta Stadion Het Kasteel', 11],
+    ['Go Ahead Eagles', 'GAE', 'Deventer', '#e30613', '#f5d100', 66, 'De Adelaarshorst', 10],
+    ['Groningen', 'GRO', 'Groningen', '#006437', '#ffffff', 67, 'Euroborg', 22],
+    ['Willem II', 'WIL', 'Tilburg', '#e30613', '#003aaf', 66, 'Koning Willem II Stadion', 14],
+    ['Fortuna Sittard', 'FOR', 'Sittard', '#f5d100', '#006437', 63, 'Fortuna Sittard Stadion', 12],
+    ['Almere City', 'ALM', 'Almere', '#e30613', '#111111', 62, 'Yanmar Stadion', 4],
+    ['NAC Breda', 'NAC', 'Breda', '#f5d100', '#111111', 63, 'Rat Verlegh Stadion', 19],
+    ['PEC Zwolle', 'ZWO', 'Zwolle', '#003aaf', '#ffffff', 64, 'MAC³PARK Stadion', 14],
+    ['Heracles', 'HER', 'Almelo', '#111111', '#ffffff', 62, 'Erve Asito', 12],
+    ['Excelsior', 'EXC', 'Roterdã', '#e30613', '#111111', 61, 'Van Donge & De Roo Stadion', 4],
+  ],
 };
 
-// -------------------- NOMES --------------------
-// first: [masculinos], firstF: [femininos] — usados para o jogador, família e parceiro(a)
+// -------------------- NOMES DE JOGADORES (geração procedural) --------------------
 export const NAME_POOLS = {
   br: {
     first: ['Gabriel', 'Lucas', 'Matheus', 'Pedro', 'Vinícius', 'Rafael', 'Bruno', 'Thiago', 'Felipe', 'Rodrigo', 'Gustavo', 'Diego', 'André', 'Caio', 'Eduardo', 'Fernando', 'Guilherme', 'Henrique', 'Igor', 'João', 'Kauã', 'Leonardo', 'Marcos', 'Nathan', 'Otávio', 'Paulo', 'Renan', 'Samuel', 'Victor', 'Wesley', 'Yuri', 'Arthur', 'Danilo', 'Everton', 'Fábio', 'Hugo', 'Jean', 'Murilo', 'Nicolas', 'Pablo', 'Ricardo', 'Sérgio', 'Talles', 'Willian', 'Adriano', 'Alex', 'Antony', 'Breno', 'Carlos', 'Daniel', 'Ederson', 'Fabinho', 'Gerson', 'Luan', 'Marlon', 'Oscar', 'Patrick', 'Richarlison', 'Savio', 'Tetê', 'Vanderson', 'Zé'],
@@ -96,16 +344,108 @@ export const NAME_POOLS = {
   },
 };
 
-// Mapa país -> pool de nomes
+// Treinadores (gerados)
+export const COACH_NAMES = {
+  br: ['Manoel Ferreira','Rogério Alencar','Tite Ramalho','Dorival Prates','Abel Nogueira','Fernando Diniz Moreira','Renato Gaúcho Lima','Vanderlei Rosa','Cuca Mendes','Felipão Braga','Muricy Costa','Carille Souza','Odair Hellmann','Silvinho Castro','Zé Ricardo Pires'],
+  hisp: ['Marcelo Bielsa Ortega','Diego Simeone Vera','Jorge Sampaoli Ruiz','Marcelo Gallardo Peralta','Ramón Díaz Torres','Hernán Crespo Loza','Mauricio Pochettino Gil','Gerardo Martino Suárez','Edgardo Bauza Tapia','Gustavo Alfaro Mejía'],
+  en: ['Gareth Palmer','Eddie Howe-Jones','Sean Dyche Cooper','Mark Robins Taylor','Kieran McKenna Shaw','Russell Martin Lowe','Gary O’Neil Fraser','Rob Edwards Miles','Thomas Frank Sørensen','Oliver Glasner Maier'],
+  it: ['Carlo Mazzone Ferri','Roberto De Zerbi Vitali','Giancarlo Italiano Neri','Pierpaolo Inzaghi Renzi','Massimiliano Allegri Bassi','Sergio Conceição Alves','Eusebio Di Francesco Ricci','Vincenzo Montella Grasso','Maurizio Sarri Landi','Ivan Jurić Kos'],
+  de: ['Jürgen Klopp Steiner','Thomas Tuchel Brandt','Hansi Flick Lehmann','Julian Nagelsmann Roth','Xabi Alonso Vega','Edin Terzić Bozic','Sebastian Hoeneß Baum','Marco Rose Fischer','Niko Kovač Peric','Oliver Glasner Sommer'],
+  fr: ['Didier Deschamps Fabre','Christophe Galtier Roux','Bruno Génésio Blanc','Rudi Garcia Pons','Laurent Blanc Olivier','Luis Enrique Marco','Franck Haise Schmitt','Will Still Vandenbroeck','Pierre Sage Martin','Éric Roy Tessier'],
+};
+
+export const SPONSORS = ['VivaBank','AeroBrasil','NeoTech','BetMax','SolarEnergia','PrimeSeguros','UltraCell','NordBank','MaxPlay','VitaSaúde','PetroForte','GloboShop','AutoVia','TeleNorte','UniCafé','AstraGames'];
+export const BOOT_BRANDS = [];
+
+// -------------------- FORMAÇÕES / TÁTICAS --------------------
+export const FORMATIONS = [
+  { id: '4-4-2', d: 4, m: 4, a: 2 },
+  { id: '4-3-3', d: 4, m: 3, a: 3 },
+  { id: '4-2-3-1', d: 4, m: 5, a: 1 },
+  { id: '3-5-2', d: 3, m: 5, a: 2 },
+  { id: '3-4-3', d: 3, m: 4, a: 3 },
+  { id: '5-3-2', d: 5, m: 3, a: 2 },
+  { id: '4-5-1', d: 4, m: 5, a: 1 },
+  { id: '4-1-4-1', d: 4, m: 5, a: 1 },
+];
+export const MENTALITIES = ['Defensivo', 'Equilibrado', 'Ofensivo'];
+export const PRESSING = ['Baixa', 'Média', 'Alta'];
+export const LINES = ['Recuada', 'Normal', 'Adiantada'];
+export const STYLES = ['Posse de bola', 'Contra-ataque'];
+export const TEMPO = ['Lento', 'Normal', 'Rápido'];
+
+export const PERSONALITIES = ['Profissional', 'Líder', 'Ambicioso', 'Humilde', 'Pavio curto', 'Resiliente'];
+export const POSITIONS = { G: 'Goleiro', D: 'Defensor', M: 'Meio-campo', A: 'Atacante' };
+export const POS_ORDER = ['G', 'D', 'M', 'A'];
+
+// -------------------- i18n (rótulos principais) --------------------
+export const I18N = {
+  pt: {
+    home: 'Início', squad: 'Elenco', tactics: 'Táticas', play: 'Jogar', league: 'Liga', more: 'Mais',
+    next: 'Próxima partida', table: 'Tabela', fixtures: 'Calendário', market: 'Mercado', finances: 'Finanças',
+    club: 'Clube', youth: 'Base', manager: 'Treinador', training: 'Treinos', stats: 'Estatísticas', ranking: 'Ranking', settings: 'Configurações',
+    saves: 'Saves', friendlies: 'Amistosos', custom: 'Criar Campeonato', credits: 'Créditos', cup: 'Copas',
+    newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save', editor: 'Editor',
+    teamOfWeek: 'Avançar', quick: 'Resultado rápido', live: 'Assistir', skip: 'Pular',
+  },
+  en: {
+    home: 'Home', squad: 'Squad', tactics: 'Tactics', play: 'Play', league: 'League', more: 'More',
+    next: 'Next match', table: 'Table', fixtures: 'Fixtures', market: 'Transfers', finances: 'Finances',
+    club: 'Club', youth: 'Academy', manager: 'Manager', training: 'Training', stats: 'Stats', ranking: 'Ranking', settings: 'Settings',
+    saves: 'Saves', friendlies: 'Friendlies', custom: 'Custom Cup', credits: 'Credits', cup: 'Cups',
+    newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save', editor: 'Editor',
+    teamOfWeek: 'Advance', quick: 'Quick result', live: 'Watch', skip: 'Skip',
+  },
+};
+
+// Nacionalidades adicionais (nomes reais de seleções fora das 9 jogáveis)
+export const NAT_LABELS = {
+  bel: 'Bélgica', col: 'Colômbia', uru: 'Uruguai', chi: 'Chile', par: 'Paraguai', per: 'Peru',
+  ecu: 'Equador', ven: 'Venezuela', mex: 'México', usa: 'EUA', jpn: 'Japão', kor: 'Coreia do Sul',
+  cro: 'Croácia', srb: 'Sérvia', pol: 'Polônia', ukr: 'Ucrânia', tur: 'Turquia', sui: 'Suíça',
+  aut: 'Áustria', den: 'Dinamarca', nor: 'Noruega', swe: 'Suécia', sco: 'Escócia', wal: 'País de Gales',
+  gre: 'Grécia', gha: 'Gana', nga: 'Nigéria', sen: 'Senegal', mar: 'Marrocos', alg: 'Argélia',
+  egy: 'Egito', cmr: 'Camarões', civ: 'Costa do Marfim', mli: 'Mali', gui: 'Guiné', tog: 'Togo',
+  gab: 'Gabão', con: 'Congo', cod: 'RD Congo', can: 'Canadá', irl: 'Irlanda', rus: 'Rússia',
+  geo: 'Geórgia', alb: 'Albânia', ksa: 'Arábia Saudita', qat: 'Catar', aou: 'Austrália', aus: 'Austrália',
+};
+
+export const T = (lang, key) => (I18N[lang] && I18N[lang][key]) || I18N.pt[key] || key;
+
+// ============================================================
+// ADICIONAIS DO MODO CARREIRA (Vida de Craque 26)
+// ============================================================
+
+export const CITIES = {
+  br: ['Rio de Janeiro', 'São Paulo', 'Belo Horizonte', 'Porto Alegre', 'Salvador', 'Fortaleza', 'Curitiba', 'Recife', 'Santos', 'Goiânia', 'Niterói', 'Campinas', 'Manaus', 'Cuiabá', 'Vitória', 'Belém'],
+  ar: ['Buenos Aires', 'Rosário', 'Córdoba', 'La Plata', 'Mendoza'],
+  uy: ['Montevidéu', 'Paysandú', 'Salto'],
+  co: ['Bogotá', 'Medellín', 'Cali', 'Barranquilla'],
+  pt: ['Lisboa', 'Porto', 'Braga', 'Faro', 'Coimbra'],
+  es: ['Madrid', 'Barcelona', 'Sevilha', 'Valência', 'Bilbao'],
+  en: ['Londres', 'Manchester', 'Liverpool', 'Birmingham', 'Leeds'],
+  fr: ['Paris', 'Lyon', 'Marselha', 'Lille', 'Nice'],
+  de: ['Munique', 'Berlim', 'Dortmund', 'Hamburgo', 'Leipzig'],
+  it: ['Roma', 'Milão', 'Nápoles', 'Turim', 'Florença'],
+  nl: ['Amsterdã', 'Roterdã', 'Eindhoven'],
+  be: ['Bruxelas', 'Antuérpia', 'Gante'],
+  hr: ['Zagreb', 'Split', 'Rijeka'],
+  rs: ['Belgrado', 'Novi Sad', 'Niš'],
+  us: ['Miami', 'Los Angeles', 'Nova York', 'Atlanta', 'Seattle'],
+  mx: ['Cidade do México', 'Monterrey', 'Guadalajara'],
+  jp: ['Tóquio', 'Osaka', 'Yokohama'],
+  kr: ['Seul', 'Busan', 'Incheon'],
+  ng: ['Lagos', 'Abuja', 'Kano'],
+  sn: ['Dacar', 'Touba', 'Thiès'],
+  ma: ['Casablanca', 'Rabat', 'Marraquexe'],
+  eg: ['Cairo', 'Alexandria', 'Gizé'],
+};
 export const POOL_BY_COUNTRY = {
   br: 'br', ar: 'hisp', uy: 'hisp', co: 'hisp', mx: 'hisp', es: 'hisp',
   en: 'en', us: 'en', it: 'it', de: 'de', nl: 'de', be: 'de', fr: 'fr',
   pt: 'br', hr: 'hisp', rs: 'hisp', jp: 'en', kr: 'en', ng: 'en', sn: 'fr', ma: 'fr', eg: 'en',
 };
-
-// -------------------- POSIÇÕES --------------------
-// OVR = média ponderada dos atributos + mental
-export const POSITIONS = [
+export const CAREER_POSITIONS = [
   { id: 'GOL', name: 'Goleiro', abbr: 'GOL', color: 'pos-G', icon: '🧤', desc: 'Defende a meta. Depende do atributo Goleiro.', w: { GOL: 0.62, DEF: 0.12, PHY: 0.10, PAS: 0.10, COM: 0.06 }, main: 'GOL' },
   { id: 'ZAG', name: 'Zagueiro', abbr: 'ZAG', color: 'pos-D', icon: '🛡️', desc: 'Rocha da defesa: marcação e jogo aéreo.', w: { DEF: 0.42, PHY: 0.26, PAS: 0.12, PAC: 0.10, DRI: 0.04, SHO: 0.04, COM: 0.02 }, main: 'DEF' },
   { id: 'LAT', name: 'Lateral', abbr: 'LAT', color: 'pos-D', icon: '🏃', desc: 'Sobe e desce o flanco o jogo inteiro.', w: { PAC: 0.30, DEF: 0.28, PAS: 0.18, PHY: 0.12, DRI: 0.06, SHO: 0.04, COM: 0.02 }, main: 'PAC' },
@@ -115,9 +455,6 @@ export const POSITIONS = [
   { id: 'PON', name: 'Ponta', abbr: 'PON', color: 'pos-A', icon: '⚡', desc: 'Velocidade e 1x1 na beirada do campo.', w: { PAC: 0.28, DRI: 0.25, SHO: 0.20, PAS: 0.14, VIS: 0.06, PHY: 0.05, DEF: 0.02 }, main: 'PAC' },
   { id: 'ATA', name: 'Atacante', abbr: 'ATA', color: 'pos-A', icon: '🎯', desc: 'A referência do gol: finalização e presença.', w: { SHO: 0.32, PAC: 0.20, DRI: 0.18, PAS: 0.12, PHY: 0.12, VIS: 0.04, DEF: 0.02 }, main: 'SHO' },
 ];
-export const positionById = (id) => POSITIONS.find((p) => p.id === id) || POSITIONS[POSITIONS.length - 1];
-
-// -------------------- ATRIBUTOS --------------------
 export const SKILLS = {
   PAC: { label: 'Ritmo', icon: '💨', group: 'fis' },
   SHO: { label: 'Chute', icon: '🎯', group: 'tec' },
@@ -134,8 +471,6 @@ export const SKILLS = {
 export const TECH_SKILLS = ['SHO', 'PAS', 'DRI', 'DEF'];
 export const PHYS_SKILLS = ['PAC', 'PHY'];
 export const MENTAL_SKILLS = ['VIS', 'LID', 'COM', 'DET'];
-
-// -------------------- TRAÇOS DE PERSONALIDADE --------------------
 export const TRAITS = [
   { id: 'prof', name: 'Profissional', icon: '📋', desc: 'Rotina impecável: menos escândalos, melhor recuperação.' },
   { id: 'amb', name: 'Ambicioso', icon: '🚀', desc: 'Evolui mais rápido, mas exige clubes grandes para ser feliz.' },
@@ -148,8 +483,6 @@ export const TRAITS = [
   { id: 'sor', name: 'Sortudo', icon: '🍀', desc: 'Eventos bons acontecem com mais frequência.' },
   { id: 'cab', name: 'Cabeça Fria', icon: '🧠', desc: 'Compostura altíssima nos momentos decisivos.' },
 ];
-
-// -------------------- TREINOS --------------------
 export const TRAININGS = [
   { id: 'sho', name: 'Finalização', icon: '🎯', skills: ['SHO', 'PAS'], desc: 'Arremates, chutes de fora e batidas de pênalti.' },
   { id: 'dri', name: 'Drible', icon: '🌀', skills: ['DRI', 'PAC'], desc: 'Fintas, condução de bola e 1x1.' },
@@ -161,133 +494,6 @@ export const TRAININGS = [
   { id: 'gol', name: 'Goleiro', icon: '🧤', skills: ['GOL'], desc: 'Defesas, saídas e jogo com os pés (só goleiros).' },
   { id: 'desc', name: 'Descanso', icon: '😴', skills: [], desc: 'Recupera energia e forma, sem risco de lesão.' },
 ];
-export const trainingById = (id) => TRAININGS.find((t) => t.id === id) || TRAININGS[0];
-
-// -------------------- CLUBES --------------------
-// tier: 1 (varzea) a 6 (elite mundial). rep: 30-99. nivelLiga: nome do campeonato
-export const CLUBS = [
-  // — Brasil (Série A, tier 5-6) —
-  { id: 'fla', name: 'Flamengo', short: 'FLA', country: 'br', city: 'Rio de Janeiro', rep: 93, tier: 6, league: 'Série A' },
-  { id: 'pal', name: 'Palmeiras', short: 'PAL', country: 'br', city: 'São Paulo', rep: 91, tier: 6, league: 'Série A' },
-  { id: 'spfc', name: 'São Paulo', short: 'SAO', country: 'br', city: 'São Paulo', rep: 88, tier: 5, league: 'Série A' },
-  { id: 'cor', name: 'Corinthians', short: 'COR', country: 'br', city: 'São Paulo', rep: 89, tier: 5, league: 'Série A' },
-  { id: 'flu', name: 'Fluminense', short: 'FLU', country: 'br', city: 'Rio de Janeiro', rep: 86, tier: 5, league: 'Série A' },
-  { id: 'bot', name: 'Botafogo', short: 'BOT', country: 'br', city: 'Rio de Janeiro', rep: 85, tier: 5, league: 'Série A' },
-  { id: 'cam', name: 'Atlético Mineiro', short: 'CAM', country: 'br', city: 'Belo Horizonte', rep: 86, tier: 5, league: 'Série A' },
-  { id: 'gre', name: 'Grêmio', short: 'GRE', country: 'br', city: 'Porto Alegre', rep: 86, tier: 5, league: 'Série A' },
-  { id: 'int', name: 'Internacional', short: 'INT', country: 'br', city: 'Porto Alegre', rep: 85, tier: 5, league: 'Série A' },
-  { id: 'cru', name: 'Cruzeiro', short: 'CRU', country: 'br', city: 'Belo Horizonte', rep: 85, tier: 5, league: 'Série A' },
-  { id: 'cap', name: 'Athletico-PR', short: 'CAP', country: 'br', city: 'Curitiba', rep: 82, tier: 5, league: 'Série A' },
-  { id: 'for', name: 'Fortaleza', short: 'FOR', country: 'br', city: 'Fortaleza', rep: 80, tier: 5, league: 'Série A' },
-  { id: 'san', name: 'Santos', short: 'SAN', country: 'br', city: 'Santos', rep: 84, tier: 5, league: 'Série A' },
-  { id: 'vas', name: 'Vasco da Gama', short: 'VAS', country: 'br', city: 'Rio de Janeiro', rep: 82, tier: 5, league: 'Série A' },
-  { id: 'bah', name: 'Bahia', short: 'BAH', country: 'br', city: 'Salvador', rep: 80, tier: 5, league: 'Série A' },
-  { id: 'rbb', name: 'Red Bull Bragantino', short: 'RBB', country: 'br', city: 'Bragança Paulista', rep: 78, tier: 5, league: 'Série A' },
-  { id: 'juv', name: 'Juventude', short: 'JUV', country: 'br', city: 'Caxias do Sul', rep: 68, tier: 4, league: 'Série A' },
-  { id: 'cui', name: 'Cuiabá', short: 'CUI', country: 'br', city: 'Cuiabá', rep: 70, tier: 4, league: 'Série A' },
-  { id: 'ceara', name: 'Ceará', short: 'CEA', country: 'br', city: 'Fortaleza', rep: 73, tier: 4, league: 'Série B' },
-  { id: 'sport', name: 'Sport', short: 'SPO', country: 'br', city: 'Recife', rep: 74, tier: 4, league: 'Série B' },
-  { id: 'nd', name: 'Náutico', short: 'NAU', country: 'br', city: 'Recife', rep: 62, tier: 3, league: 'Série B' },
-  { id: 'rem', name: 'Remo', short: 'REM', country: 'br', city: 'Belém', rep: 58, tier: 3, league: 'Série B' },
-  { id: 'goy', name: 'Goiás', short: 'GOI', country: 'br', city: 'Goiânia', rep: 72, tier: 4, league: 'Série B' },
-  { id: 'avi', name: 'Avaí', short: 'AVA', country: 'br', city: 'Florianópolis', rep: 60, tier: 3, league: 'Série B' },
-  { id: 'vit', name: 'Vitória', short: 'VIT', country: 'br', city: 'Salvador', rep: 72, tier: 4, league: 'Série B' },
-  { id: 'pon', name: 'Ponte Preta', short: 'PON', country: 'br', city: 'Campinas', rep: 55, tier: 3, league: 'Série B' },
-  { id: 'csa', name: 'CSA', short: 'CSA', country: 'br', city: 'Maceió', rep: 52, tier: 3, league: 'Série C' },
-  { id: 'con', name: 'Confiança', short: 'CON', country: 'br', city: 'Aracaju', rep: 45, tier: 2, league: 'Série C' },
-  { id: 'vol', name: 'Volta Redonda', short: 'VOL', country: 'br', city: 'Volta Redonda', rep: 48, tier: 2, league: 'Série C' },
-  // — Argentina —
-  { id: 'boc', name: 'Boca Juniors', short: 'BOC', country: 'ar', city: 'Buenos Aires', rep: 88, tier: 5, league: 'Liga Argentina' },
-  { id: 'riv', name: 'River Plate', short: 'RIV', country: 'ar', city: 'Buenos Aires', rep: 89, tier: 5, league: 'Liga Argentina' },
-  { id: 'ind', name: 'Independiente', short: 'IND', country: 'ar', city: 'Avellaneda', rep: 76, tier: 4, league: 'Liga Argentina' },
-  { id: 'rac', name: 'Racing', short: 'RAC', country: 'ar', city: 'Avellaneda', rep: 77, tier: 4, league: 'Liga Argentina' },
-  { id: 'sla', name: 'San Lorenzo', short: 'SLA', country: 'ar', city: 'Buenos Aires', rep: 74, tier: 4, league: 'Liga Argentina' },
-  { id: 'est', name: 'Estudiantes', short: 'EST', country: 'ar', city: 'La Plata', rep: 75, tier: 4, league: 'Liga Argentina' },
-  // — Portugal —
-  { id: 'ben', name: 'Benfica', short: 'BEN', country: 'pt', city: 'Lisboa', rep: 88, tier: 5, league: 'Liga Portugal' },
-  { id: 'por', name: 'Porto', short: 'FCP', country: 'pt', city: 'Porto', rep: 87, tier: 5, league: 'Liga Portugal' },
-  { id: 'spl', name: 'Sporting', short: 'SPO', country: 'pt', city: 'Lisboa', rep: 87, tier: 5, league: 'Liga Portugal' },
-  { id: 'bra', name: 'Braga', short: 'BRA', country: 'pt', city: 'Braga', rep: 78, tier: 4, league: 'Liga Portugal' },
-  { id: 'vit2', name: 'Vitória de Guimarães', short: 'VSC', country: 'pt', city: 'Guimarães', rep: 70, tier: 4, league: 'Liga Portugal' },
-  // — Inglaterra —
-  { id: 'mci', name: 'Manchester City', short: 'MCI', country: 'en', city: 'Manchester', rep: 98, tier: 6, league: 'Premier League' },
-  { id: 'mun', name: 'Manchester United', short: 'MUN', country: 'en', city: 'Manchester', rep: 92, tier: 6, league: 'Premier League' },
-  { id: 'liv', name: 'Liverpool', short: 'LIV', country: 'en', city: 'Liverpool', rep: 97, tier: 6, league: 'Premier League' },
-  { id: 'ars', name: 'Arsenal', short: 'ARS', country: 'en', city: 'Londres', rep: 96, tier: 6, league: 'Premier League' },
-  { id: 'che', name: 'Chelsea', short: 'CHE', country: 'en', city: 'Londres', rep: 92, tier: 6, league: 'Premier League' },
-  { id: 'tot', name: 'Tottenham', short: 'TOT', country: 'en', city: 'Londres', rep: 89, tier: 5, league: 'Premier League' },
-  { id: 'new', name: 'Newcastle', short: 'NEW', country: 'en', city: 'Newcastle', rep: 88, tier: 5, league: 'Premier League' },
-  { id: 'avl', name: 'Aston Villa', short: 'AVL', country: 'en', city: 'Birmingham', rep: 86, tier: 5, league: 'Premier League' },
-  { id: 'eve', name: 'Everton', short: 'EVE', country: 'en', city: 'Liverpool', rep: 78, tier: 4, league: 'Premier League' },
-  { id: 'bh', name: 'Brighton', short: 'BHA', country: 'en', city: 'Brighton', rep: 84, tier: 5, league: 'Premier League' },
-  // — Espanha —
-  { id: 'rma', name: 'Real Madrid', short: 'RMA', country: 'es', city: 'Madrid', rep: 99, tier: 6, league: 'La Liga' },
-  { id: 'bar', name: 'Barcelona', short: 'BAR', country: 'es', city: 'Barcelona', rep: 97, tier: 6, league: 'La Liga' },
-  { id: 'atm', name: 'Atlético de Madrid', short: 'ATM', country: 'es', city: 'Madrid', rep: 92, tier: 6, league: 'La Liga' },
-  { id: 'sev', name: 'Sevilla', short: 'SEV', country: 'es', city: 'Sevilha', rep: 84, tier: 5, league: 'La Liga' },
-  { id: 'bil', name: 'Athletic Bilbao', short: 'ATH', country: 'es', city: 'Bilbao', rep: 85, tier: 5, league: 'La Liga' },
-  { id: 'val', name: 'Valencia', short: 'VAL', country: 'es', city: 'Valência', rep: 76, tier: 4, league: 'La Liga' },
-  { id: 'bet', name: 'Betis', short: 'BET', country: 'es', city: 'Sevilha', rep: 82, tier: 5, league: 'La Liga' },
-  { id: 'rso', name: 'Real Sociedad', short: 'RSO', country: 'es', city: 'San Sebastián', rep: 83, tier: 5, league: 'La Liga' },
-  // — Itália —
-  { id: 'juv', name: 'Juventus', short: 'JUV', country: 'it', city: 'Turim', rep: 92, tier: 6, league: 'Serie A' },
-  { id: 'mil', name: 'AC Milan', short: 'MIL', country: 'it', city: 'Milão', rep: 90, tier: 6, league: 'Serie A' },
-  { id: 'int2', name: 'Inter de Milão', short: 'INT', country: 'it', city: 'Milão', rep: 93, tier: 6, league: 'Serie A' },
-  { id: 'nap', name: 'Napoli', short: 'NAP', country: 'it', city: 'Nápoles', rep: 90, tier: 6, league: 'Serie A' },
-  { id: 'rom', name: 'Roma', short: 'ROM', country: 'it', city: 'Roma', rep: 85, tier: 5, league: 'Serie A' },
-  { id: 'laz', name: 'Lazio', short: 'LAZ', country: 'it', city: 'Roma', rep: 84, tier: 5, league: 'Serie A' },
-  { id: 'ata', name: 'Atalanta', short: 'ATA', country: 'it', city: 'Bérgamo', rep: 88, tier: 5, league: 'Serie A' },
-  { id: 'fio', name: 'Fiorentina', short: 'FIO', country: 'it', city: 'Florença', rep: 80, tier: 5, league: 'Serie A' },
-  // — Alemanha —
-  { id: 'bay', name: 'Bayern de Munique', short: 'BAY', country: 'de', city: 'Munique', rep: 96, tier: 6, league: 'Bundesliga' },
-  { id: 'bvb', name: 'Borussia Dortmund', short: 'BVB', country: 'de', city: 'Dortmund', rep: 90, tier: 6, league: 'Bundesliga' },
-  { id: 'rbl', name: 'RB Leipzig', short: 'RBL', country: 'de', city: 'Leipzig', rep: 88, tier: 5, league: 'Bundesliga' },
-  { id: 'lvr', name: 'Bayer Leverkusen', short: 'B04', country: 'de', city: 'Leverkusen', rep: 90, tier: 6, league: 'Bundesliga' },
-  { id: 'fch', name: 'Frankfurt', short: 'SGE', country: 'de', city: 'Frankfurt', rep: 82, tier: 5, league: 'Bundesliga' },
-  { id: 'vfb', name: 'Stuttgart', short: 'VFB', country: 'de', city: 'Stuttgart', rep: 78, tier: 4, league: 'Bundesliga' },
-  // — França —
-  { id: 'psg', name: 'PSG', short: 'PSG', country: 'fr', city: 'Paris', rep: 96, tier: 6, league: 'Ligue 1' },
-  { id: 'om', name: 'Olympique de Marselha', short: 'OM', country: 'fr', city: 'Marselha', rep: 84, tier: 5, league: 'Ligue 1' },
-  { id: 'ol', name: 'Lyon', short: 'OL', country: 'fr', city: 'Lyon', rep: 82, tier: 5, league: 'Ligue 1' },
-  { id: 'mon', name: 'Monaco', short: 'ASM', country: 'fr', city: 'Monaco', rep: 84, tier: 5, league: 'Ligue 1' },
-  { id: 'lil', name: 'Lille', short: 'LIL', country: 'fr', city: 'Lille', rep: 83, tier: 5, league: 'Ligue 1' },
-  { id: 'ren', name: 'Rennes', short: 'REN', country: 'fr', city: 'Rennes', rep: 78, tier: 4, league: 'Ligue 1' },
-  // — Holanda —
-  { id: 'aja', name: 'Ajax', short: 'AJA', country: 'nl', city: 'Amsterdã', rep: 85, tier: 5, league: 'Eredivisie' },
-  { id: 'fey', name: 'Feyenoord', short: 'FEY', country: 'nl', city: 'Roterdã', rep: 83, tier: 5, league: 'Eredivisie' },
-  { id: 'psv', name: 'PSV', short: 'PSV', country: 'nl', city: 'Eindhoven', rep: 84, tier: 5, league: 'Eredivisie' },
-  // — Arábia Saudita (pero… dinheiro) —
-  { id: 'hil', name: 'Al-Hilal', short: 'HIL', country: 'ksa', city: 'Riad', rep: 80, tier: 5, league: 'Liga Saudita' },
-  { id: 'nass', name: 'Al-Nassr', short: 'NAS', country: 'ksa', city: 'Riad', rep: 79, tier: 5, league: 'Liga Saudita' },
-  { id: 'ahli', name: 'Al-Ahli', short: 'AHL', country: 'ksa', city: 'Jidá', rep: 77, tier: 4, league: 'Liga Saudita' },
-  { id: 'itt', name: 'Al-Ittihad', short: 'ITT', country: 'ksa', city: 'Jidá', rep: 78, tier: 4, league: 'Liga Saudita' },
-  // — EUA / México —
-  { id: 'mia', name: 'Inter Miami', short: 'MIA', country: 'us', city: 'Miami', rep: 76, tier: 4, league: 'MLS' },
-  { id: 'laf', name: 'LAFC', short: 'LAF', country: 'us', city: 'Los Angeles', rep: 75, tier: 4, league: 'MLS' },
-  { id: 'nyr', name: 'NY Red Bulls', short: 'NYR', country: 'us', city: 'Nova York', rep: 68, tier: 4, league: 'MLS' },
-  { id: 'mon2', name: 'Monterrey', short: 'MTY', country: 'mx', city: 'Monterrey', rep: 76, tier: 4, league: 'Liga MX' },
-  { id: 'ame', name: 'América', short: 'AME', country: 'mx', city: 'Cidade do México', rep: 77, tier: 4, league: 'Liga MX' },
-  { id: 'cha', name: 'Chivas', short: 'GDL', country: 'mx', city: 'Guadalajara', rep: 74, tier: 4, league: 'Liga MX' },
-  // — Outros mercados (flavor / transferências) —
-  { id: 'gal', name: 'Galatasaray', short: 'GAL', country: 'tr', city: 'Istambul', rep: 79, tier: 4, league: 'Super Lig' },
-  { id: 'fbb', name: 'Fenerbahçe', short: 'FEN', country: 'tr', city: 'Istambul', rep: 78, tier: 4, league: 'Super Lig' },
-  { id: 'clb', name: 'Celtic', short: 'CEL', country: 'sco', city: 'Glasgow', rep: 78, tier: 4, league: 'Scottish Premiership' },
-  { id: 'slb', name: 'Slavia Praga', short: 'SLV', country: 'cz', city: 'Praga', rep: 72, tier: 4, league: 'Liga Checa' },
-  { id: 'sha', name: 'Shakhtar Donetsk', short: 'SHK', country: 'ua', city: 'Donetsk', rep: 76, tier: 4, league: 'Liga Ucraniana' },
-  { id: 'zen', name: 'Zenit', short: 'ZEN', country: 'ru', city: 'São Petersburgo', rep: 77, tier: 4, league: 'Liga Russa' },
-  { id: 'dym', name: 'Dinamo Zagreb', short: 'DIN', country: 'hr', city: 'Zagreb', rep: 73, tier: 4, league: 'Liga Croata' },
-  { id: 'olym', name: 'Olympiacos', short: 'OLY', country: 'gr', city: 'Pireu', rep: 75, tier: 4, league: 'Liga Grega' },
-  { id: 'rsb', name: 'Estrela Vermelha', short: 'ZVE', country: 'rs', city: 'Belgrado', rep: 75, tier: 4, league: 'Superliga Sérvia' },
-  { id: 'bjk', name: 'Besiktas', short: 'BJK', country: 'tr', city: 'Istambul', rep: 76, tier: 4, league: 'Super Lig' },
-];
-export const clubById = (id) => CLUBS.find((c) => c.id === id);
-
-// Clubes por liga (para gerar tabela e adversários)
-export function clubsByLeague(leagueName) {
-  return CLUBS.filter((c) => c.league === leagueName);
-}
-
-// -------------------- PRÊMIOS --------------------
 export const AWARDS = [
   { id: 'artilheiro', name: 'Artilheiro da Liga', icon: '⚽' },
   { id: 'melhor_jogador', name: 'Melhor Jogador da Liga', icon: '🏅' },
@@ -299,8 +505,6 @@ export const AWARDS = [
   { id: 'mundial', name: 'Campeão Mundial', icon: '🌍' },
   { id: 'melhor_nt', name: 'Destaque da Seleção', icon: '🇧🇷' },
 ];
-
-// -------------------- MARCAS / PATROCÍNIOS --------------------
 export const BRANDS = [
   { id: 'nike', name: 'Nike', icon: '👟', tier: 3 },
   { id: 'adidas', name: 'Adidas', icon: '👟', tier: 3 },
@@ -313,16 +517,12 @@ export const BRANDS = [
   { id: 'game', name: 'PlayMax', icon: '🎮', tier: 2 },
   { id: 'relogio', name: 'LuxTime', icon: '⌚', tier: 3 },
 ];
-
-// -------------------- ESTILOS DE VIDA --------------------
 export const LIFESTYLES = [
   { id: 0, name: 'Humilde', icon: '🍚', cost: 0, happ: 0, fame: 0, desc: 'Vida simples, sem luxos. Sem custo fixo.' },
   { id: 1, name: 'Confortável', icon: '🏠', cost: 8000, happ: 8, fame: 1, desc: 'Apartamento bom, carro popular, restaurantes.' },
   { id: 2, name: 'Luxo', icon: '💎', cost: 60000, happ: 16, fame: 3, desc: 'Mansão, carros importados, viagens.' },
   { id: 3, name: 'Mega Estrela', icon: '👑', cost: 300000, happ: 24, fame: 6, desc: 'Jatinho, iate e festas épicas.' },
 ];
-
-// -------------------- COMPRAS (flavor) --------------------
 export const PURCHASES = [
   { id: 'carro_simples', name: 'Carro popular', icon: '🚗', price: 90000, happ: 5, fame: 0, needFame: 0 },
   { id: 'carro_esportivo', name: 'Carro esportivo', icon: '🏎️', price: 700000, happ: 12, fame: 3, needFame: 20 },
@@ -333,8 +533,6 @@ export const PURCHASES = [
   { id: 'relogio', name: 'Relógio de luxo', icon: '⌚', price: 250000, happ: 6, fame: 2, needFame: 25 },
   { id: 'casa_pais', name: 'Casa para seus pais', icon: '🏡', price: 800000, happ: 12, fame: 2, needFame: 10 },
 ];
-
-// -------------------- FRASES DE NARRAÇÃO --------------------
 export const NARRATIVE = {
   shot: ['disparou de fora da área!', 'arriscou de longe, por cima do travessão!', 'bateu cruzado, tirando tinta da trave!', 'finalizou com perigo, o goleiro espalmou!'],
   chance: ['recebeu na entrada da área e limpou o marcador!', 'tabelou e invadiu a área, quase saiu o gol!', 'dominou no peito e girou em cima da marcação!', 'abriu espaço com um corte seco, a zaga cortou no susto!'],
@@ -347,28 +545,28 @@ export const NARRATIVE = {
   assist: ['cruzou na medida e o companheiro só escorou: GOL!', 'deixou o atacante na cara do gol: GOL!', 'enfiou a bola e o companheiro bateu: GOL!'],
   own: ['chutou de qualquer jeito e o goleiro fez a defesa.', 'tentou o cruzamento e a zaga cortou.', 'bateu fraco, sem perigo.', 'a jogada não saiu como planejado.'],
 };
+export const positionById = (id) => CAREER_POSITIONS.find((p) => p.id === id) || CAREER_POSITIONS[CAREER_POSITIONS.length - 1];
+export const countryById = (id) => COUNTRIES.find((c) => c.id === id);
 
-// Nomes de parceiros(as) e familiares por gênero do jogador
-export const PARTNER_HINTS = {
-  M: ['uma jovem simpática', 'a vizinha de infância', 'uma estudante de medicina', 'uma influenciadora', 'uma arquiteta', 'uma médica', 'a professora da faculdade', 'uma empresária', 'uma atriz em ascensão', 'a melhor amiga da sua irmã'],
-  F: ['um jovem charmoso', 'o vizinho de infância', 'um estudante de direito', 'um empresário', 'um engenheiro', 'um médico', 'um professor universitário', 'um músico', 'um ator em ascensão', 'o melhor amigo do seu irmão'],
+// Tier de carreira (1-6) por liga do mundo real — usado no modo jogador
+export const LEAGUE_TIER = {
+  br1: 5, br2: 4, br3: 3, br4: 2,
+  ar1: 4,
+  en1: 6, es1: 6, it1: 6, de1: 5, fr1: 5, pt1: 4, nl1: 4,
 };
 
-// -------------------- i18n --------------------
-export const I18N = {
-  pt: {
-    home: 'Início', training: 'Treino', play: 'Jogar', career: 'Carreira', market: 'Mercado',
-    family: 'Família', money: 'Dinheiro', fame: 'Fama', more: 'Mais', inbox: 'Mensagens',
-    settings: 'Configurações', saves: 'Saves', credits: 'Créditos', howto: 'Como Jogar',
-    newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save',
-    advance: 'Avançar mês', next: 'Próximo',
-  },
-  en: {
-    home: 'Home', training: 'Training', play: 'Play', career: 'Career', market: 'Market',
-    family: 'Family', money: 'Money', fame: 'Fame', more: 'More', inbox: 'Messages',
-    settings: 'Settings', saves: 'Saves', credits: 'Credits', howto: 'How to Play',
-    newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save',
-    advance: 'Advance month', next: 'Next',
-  },
-};
-export const T = (lang, key) => (I18N[lang] && I18N[lang][key]) || I18N.pt[key] || key;
+// Textos adicionais do modo carreira (fundidos ao i18n principal)
+Object.assign(I18N.pt, {
+  training: 'Treino', play: 'Jogar', career: 'Carreira', market: 'Mercado',
+  family: 'Família', money: 'Dinheiro', fame: 'Fama', more: 'Mais', inbox: 'Mensagens',
+  settings: 'Configurações', saves: 'Saves', credits: 'Créditos', howto: 'Como Jogar',
+  newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save',
+  advance: 'Avançar mês', next: 'Próximo', home: 'Início',
+});
+Object.assign(I18N.en, {
+  training: 'Training', play: 'Play', career: 'Career', market: 'Market',
+  family: 'Family', money: 'Money', fame: 'Fame', more: 'More', inbox: 'Messages',
+  settings: 'Settings', saves: 'Saves', credits: 'Credits', howto: 'How to Play',
+  newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save',
+  advance: 'Advance month', next: 'Next', home: 'Home',
+});

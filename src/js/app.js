@@ -73,19 +73,21 @@ App.onLoadState = (st) => startGame(st);
 
 // Sair para o menu salva automaticamente
 const _origRender = renderRoute;
-window.addEventListener('hashchange', () => {
-  const h = location.hash.replace(/^#\/?/, '').split('/')[0];
-  if (h === 'menu' && App.state) autosave();
-});
-window.addEventListener('hashchange', _origRender);
+if (typeof window !== 'undefined' && typeof location !== 'undefined') {
+  window.addEventListener('hashchange', () => {
+    const h = location.hash.replace(/^#\/?/, '').split('/')[0];
+    if (h === 'menu' && App.state) autosave();
+  });
+  window.addEventListener('hashchange', _origRender);
 
-// Salva ao fechar a aba
-window.addEventListener('pagehide', () => { if (App.state) autosave(); });
+  // Salva ao fechar a aba
+  window.addEventListener('pagehide', () => { if (App.state) autosave(); });
 
-// Primeira renderização
-applySettingsToBody();
-if (!location.hash) location.hash = '#/menu';
-renderRoute();
+  // Primeira renderização
+  applySettingsToBody();
+  if (!location.hash) location.hash = '#/menu';
+  renderRoute();
+}
 
 // ============================================================
 // SUPABASE INIT + AUTO CLOUD SAVE HOOK
@@ -101,12 +103,14 @@ renderRoute();
 
 // Hook autosave na nuvem depois de ações importantes
 const _origAutosave = autosave;
-window.autosave = function() {
-  _origAutosave();
-  if (App.state?.player?.hasCellphone) {
-    import('./supabase.js').then(m => m.autoSaveToCloud(App.state));
-  }
-};
+if (typeof window !== 'undefined') {
+  window.autosave = function() {
+    _origAutosave();
+    if (App.state?.player?.hasCellphone) {
+      import('./supabase.js').then(m => m.autoSaveToCloud(App.state));
+    }
+  };
+}
 
 // Tenta carregar save da nuvem no início (se logado)
 (async () => {

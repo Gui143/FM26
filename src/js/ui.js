@@ -121,8 +121,8 @@ export function meter(label, val, max = 100, color) {
 
 export function lifeMeter(label, val, icon, color) {
   const c = color || 'var(--accent)';
-  const cls = val >= 60 ? '' : val >= 35 ? 'warn' : 'low';
-  return `<div class="life-meter ${cls}"><span class="lm-ico">${icon}</span><div class="lm-body"><div class="lm-top"><span>${label}</span><b>${Math.round(val)}</b></div><div class="bar"><i style="width:${clamp(val, 0, 100)}%;background:${c}"></i></div></div></div>`;
+  const cls = val >= 85 ? 'excellent status-excellent' : val >= 60 ? '' : val >= 35 ? 'warn status-warn' : 'low status-critical';
+  return `<div class="life-meter ${cls}"><span class="lm-ico">${icon}</span><div class="lm-body"><div class="lm-top"><span class="lm-label">${label}</span><b class="lm-val">${Math.round(val)}</b></div><div class="bar"><i style="width:${clamp(val, 0, 100)}%;background:${c}"></i></div></div></div>`;
 }
 
 export function pill(text, type = '') {

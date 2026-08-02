@@ -173,52 +173,131 @@ export const homeScreen = {
     const upcoming = s.matches.filter((f) => !f.played);
     const played = s.matches.filter((f) => f.played);
     const season = s.career.season;
+    const nextMatch = upcoming[0] || null;
 
     return `
     <div class="vc-home">
-      <!-- HERO: ficha do jogador -->
+      ${s.pending ? `
+      <!-- ALERTA DE DECISÃO PENDENTE -->
+      <div class="card alert-banner" data-open-pending style="cursor:pointer;margin-bottom:16px">
+        <div class="alert-ico">${icon('alert')}</div>
+        <div class="alert-body">
+          <div class="alert-title">⚠️ DECISÃO PENDENTE: ${esc(s.pending.title)}</div>
+          <div class="tiny muted">Clique aqui para responder e continuar sua trajetória no futebol</div>
+        </div>
+        <div class="alert-action"><button class="btn small primary">Responder</button></div>
+      </div>` : ''}
+
+      <!-- HERO: FICHA DO CRAQUE (GLASSMORPHISM + DESTAQUE ESPECULAR) -->
       <section class="player-hero card">
         <div class="ph-left">
-          ${avatarEl(p.name, 84, 'font-weight:900;border:2px solid var(--accent)')}
+          ${avatarEl(p.name, 86, 'font-weight:900;border:2px solid var(--accent)')}
           <div class="ph-identity">
             <div class="ph-eyebrow">${countryById(p.country)?.flag || '🌍'} ${esc(countryById(p.country)?.name || p.country)} • ${p.city ? esc(p.city) : ''}</div>
             <h1 class="ph-name">${esc(p.name)}</h1>
             <div class="ph-meta">
-              ${posBadge(p.position)} <span class="ph-age">${p.age} anos</span> ${p.foot === 'D' ? '🦶 Direito' : '🦶 Canhoto'}
+              ${posBadge(p.position)} <span class="ph-age">${p.age} ANOS</span> <span class="pill ghost">${p.foot === 'D' ? '🦶 Destro' : '🦶 Canhoto'}</span>
               <span class="ph-phase">${G.phaseLabel(s)}</span>
             </div>
           </div>
         </div>
         <div class="ph-right">
-          ${ovrBadge(p.ovr, 64)}
-          <div class="ph-pot tiny muted">POT ${p.pot}</div>
-        <div class="ph-club">
-          ${(club && s.career.contract && s.career.contract.until >= s.calendar.year) ? 
-            `${crest(club, 44)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">${esc(club.league)}</div></div>
-            <div class="ph-contract">R$ ${num(s.career.contract.salary)}/mês</div>` : 
-            club ? `${crest(club, 44)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">Sem contrato ativo</div></div>` : 
-            `<div class="ph-clubname">⚽ Sem clube</div><div class="tiny muted">${p.phase === "retired" ? "Aposentado(a)" : "Em busca de um time"}</div>`}
-          <div class="ph-value">${money(p.value)}</div>
+          <div class="ph-ovr-box">
+            ${ovrBadge(p.ovr, 68)}
+            <div class="ph-pot tiny muted">POT <b>${p.pot}</b></div>
+          </div>
+          <div class="ph-club">
+            ${(club && s.career.contract && s.career.contract.until >= s.calendar.year) ? 
+              `${crest(club, 48)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">${esc(club.league)}</div></div>
+              <div class="ph-contract">R$ ${num(s.career.contract.salary)}/mês</div>` : 
+              club ? `${crest(club, 48)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">Sem contrato ativo</div></div>` : 
+              `<div class="ph-clubname">⚽ Sem clube</div><div class="tiny muted">${p.phase === "retired" ? "Aposentado(a)" : "Em busca de um time"}</div>`}
+            <div class="ph-value">${money(p.value)}</div>
+          </div>
+          <div class="ph-stats-grid">
+            <div class="kpi card"><div class="v">${season.goals}</div><div class="l">GOLS</div></div>
+            <div class="kpi card"><div class="v">${season.assists}</div><div class="l">ASSIST.</div></div>
+            <div class="kpi card"><div class="v">${season.apps > 0 ? (season.ratingSum / season.apps).toFixed(1) : '-'}</div><div class="l">NOTA</div></div>
+            <div class="kpi card"><div class="v">${season.apps}</div><div class="l">JOGOS</div></div>
+          </div>
         </div>
-        <div class="kpi card"><div class="v">${season.goals}</div><div class="l">Gols</div></div>
-        <div class="kpi card"><div class="v">${season.assists}</div><div class="l">Assistências</div></div>
+      </section>
+
+      <!-- ATRIBUTOS VITAIS DO ATLETA (HIERARQUIA VISUAL + GLOW DINÂMICO) -->
+      <section class="card life-grid-wrapper" style="margin-top:16px">
+        <div class="h-sec">⚡ ATRIBUTOS VITAIS DO ATLETA</div>
+        <div class="life-grid">
+          ${lifeMeter('SAÚDE', p.health, '❤️', 'var(--red)')}
+          ${lifeMeter('ENERGIA', p.energy !== undefined ? p.energy : p.fitness, '⚡', 'var(--yellow)')}
+          ${lifeMeter('FORMA', p.form, '🔥', 'var(--accent)')}
+          ${lifeMeter('MORAL', p.morale, '😊', 'var(--blue)')}
+          ${lifeMeter('FELICIDADE', p.happiness !== undefined ? p.happiness : p.morale, '😄', 'var(--green)')}
+        </div>
+      </section>
+
+      <!-- PAINEL CENTRAL DE COMANDO DO ATLETA (ASSIMÉTRICO: PARTIDAS EM DESTAQUE) -->
+      <section class="action-dashboard">
+        <button class="action-card action-side" data-go="training">
+          <div class="action-ico">${icon('whistle')}</div>
+          <div class="action-body">
+            <span class="action-title">TREINAR</span>
+            <small class="action-sub">Evoluir OVR & Atributos</small>
+          </div>
+        </button>
+
+        <button class="action-card action-center action-primary" data-go="match">
+          <div class="action-highlight">AÇÃO PRINCIPAL</div>
+          <div class="action-ico-lg">${icon('play')}</div>
+          <div class="action-body">
+            <span class="action-title-lg">PARTIDAS</span>
+            <small class="action-sub-lg">${nextMatch ? `Próximo: vs <b>${esc(G.oppInfo(s, nextMatch).name)}</b> (${nextMatch.home ? 'Casa' : 'Fora'})` : 'Calendário & Torneios'}</small>
+          </div>
+          <div class="action-arrow">➔</div>
+        </button>
+
+        <button class="action-card action-side" data-act="advance">
+          <div class="action-ico">${icon('calendar')}</div>
+          <div class="action-body">
+            <span class="action-title">AVANÇAR MÊS</span>
+            <small class="action-sub">${G.MONTHS_FULL[Math.max(0, s.calendar.month - 1)]} de ${s.calendar.year}</small>
+          </div>
+        </button>
+      </section>
+
+      <!-- PRÓXIMAS PARTIDAS & HISTÓRICO RECENTE -->
+      <section class="card fixtures-card" style="margin-top:16px">
+        <div class="h-sec" style="display:flex;justify-content:space-between;align-items:center">
+          <span>📅 PRÓXIMAS PARTIDAS</span>
+          <button class="btn ghost small" data-go="match">${icon('table')} Ver Todos</button>
+        </div>
+        <div class="fixtures-list">
+          ${upcoming.slice(0, 3).map((f) => fixtureRow(s, f, true)).join('')}
+          ${upcoming.length === 0 && played.length > 0 ? `<div class="tiny muted" style="margin-bottom:8px">Últimos jogos realizados:</div>` + played.slice(0, 2).map((f) => fixtureRow(s, f, false)).join('') : ''}
+          ${upcoming.length === 0 && played.length === 0 ? `<div class="muted" style="padding:16px 0;text-align:center">${p.phase === 'child' || p.phase === 'teen' ? '🧒 Você está na categoria de base/escolinha. Treine e avance meses para disputar partidas da sua categoria!' : '⚽ Nenhuma partida marcada no momento. Avançe o mês ou confira os campeonatos.'}</div>` : ''}
+        </div>
       </section>
 
       <!-- FAMA E DINHEIRO -->
-      <section class="card" style="margin-top:14px">
+      <section class="card fame-card" style="margin-top:16px">
         <div class="h-sec">⭐ FAMA E FINANÇAS</div>
         <div class="fame-row">
-          <div class="meter" style="margin-bottom:8px"><span class="tiny muted" style="min-width:86px">Fama</span><div class="bar"><i style="width:${Math.max(0, p.fame)}%;background:var(--gold)"></i></div><span class="val">${Math.round(p.fame)}</span></div>
-          <div class="tiny muted">📱 ${num(p.followers)} seguidores • 💰 ${money(s.life.bank)} no banco</div>
-          ${s.career.contract ? `<div class="tiny muted" style="margin-top:4px">✍️ Contrato até ${s.career.contract.until} • Cláusula de R$ ${num(s.career.contract.releaseClause)}</div>` : ''}
+          <div class="meter" style="margin-bottom:10px"><span class="tiny muted" style="min-width:86px">FAMA</span><div class="bar"><i style="width:${Math.max(0, p.fame)}%;background:var(--gold)"></i></div><span class="val">${Math.round(p.fame)}</span></div>
+          <div class="fame-stats-row">
+            <div class="f-item"><span>📱 SEGUIDORES</span><b class="val-big">${num(p.followers)}</b></div>
+            <div class="f-item"><span>💰 SALDO BANCÁRIO</span><b class="val-big">${money(s.life.bank)}</b></div>
+            ${s.career.contract ? `<div class="f-item"><span>✍️ CONTRATO</span><b class="val-big">Até ${s.career.contract.until}</b></div>` : ''}
+            ${s.career.contract ? `<div class="f-item"><span>🔒 CLÁUSULA</span><b class="val-big">R$ ${num(s.career.contract.releaseClause)}</b></div>` : ''}
+          </div>
         </div>
       </section>
 
       <!-- NOTÍCIAS -->
-      <section class="card" style="margin-top:14px">
-        <div class="h-sec" style="display:flex;justify-content:space-between;align-items:center">📰 NOTÍCIAS ${unread ? `<button class="btn small primary" data-act="readall">Marcar lidas</button>` : ''}</div>
-        ${news.map((n) => newsRow(n)).join('')}
-        ${news.length === 0 ? '<div class="muted">Nenhuma notícia ainda. Sua história começa agora!</div>' : ''}
+      <section class="card news-card" style="margin-top:16px">
+        <div class="h-sec" style="display:flex;justify-content:space-between;align-items:center">📰 NOTÍCIAS DO FUTEBOL ${unread ? `<button class="btn small primary" data-act="readall">Marcar lidas</button>` : ''}</div>
+        <div class="news-list">
+          ${news.map((n) => newsRow(n)).join('')}
+          ${news.length === 0 ? '<div class="muted">Nenhuma notícia ainda. Sua história começa agora!</div>' : ''}
+        </div>
       </section>
     </div>`;
   },
@@ -247,13 +326,13 @@ function fixtureRow(s, f, upcoming) {
   const opp = G.oppInfo(s, f);
   const res = f.result === 'W' ? '<span class="fx-res win">VITÓRIA</span>' : f.result === 'L' ? '<span class="fx-res loss">DERROTA</span>' : f.result === 'D' ? '<span class="fx-res">EMPATE</span>' : '';
   const isNT = f.type === 'nt';
-  const badge = isNT ? `<span class="pill blue">${f.compName}</span>` : `<span class="pill">${f.compName}</span>`;
-  const oppClub = (s.db.clubs || {})[f.oppId] || { id: f.oppId, name: f.oppName, short: f.oppName.slice(0, 3).toUpperCase(), colors: ['#2a2a33', '#16161b'] };
+  const badge = isNT ? `<span class="pill blue">${esc(f.compName)}</span>` : `<span class="pill">${esc(f.compName)}</span>`;
+  const oppClub = (s.db.clubs || {})[f.oppId] || { id: f.oppId, name: opp.name || 'Adversário', short: (opp.name || 'ADV').slice(0, 3).toUpperCase(), colors: ['#2a2a33', '#16161b'] };
   return `
   <div class="fixture-row ${upcoming ? '' : 'played'}">
     <div class="fx-crest">${isNT ? `<span class="avatar" style="width:34px;height:34px">${countryById(f.oppCountry)?.flag || '🌍'}</span>` : crest(oppClub, 34)}</div>
     <div class="fx-info">
-      <div class="fx-name">${isNT ? `${countryById(f.oppCountry)?.flag || ''} ${esc(f.oppName)}` : esc(f.oppName)}</div>
+      <div class="fx-name">${isNT ? `${countryById(f.oppCountry)?.flag || ''} ${esc(opp.name)}` : esc(opp.name)}</div>
       <div class="tiny muted">${badge} ${f.home ? '🏟️ Casa' : '✈️ Fora'}${f.played ? ` • ${f.gh}×${f.ga}` : ''}</div>
     </div>
     ${f.played ? `<div class="fx-right"><div class="fx-score-sm">${f.rating != null ? `Nota <b>${f.rating}</b>` : ''}${f.goals ? ` • ${f.goals}⚽` : ''}${f.motm ? ' ⭐' : ''}</div>${res}</div>`

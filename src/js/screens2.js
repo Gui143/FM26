@@ -93,7 +93,7 @@ function resultCardHTML(r) {
 // PARTIDAS
 // ============================================================
 export const matchScreen = {
-  html(params) {
+  html(params = []) {
     const s = S();
     if (params[0]==='play' && params[1]) {
       const fx = s.matches.find(f => f.id === params[1]);
@@ -694,6 +694,279 @@ export const creditsScreen = {
     </div>`;
   },
   mount(el){ el.querySelector('[data-back]').onclick = () => go('menu'); }
+};
+
+// ============================================================
+// SETTINGS SCREEN — CONFIGURAÇÕES & CORES DE GLOW DO ESTÁDIO
+// ============================================================
+export const settingsScreen = {
+  html() {
+    const st = App.bootSettings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
+    const accents = [
+      { id: 'laranja', label: '🔥 Laranja Neon', color: '#ff6b00' },
+      { id: 'verde', label: '🟢 Verde Estádio', color: '#22c55e' },
+      { id: 'azul', label: '🔵 Azul Elétrico', color: '#3b82f6' },
+      { id: 'roxo', label: '🟣 Roxo Cibernético', color: '#a78bfa' },
+      { id: 'dourado', label: '🟡 Dourado Ouro', color: '#facc15' },
+      { id: 'vermelho', label: '🔴 Vermelho Alerta', color: '#f87171' },
+    ];
+    return `
+    <div class="menu-wrap" style="max-width:640px;text-align:left">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div class="menu-title" style="font-size:1.6rem">CONFIGURAÇÕES</div>
+          <div class="tiny muted">Personalize as cores, áudio e gráficos do jogo</div>
+        </div>
+        <button class="btn ghost small" data-back>${icon('back')} Voltar</button>
+      </div>
+
+      <div class="card stack" style="padding:22px">
+        <div class="field">
+          <label>🎨 COR DE DESTAQUE & ILUMINAÇÃO DO ESTÁDIO</label>
+          <div class="chips" id="cfg-accents">
+            ${accents.map((a) => `<button class="chip ${st.accent === a.id ? 'active' : ''}" data-accent="${a.id}" style="border-left:4px solid ${a.color}">${a.label}</button>`).join('')}
+          </div>
+        </div>
+
+        <div class="field">
+          <label>🔊 VOLUME DOS EFEITOS (0 a 100)</label>
+          <input type="range" class="slider" id="cfg-vol" min="0" max="100" value="${st.volume ?? 50}">
+          <div class="tiny muted" id="vol-lbl">Volume atual: ${st.volume ?? 50}%</div>
+        </div>
+
+        <div class="field">
+          <label>⚡ VELOCIDADE DA SIMULAÇÃO</label>
+          <div class="chips" id="cfg-speed">
+            <button class="chip ${st.speed === 1 ? 'active' : ''}" data-speed="1">1x Lento</button>
+            <button class="chip ${st.speed === 2 ? 'active' : ''}" data-speed="2">2x Normal</button>
+            <button class="chip ${st.speed === 3 ? 'active' : ''}" data-speed="3">3x Rápido</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>✨ QUALIDADE VISUAL (GLASSMORPHISM)</label>
+          <div class="chips" id="cfg-quality">
+            <button class="chip ${st.quality === 'alta' ? 'active' : ''}" data-quality="alta">💎 Alta (Glass + Glow completo)</button>
+            <button class="chip ${st.quality === 'normal' ? 'active' : ''}" data-quality="normal">⚙️ Normal</button>
+            <button class="chip ${st.quality === 'leve' ? 'active' : ''}" data-quality="leve">🔋 Leve (Menor consumo)</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:14px">
+          <button class="btn primary block" id="cfg-save">${icon('check')} Salvar Configurações</button>
+        </div>
+      </div>
+    </div>`;
+  },
+  mount(el) {
+    const st = App.bootSettings || { lang: 'pt', accent: 'laranja', speed: 2, volume: 50, quality: 'alta' };
+    el.querySelector('[data-back]').onclick = () => {
+      if (App.state) go('home');
+      else go('menu');
+    };
+    el.querySelectorAll('#cfg-accents [data-accent]').forEach((b) => b.onclick = () => {
+      st.accent = b.dataset.accent;
+      applySettingsToBody();
+      renderRoute();
+    });
+    const volSlider = el.querySelector('#cfg-vol');
+    const volLbl = el.querySelector('#vol-lbl');
+    if (volSlider) {
+      volSlider.oninput = () => {
+        st.volume = Number(volSlider.value);
+        if (volLbl) volLbl.textContent = `Volume atual: ${st.volume}%`;
+      };
+    }
+    el.querySelectorAll('#cfg-speed [data-speed]').forEach((b) => b.onclick = () => {
+      st.speed = Number(b.dataset.speed);
+      renderRoute();
+    });
+    el.querySelectorAll('#cfg-quality [data-quality]').forEach((b) => b.onclick = () => {
+      st.quality = b.dataset.quality;
+      applySettingsToBody();
+      renderRoute();
+    });
+    el.querySelector('#cfg-save').onclick = () => {
+      App.bootSettings = st;
+      if (App.state) App.state.settings = { ...st };
+      try { App.storage.setItem('fm_boot_settings', JSON.stringify(st)); } catch {}
+      applySettingsToBody();
+      toast('✅ Configurações salvas!');
+      if (App.state) go('home');
+      else go('menu');
+    };
+  }
+};
+
+// ============================================================
+// SAVES SCREEN — GESTÃO DE SAVES (LOCAL + CLOUD SUPABASE)
+// ============================================================
+export const savesScreen = {
+  html() {
+    const slots = App.storage ? G.saveSlots(App.storage) : {};
+    return `
+    <div class="menu-wrap" style="max-width:680px;text-align:left">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div class="menu-title" style="font-size:1.6rem">SAVED GAMES</div>
+          <div class="tiny muted">Gerencie seus jogos salvos (Local, Exportação ou Nuvem)</div>
+        </div>
+        <button class="btn ghost small" data-back>${icon('back')} Voltar</button>
+      </div>
+
+      <div class="card stack" style="padding:22px">
+        <div class="h-sec">💾 SAVES LOCAIS DO NAVEGADOR</div>
+        ${['auto', 'slot1', 'slot2', 'slot3'].map((slotId) => {
+          const sl = slots[slotId];
+          const label = slotId === 'auto' ? '⭐ Save Automático' : `📂 Slot ${slotId.replace('slot', '')}`;
+          return `
+          <div class="save-slot-card card" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <div style="font-weight:800;color:var(--accent)">${label}</div>
+              ${sl ? `<div style="font-size:0.92rem;margin-top:2px"><b>${esc(sl.playerName || sl.managerName || 'Craque')}</b> — ${sl.age ? sl.age + ' anos' : ''} OVR ${sl.ovr || '-'} • ${sl.clubName ? esc(sl.clubName) : 'Sem clube'}</div>
+              <div class="tiny muted">Salvo em: ${new Date(sl.savedAt || Date.now()).toLocaleDateString('pt-BR')} ${new Date(sl.savedAt || Date.now()).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}</div>` : `<div class="tiny muted">Slot vazio</div>`}
+            </div>
+            <div style="display:flex;gap:8px">
+              ${sl ? `<button class="btn small primary" data-load-slot="${slotId}">${icon('play')} Carregar</button>` : ''}
+              ${App.state ? `<button class="btn small" data-save-slot="${slotId}">${icon('save')} Salvar Aqui</button>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+
+        <div class="h-sec" style="margin-top:16px">☁️ NUVEM (SUPABASE) & BACKUP JSON</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          ${App.state ? `<button class="btn small primary" id="btn-cloud-save">${icon('upload')} Salvar na Nuvem</button>` : ''}
+          <button class="btn small" id="btn-cloud-load">${icon('download')} Carregar da Nuvem</button>
+          ${App.state ? `<button class="btn small" id="btn-export-json">${icon('download')} Exportar Save (JSON)</button>` : ''}
+          <label class="btn small ghost" style="cursor:pointer">
+            ${icon('upload')} Importar Save (JSON)
+            <input type="file" id="input-import-json" accept=".json,.fm26,.vc26" style="display:none">
+          </label>
+        </div>
+      </div>
+    </div>`;
+  },
+  mount(el) {
+    el.querySelector('[data-back]').onclick = () => {
+      if (App.state) go('home');
+      else go('menu');
+    };
+    el.querySelectorAll('[data-load-slot]').forEach((b) => b.onclick = async () => {
+      const slotId = b.dataset.loadSlot;
+      try {
+        const st = await G.readSlot(App.storage, slotId);
+        if (st) {
+          App.onLoadState(st);
+          toast(`✅ Save '${slotId}' carregado!`);
+        } else toast('Falha ao carregar save.', 'error');
+      } catch (e) { toast('Save corrompido ou erro de leitura.', 'error'); }
+    });
+    el.querySelectorAll('[data-save-slot]').forEach((b) => b.onclick = async () => {
+      const slotId = b.dataset.saveSlot;
+      if (!App.state) return;
+      await G.writeSlot(App.storage, slotId, App.state);
+      toast(`✅ Salvo com sucesso no ${slotId}!`);
+      renderRoute();
+    });
+    const cloudSaveBtn = el.querySelector('#btn-cloud-save');
+    if (cloudSaveBtn) {
+      cloudSaveBtn.onclick = async () => {
+        try {
+          const u = await getCurrentUser();
+          if (!u) { toast('Entre em Redes Sociais com seu e-mail para salvar na nuvem.', 'warn'); return; }
+          const res = await saveGameToSupabase(App.state);
+          if (res?.ok) toast('☁️ Salvo na nuvem Supabase com sucesso!');
+          else toast('Erro ao salvar na nuvem.', 'error');
+        } catch (e) { toast('Supabase indisponível.', 'error'); }
+      };
+    }
+    const cloudLoadBtn = el.querySelector('#btn-cloud-load');
+    if (cloudLoadBtn) {
+      cloudLoadBtn.onclick = async () => {
+        try {
+          const { loadGameFromSupabase } = await import('./supabase.js');
+          const st = await loadGameFromSupabase();
+          if (st) {
+            App.onLoadState(st);
+            toast('☁️ Save da nuvem carregado com sucesso!');
+          } else toast('Nenhum save encontrado na nuvem para esta conta.', 'warn');
+        } catch (e) { toast('Erro ao conectar na nuvem.', 'error'); }
+      };
+    }
+    const exportBtn = el.querySelector('#btn-export-json');
+    if (exportBtn) {
+      exportBtn.onclick = () => {
+        if (!App.state) return;
+        const json = JSON.stringify(App.state, null, 2);
+        downloadFile(json, `VidaDeCraque26_${App.state.player.name.replace(/\s+/g,'_')}_Ano${App.state.calendar.year}.json`, 'application/json');
+        toast('📥 Arquivo de save exportado!');
+      };
+    }
+    const importInput = el.querySelector('#input-import-json');
+    if (importInput) {
+      importInput.onchange = async (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        try {
+          const text = await readUploadedFile(f);
+          const st = JSON.parse(text);
+          if (st && st.player && st.calendar) {
+            App.onLoadState(st);
+            toast('✅ Save importado e carregado com sucesso!');
+          } else toast('Arquivo JSON inválido para Vida de Craque 26.', 'error');
+        } catch (err) { toast('Erro ao ler arquivo JSON.', 'error'); }
+      };
+    }
+  }
+};
+
+// ============================================================
+// HOWTO SCREEN — GUIA COMPLETO MODO CARREIRA DE JOGADOR
+// ============================================================
+export const howtoScreen = {
+  html() {
+    return `
+    <div class="menu-wrap" style="max-width:720px;text-align:left">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div class="menu-title" style="font-size:1.6rem">COMO JOGAR</div>
+          <div class="tiny muted">Vida de Craque 26 — Guia da Lenda</div>
+        </div>
+        <button class="btn ghost small" data-back>${icon('back')} Voltar</button>
+      </div>
+
+      <div class="card stack" style="padding:24px;line-height:1.6">
+        <div class="h-sec">⚽ 1. O NASCIMENTO & A CARREIRA</div>
+        <p class="muted" style="margin-bottom:14px">
+          Em <b>Vida de Craque 26</b>, você controla toda a trajetória de um jogador de futebol desde a infância (5 anos) ou juventude até os 90 anos de idade. Suas escolhas em eventos, treinos e partidas definem se você será um craque mundial com Bola de Ouro ou se jogará no anonimato.
+        </p>
+
+        <div class="h-sec">⚡ 2. ATRIBUTOS VITAIS DO ATLETA</div>
+        <div class="grid cols-2" style="gap:12px;margin-bottom:16px">
+          <div class="card" style="padding:12px"><b>❤️ SAÚDE</b><div class="tiny muted">Evite lesões e desgastes extremos. Se zerar, sua carreira corre risco.</div></div>
+          <div class="card" style="padding:12px"><b>⚡ ENERGIA / FÍSICO</b><div class="tiny muted">Afeta sua velocidade e capacidade de correr os 90 minutos de partida.</div></div>
+          <div class="card" style="padding:12px"><b>🔥 FORMA TÉCNICA</b><div class="tiny muted">Define sua nota e probabilidade de gols/assistências nos jogos. Treine para elevar.</div></div>
+          <div class="card" style="padding:12px"><b>😊 MORAL & FELICIDADE</b><div class="tiny muted">Relacionamentos com família, torcida, treinador e redes sociais afetam seu foco.</div></div>
+        </div>
+
+        <div class="h-sec">🎯 3. TREINAR & DISPUTAR PARTIDAS</div>
+        <p class="muted" style="margin-bottom:14px">
+          No painel inicial, o botão central <b>PARTIDAS</b> é seu portal para o gramado. Você pode <i>Jogar</i> partidas decisivas com narrativa e escolhas ou <i>Simular</i> rodadas rápidas. O botão <b>TREINAR</b> permite focar em finalização, passe, drible ou físico para aumentar seu OVR e Potencial.
+        </p>
+
+        <div class="h-sec">🏎️ 4. IMERSÃO, REDE SOCIAL COMPLETA & CARROS REAIS</div>
+        <p class="muted">
+          Compre seu primeiro celular para acessar a rede social completa, postar mensagens e interagir com torcedores. Conforme ganhar salário e patrocínios, invista no mercado financeiro ou adquira carros reais de luxo para elevar sua fama.
+        </p>
+      </div>
+    </div>`;
+  },
+  mount(el) {
+    el.querySelector('[data-back]').onclick = () => {
+      if (App.state) go('home');
+      else go('menu');
+    };
+  }
 };
 
 // ============================================================

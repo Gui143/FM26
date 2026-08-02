@@ -71,18 +71,18 @@ export const money = fmtMoney;
 export const num = fmtNum;
 
 const COMP_LOGOS = {
-  'br1': 'https://logospng.org/logo-brasileirao/logo-brasileirao-serie-a-768.png',
-  'br2': 'https://seeklogo.com/images/B/brasileirao-serie-b-logo-955B77DBF5-seeklogo.com.png',
-  'br3': 'https://seeklogo.com/images/B/brasileirao-serie-c-logo-94B6984714-seeklogo.com.png',
-  'br4': 'https://seeklogo.com/images/B/brasileirao-serie-d-logo-04D7964E8C-seeklogo.com.png',
-  'ar1': 'https://seeklogo.com/images/L/liga-profesional-de-futbol-logo-4A1C0B52B7-seeklogo.com.png',
-  'en1': 'https://seeklogo.com/images/P/premier-league-new-logo-D1105979F2-seeklogo.com.png',
-  'es1': 'https://seeklogo.com/images/L/la-liga-2023-logo-C78D24E334-seeklogo.com.png',
-  'it1': 'https://seeklogo.com/images/S/serie-a-logo-7E6672322E-seeklogo.com.png',
-  'de1': 'https://seeklogo.com/images/B/bundesliga-logo-8408B73905-seeklogo.com.png',
-  'fr1': 'https://seeklogo.com/images/L/ligue-1-mcdonalds-logo-E79B5CD030-seeklogo.com.png',
-  'pt1': 'https://seeklogo.com/images/L/liga-portugal-logo-E4369B2A44-seeklogo.com.png',
-  'nl1': 'https://seeklogo.com/images/E/eredivisie-logo-955B1B7D50-seeklogo.com.png',
+  'br1': 'src/assets/leagues/br1.png',
+  'br2': 'src/assets/leagues/br2.png',
+  'br3': 'src/assets/leagues/br3.png',
+  'br4': 'src/assets/leagues/br4.png',
+  'ar1': 'src/assets/leagues/ar1.png',
+  'en1': 'src/assets/leagues/en1.png',
+  'es1': 'src/assets/leagues/es1.png',
+  'it1': 'src/assets/leagues/it1.png',
+  'de1': 'src/assets/leagues/de1.png',
+  'fr1': 'src/assets/leagues/fr1.png',
+  'pt1': 'src/assets/leagues/pt1.png',
+  'nl1': 'src/assets/leagues/nl1.png',
   'CdB': 'https://logospng.org/wp-content/uploads/copa-do-brasil.png',
   'LIB': 'https://logospng.org/wp-content/uploads/conmebol-libertadores.png',
   'SUL': 'https://logospng.org/wp-content/uploads/conmebol-sudamericana.png',
@@ -93,10 +93,10 @@ const COMP_LOGOS = {
 };
 
 const AWARD_ICONS = {
-  ballonDor: 'https://images.vexels.com/media/users/3/132104/isolated/preview/594a7054a323f46f481ad363cd845a74-icone-do-trofeu-bola-de-ouro.png',
-  goldenShoe: 'https://cdn-icons-png.flaticon.com/512/5166/5166649.png',
-  theBest: 'https://seeklogo.com/images/F/fifa-the-best-logo-50D5773193-seeklogo.com.png',
-  puskas: 'https://cdn-icons-png.flaticon.com/512/5166/5166649.png',
+  ballonDor: 'src/assets/awards/ballonDor.png',
+  goldenShoe: 'src/assets/awards/goldenShoe.png',
+  theBest: 'src/assets/awards/theBest.png',
+  puskas: 'src/assets/awards/puskas.png',
 };
 
 export const awardIcon = (id, size = 30) => {
@@ -112,9 +112,9 @@ export const compLogo = (id, size = 30) => {
 };
 
 const NEWS_LOGOS = {
-  'GE': 'https://s.glbimg.com/es/ge/static/ge-logo.png',
-  'TNT': 'https://seeklogo.com/images/T/tnt-sports-logo-6B98B6D14C-seeklogo.com.png',
-  'CAZÉ': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/CazeTV_logo.png/640px-CazeTV_logo.png',
+  'GE': 'src/assets/news/GE.png',
+  'TNT': 'src/assets/news/TNT.png',
+  'CAZÉ': 'src/assets/news/CAZE.png',
 };
 
 export const newsLogo = (source, size = 40) => {

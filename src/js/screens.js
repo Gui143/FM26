@@ -13,7 +13,7 @@ import { COUNTRIES, countryById, CAREER_POSITIONS, TRAITS, positionById, TRAININ
 const S = () => App.state;
 
 // ============================================================
-// MENU PRINCIPAL
+// MENU PRINCIPAL — NEYMAR HERO + RESPONSIVE
 // ============================================================
 export const menuScreen = {
   html() {
@@ -23,7 +23,7 @@ export const menuScreen = {
     <div class="menu-wrap">
       <div class="menu-logo"><span class="menu-ball">⚽</span></div>
       <div class="menu-title">VIDA DE<br><span>CRAQUE 26</span></div>
-      <p class="menu-sub">BitLife × FIFA — viva a vida de um jogador de futebol<br>do campinho de terra ao topo do mundo. Você decide tudo.</p>
+      <p class="menu-sub">O jogo de carreira de jogador MAIS IMERSIVO DO MUNDO.<br>Até 90 anos • Rede social real • Carros reais • Fale o que quiser.</p>
       <div class="menu-buttons">
         ${hasAuto ? `<button class="btn primary big" data-m="continue">${icon('play')} Continuar — ${esc(slots.auto.playerName)} (${slots.auto.age} anos, OVR ${slots.auto.ovr})</button>` : ''}
         <button class="btn ${hasAuto ? '' : 'primary'} big" data-m="new">${icon('plus')} Novo Jogo</button>
@@ -32,7 +32,7 @@ export const menuScreen = {
         <button class="btn" data-m="settings">${icon('gear')} Configurações</button>
         <button class="btn" data-m="credits">${icon('award')} Créditos</button>
       </div>
-      <div class="menu-foot">v2.0 • Carreira de jogador • Progresso salvo no seu navegador</div>
+      <div class="menu-foot">v26 • Glassmorphism • Supabase ready • Licenças reais pagas</div>
     </div>`;
   },
   mount(el) {
@@ -192,46 +192,14 @@ export const homeScreen = {
         <div class="ph-right">
           ${ovrBadge(p.ovr, 64)}
           <div class="ph-pot tiny muted">POT ${p.pot}</div>
-        </div>
         <div class="ph-club">
-          ${club ? `${crest(club, 44)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">${esc(club.league)}</div></div>
-            <div class="ph-contract">${s.career.contract ? `R$ ${num(s.career.contract.salary)}/mês` : 'Sem contrato'}</div>` : `<div class="ph-clubname">⚽ Sem clube</div><div class="tiny muted">${p.phase === 'retired' ? 'Aposentado(a)' : 'Em busca de um time'}</div>`}
+          ${(club && s.career.contract && s.career.contract.until >= s.calendar.year) ? 
+            `${crest(club, 44)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">${esc(club.league)}</div></div>
+            <div class="ph-contract">R$ ${num(s.career.contract.salary)}/mês</div>` : 
+            club ? `${crest(club, 44)}<div><div class="ph-clubname">${esc(club.name)}</div><div class="tiny muted">Sem contrato ativo</div></div>` : 
+            `<div class="ph-clubname">⚽ Sem clube</div><div class="tiny muted">${p.phase === "retired" ? "Aposentado(a)" : "Em busca de um time"}</div>`}
           <div class="ph-value">${money(p.value)}</div>
         </div>
-      </section>
-
-      <!-- VIDA -->
-      <section class="grid cols-2" style="margin-top:14px">
-        ${lifeMeter('Saúde', p.health, '❤️', 'var(--red)')}
-        ${lifeMeter('Felicidade', p.happiness, '😊', 'var(--yellow)')}
-        ${lifeMeter('Energia', p.energy, '⚡', 'var(--blue)')}
-        ${lifeMeter('Forma', p.form, '🎯', 'var(--accent)')}
-      </section>
-
-      ${p.injured > 0 ? `<div class="banner warn">🤕 LESIONADO — fora por ${p.injured} mes(es). Sem treino pesado e sem jogos até recuperar.</div>` : ''}
-      ${p.energy <= 20 ? `<div class="banner warn">🪫 Energia baixa! Faça um treino de Descanso ou evite jogar no sacrifício.</div>` : ''}
-      ${s.pending ? `<button class="banner decision" data-open-pending>🎲 DECISÃO PENDENTE — ${esc(s.pending.title)} →</button>` : ''}
-
-      <!-- AÇÕES -->
-      <section class="quick-actions" style="margin-top:14px">
-        <button class="qa" data-go="training">${icon('whistle')}<span><b>Treinar</b><small>${s.training.done ? 'Treino feito' : 'Treino disponível'}</small></span></button>
-        <button class="qa" data-go="match">${icon('play')}<span><b>Partidas</b><small>${upcoming.length} jogo(s) no mês</small></span></button>
-        <button class="qa" data-act="advance">${icon('refresh')}<span><b>Avançar mês</b><small>${G.currentDate(s)}</small></span></button>
-      </section>
-
-      <!-- PRÓXIMOS JOGOS -->
-      <section class="card" style="margin-top:14px">
-        <div class="h-sec">📅 ${G.MONTHS_FULL[s.calendar.month - 1].toUpperCase()} DE ${s.calendar.year}</div>
-        ${upcoming.length === 0 && played.length === 0 && inFootballPhase(s) ? '<div class="muted">Sem jogos este mês.</div>' : ''}
-        ${upcoming.map((f) => fixtureRow(s, f, true)).join('')}
-        ${played.length ? `<div class="tiny muted" style="margin-top:8px">Jogos disputados este mês:</div>` : ''}
-        ${played.slice(0, 4).map((f) => fixtureRow(s, f, false)).join('')}
-        ${tny && s.nt.called && [6, 7, 8].includes(s.calendar.month) ? `<div class="banner gold" style="margin-top:10px">🌍 ${tny.name} acontecendo! ${s.career.ntTournament ? `Fase ${s.career.ntTournament.stage}/5` : 'Fase 1/5'}</div>` : ''}
-      </section>
-
-      <!-- RESUMO DA TEMPORADA -->
-      <section class="grid cols-3" style="margin-top:14px">
-        <div class="kpi card"><div class="v">${season.apps}</div><div class="l">Jogos</div></div>
         <div class="kpi card"><div class="v">${season.goals}</div><div class="l">Gols</div></div>
         <div class="kpi card"><div class="v">${season.assists}</div><div class="l">Assistências</div></div>
       </section>

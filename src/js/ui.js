@@ -3,9 +3,7 @@
 // toasts, sons. Não conhece as telas (registradas pelo app.js).
 // ============================================================
 import { fmtMoney, fmtNum, escapeHtml, clamp } from './util.js';
-import { crestSVG, avatarSVG } from './gen.js';
-import { LOGOS } from './logos.js';
-import { T as i18n } from './data.js';
+import { T as i18n, clubById } from './data.js';
 
 // -------------------- ÍCONES (SVG inline, estilo stroke) --------------------
 const P = {
@@ -25,10 +23,7 @@ const P = {
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/>',
   save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
-  handshake: '<path d="m11 17 2 2a1 1 0 0 0 1.4 0l3-3a1 1 0 0 0 0-1.4L14 11"/><path d="m14 11 3.5-3.5a1.5 1.5 0 0 0-2-2L12 8 8.5 4.5a1.5 1.5 0 0 0-2 2L8 8"/><path d="M3 13l5 5a1.4 1.4 0 0 0 2 0l1-1a1.4 1.4 0 0 0 0-2l-2-2"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6L22 7"/>',
-  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  heart: '<path d="M19 14c1.5-1.5 2-2.9 2-4.5A4.5 4.5 0 0 0 16.5 5c-1.3 0-2.6.6-3.5 1.6h-2A4.5 4.5 0 0 0 3 9.5c0 1.6.5 3 2 4.5l7 7Z"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
   edit: '<path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
@@ -47,7 +42,14 @@ const P = {
   sliders: '<path d="M4 6h6M14 6h6M4 12h2M10 12h10M4 18h10M18 18h2"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>',
   shield: '<path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6Z"/><path d="m9 12 2 2 4-4"/>',
   pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6L22 7"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/>',
+  award: '<circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3"/>',
+  bank: '<path d="M3 21h18M4 10h16M5 10V7l7-4 7 4v3M7 10v6M12 10v6M17 10v6M2 21l1-3h18l1 3Z"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8s-1-5-4-5c-1.8 0-2.8 1.5-1.5 3S10 8 12 8Zm0 0s1-5 4-5c1.8 0 2.8 1.5 1.5 3S14 8 12 8Z"/>',
 };
 export function icon(name, cls = 'ico') {
   return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[name] || P.info}</svg>`;
@@ -59,7 +61,11 @@ export const App = {
   previousState: null,
   storage: (typeof localStorage !== 'undefined') ? localStorage : null,
   screens: {},
-  live: null, // controlador de partida ao vivo
+  bootSettings: null,
+  onNewGame: null,
+  onContinue: null,
+  onLoadState: null,
+  live: null,
 };
 export const hasGame = () => !!App.state;
 export function lang() { return App.state?.settings?.lang || 'pt'; }
@@ -70,83 +76,47 @@ export const esc = escapeHtml;
 export const money = fmtMoney;
 export const num = fmtNum;
 
-const COMP_LOGOS = {
-  'br1': 'src/assets/leagues/br1.png',
-  'br2': 'src/assets/leagues/br2.png',
-  'br3': 'src/assets/leagues/br3.png',
-  'br4': 'src/assets/leagues/br4.png',
-  'ar1': 'src/assets/leagues/ar1.png',
-  'en1': 'src/assets/leagues/en1.png',
-  'es1': 'src/assets/leagues/es1.png',
-  'it1': 'src/assets/leagues/it1.png',
-  'de1': 'src/assets/leagues/de1.png',
-  'fr1': 'src/assets/leagues/fr1.png',
-  'pt1': 'src/assets/leagues/pt1.png',
-  'nl1': 'src/assets/leagues/nl1.png',
-  'CdB': 'https://logospng.org/wp-content/uploads/copa-do-brasil.png',
-  'LIB': 'https://logospng.org/wp-content/uploads/conmebol-libertadores.png',
-  'SUL': 'https://logospng.org/wp-content/uploads/conmebol-sudamericana.png',
-  'UCL': 'https://logospng.org/wp-content/uploads/uefa-champions-league.png',
-  'UEL': 'https://logospng.org/wp-content/uploads/uefa-europa-league.png',
-  'ECL': 'https://logospng.org/wp-content/uploads/uefa-conference-league.png',
-  'MUN': 'https://seeklogo.com/images/F/fifa-club-world-cup-logo-1E763A99B9-seeklogo.com.png',
-};
-
-const AWARD_ICONS = {
-  ballonDor: 'src/assets/awards/ballonDor.png',
-  goldenShoe: 'src/assets/awards/goldenShoe.png',
-  theBest: 'src/assets/awards/theBest.png',
-  puskas: 'src/assets/awards/puskas.png',
-};
-
-export const awardIcon = (id, size = 30) => {
-  const url = AWARD_ICONS[id];
-  if (url) return `<img src="${url}" width="${size}" height="${size}" style="object-fit:contain" alt="${id}">`;
-  return icon('star');
-};
-
-export const compLogo = (id, size = 30) => {
-  const url = COMP_LOGOS[id] || COMP_LOGOS[id.split('_')[1]];
-  if (url) return `<img src="${url}" width="${size}" height="${size}" style="object-fit:contain" alt="${id}">`;
-  return icon('trophy');
-};
-
-const NEWS_LOGOS = {
-  'GE': 'src/assets/news/GE.png',
-  'TNT': 'src/assets/news/TNT.png',
-  'CAZÉ': 'src/assets/news/CAZE.png',
-};
-
-export const newsLogo = (source, size = 40) => {
-  const url = NEWS_LOGOS[source];
-  if (url) return `<img src="${url}" width="${size}" height="${size}" style="border-radius:4px;object-fit:contain" alt="${source}">`;
-  return icon('clipboard');
-};
-
-export const crest = (club, size = 40) => {
-  if (club && club.id && LOGOS.has(club.id)) {
-    return `<img class="club-logo" src="src/assets/logos/${club.id}.png" width="${size}" height="${size}" alt="${escapeHtml(club.short || club.name || '')}" loading="lazy">`;
-  }
-  return crestSVG(club, size);
-};
-export const avatar = (p, size = 36) => avatarSVG(p, size);
-
-export function ovrClass(ovr) { return ovr >= 90 ? 'ovr-90' : ovr >= 80 ? 'ovr-80' : ovr >= 70 ? 'ovr-70' : ovr >= 60 ? 'ovr-60' : 'ovr-0'; }
-export function ovrBadge(ovr) { return `<span class="ovr-badge ${ovrClass(ovr)}">${ovr}</span>`; }
-export function posBadge(pos) { return `<span class="pos-badge pos-${pos}">${pos}</span>`; }
-export function formPill(v) { const c = v >= 70 ? 'green' : v >= 50 ? 'yellow' : 'red'; return `<span class="pill ${c}">${v}</span>`; }
-export function meter(label, val, max = 100) {
-  return `<div class="meter" title="${label}: ${val}"><span class="tiny muted" style="min-width:70px">${label}</span><div class="bar"><i style="width:${clamp(Math.round(val / max * 100), 0, 100)}%"></i></div><span class="val">${val}</span></div>`;
+// Avatar circular com iniciais
+export function avatarEl(name, size = 48, extra = '') {
+  const initials = String(name || '?').replace(/[^A-Za-zÀ-ÿ ]/g, '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px;${extra}">${esc(initials || '?')}</span>`;
 }
 
-export function clubCell(state, clubId, size = 30) {
-  const c = state.db.clubs[clubId];
-  if (!c) return '<span class="muted">—</span>';
-  return `<span style="display:inline-flex;align-items:center;gap:8px;min-width:0">${crest(c, size)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.short)}</span></span>`;
+// Escudo do clube (iniciais)
+export function crest(club, size = 40, extra = '') {
+  if (!club) return '<span class="muted">—</span>';
+  const short = club.short || String(club.name || '?').slice(0, 3).toUpperCase();
+  return `<span class="club-crest" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.3)}px;${extra}" title="${esc(club.name)}">${esc(short)}</span>`;
+}
+
+export function ovrBadge(ovr, size = 44) {
+  const cls = ovr >= 85 ? 'ovr-90' : ovr >= 75 ? 'ovr-80' : ovr >= 62 ? 'ovr-70' : 'ovr-60';
+  return `<span class="ovr-badge ${cls}" style="min-width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px">${Math.round(ovr)}</span>`;
+}
+
+export function posBadge(pos, size = 'auto') {
+  const map = { GOL: 'GOL', ZAG: 'ZAG', LAT: 'LAT', VOL: 'VOL', MC: 'MC', MEI: 'MEI', PON: 'PON', ATA: 'ATA' };
+  const cls = { GOL: 'pos-G', ZAG: 'pos-D', LAT: 'pos-D', VOL: 'pos-D', MC: 'pos-M', MEI: 'pos-M', PON: 'pos-A', ATA: 'pos-A' }[pos] || 'pos-M';
+  return `<span class="pos-badge ${cls}" ${size === 'auto' ? '' : `style="min-width:${size}px"`}>${map[pos] || pos}</span>`;
+}
+
+export function meter(label, val, max = 100, color) {
+  const c = color || 'var(--accent)';
+  return `<div class="meter" title="${label}: ${val}"><span class="tiny muted" style="min-width:86px">${label}</span><div class="bar"><i style="width:${clamp(Math.round(val / max * 100), 0, 100)}%;background:${c}"></i></div><span class="val">${Math.round(val)}</span></div>`;
+}
+
+export function lifeMeter(label, val, icon, color) {
+  const c = color || 'var(--accent)';
+  const cls = val >= 60 ? '' : val >= 35 ? 'warn' : 'low';
+  return `<div class="life-meter ${cls}"><span class="lm-ico">${icon}</span><div class="lm-body"><div class="lm-top"><span>${label}</span><b>${Math.round(val)}</b></div><div class="bar"><i style="width:${clamp(val, 0, 100)}%;background:${c}"></i></div></div></div>`;
+}
+
+export function pill(text, type = '') {
+  return `<span class="pill ${type}">${text}</span>`;
 }
 
 // -------------------- Toast --------------------
-export function toast(msg, type = 'ok', ms = 3200) {
+export function toast(msg, type = 'ok', ms = 3400) {
   const root = document.getElementById('toast-root');
   const el = document.createElement('div');
   el.className = `toast ${type}`;
@@ -203,11 +173,10 @@ let _screens = {};
 export function registerScreens(screens) { _screens = screens; }
 
 export function renderRoute() {
-  stopLive();
   const { name, params } = currentRoute();
   const scr = _screens[name] || _screens.menu;
   const inGame = hasGame();
-  const publicRoutes = ['menu', 'new', 'settings', 'saves', 'credits'];
+  const publicRoutes = ['menu', 'new', 'settings', 'saves', 'credits', 'howto'];
   if (!inGame && !publicRoutes.includes(name)) { go('menu'); return; }
   const menuRoot = document.getElementById('menu-root');
   const appRoot = document.getElementById('app');
@@ -230,56 +199,54 @@ export function renderRoute() {
 // -------------------- Chrome (topbar, sidebar, tabbar) --------------------
 const NAV_MAIN = [
   { route: 'home', icon: 'home', key: 'home' },
-  { route: 'squad', icon: 'users', key: 'squad' },
-  { route: 'tactics', icon: 'clipboard', key: 'tactics' },
-  { route: 'match', icon: 'play', key: 'play' },
-  { route: 'calendar', icon: 'calendar', key: 'fixtures' },
-  { route: 'table', icon: 'table', key: 'league' },
-  { route: 'cups', icon: 'trophy', key: 'cup' },
-  { route: 'market', icon: 'cart', key: 'market' },
-  { route: 'finances', icon: 'money', key: 'finances' },
-  { route: 'club', icon: 'building', key: 'club' },
-  { route: 'youth', icon: 'sprout', key: 'youth' },
   { route: 'training', icon: 'whistle', key: 'training' },
-  { route: 'manager', icon: 'chart', key: 'manager' },
-  { route: 'stats', icon: 'chart', key: 'stats' },
-  { route: 'ranking', icon: 'globe', key: 'ranking' },
-  { route: 'friendlies', icon: 'handshake', key: 'friendlies' },
-  { route: 'custom', icon: 'plus', key: 'custom' },
-  { route: 'editor', icon: 'edit', key: 'editor' },
+  { route: 'match', icon: 'play', key: 'play' },
+  { route: 'career', icon: 'chart', key: 'career' },
+  { route: 'market', icon: 'cart', key: 'market' },
+  { route: 'family', icon: 'users', key: 'family' },
+  { route: 'money', icon: 'money', key: 'money' },
+  { route: 'fame', icon: 'star', key: 'fame' },
+  { route: 'inbox', icon: 'mail', key: 'inbox' },
   { route: 'saves', icon: 'save', key: 'saves' },
   { route: 'settings', icon: 'gear', key: 'settings' },
+  { route: 'howto', icon: 'info', key: 'howto' },
+  { route: 'credits', icon: 'award', key: 'credits' },
 ];
 
 function renderChrome(active) {
-  // A tela ativa também fica disponível como estado de apresentação para o CSS.
-  // Isso permite que as telas de referência usem uma moldura própria sem tocar
-  // na navegação ou no estado da partida.
   document.body.dataset.screen = active;
   const app = document.getElementById('app');
   if (app) app.dataset.screen = active;
   const s = App.state;
-  const club = s.db.clubs[s.clubId];
+  if (!s) return;
+  const p = s.player;
+  const club = s.career.clubId ? clubById(s.career.clubId) : null;
   const unread = s.inbox.filter((i) => !i.read).length;
+  const hasPending = !!s.pending;
   document.getElementById('topbar').innerHTML = `
-    <div class="topbar-club" style="cursor:pointer" data-go="club">${crest(club, 36)}
-      <div><div class="cname">${esc(club.name)}</div><div class="cmeta">${s.year} • Semana ${s.week}</div></div>
+    <div class="topbar-club" style="cursor:pointer" data-go="home">
+      ${avatarEl(p.name, 38)}
+      <div><div class="cname">${esc(p.name)}</div><div class="cmeta">${p.age} anos • OVR ${p.ovr} ${club ? '• ' + esc(club.short) : ''}</div></div>
     </div>
     <div class="topbar-right">
-      <span class="topbar-money ${s.finances.balance < 0 ? 'neg' : ''}">${money(s.finances.balance)}</span>
-      <button class="icon-btn" data-go="inbox" title="Caixa de entrada">${icon('bell')}${unread ? `<span class="badge">${unread}</span>` : ''}</button>
+      <span class="topbar-money">${money(s.life.bank)}</span>
+      <button class="icon-btn" data-go="inbox" title="Mensagens">${icon('bell')}${(unread || hasPending) ? `<span class="badge">${unread + (hasPending ? 1 : 0)}</span>` : ''}</button>
     </div>`;
 
   document.getElementById('sidebar').innerHTML = `
-    <div class="sb-logo"><img src="public/favicon.svg" width="30" height="30" alt="">Futebol Manager 26</div>
-    ${NAV_MAIN.map((n) => `<button class="nav-item ${n.route === active ? 'active' : ''}" data-go="${n.route}">${icon(n.icon)}<span>${t(n.key)}</span></button>`).join('')}
+    <div class="sb-logo"><span class="sb-ball">⚽</span> Vida de Craque 26</div>
+    <div class="sb-player">
+      ${avatarEl(p.name, 44)}
+      <div><div class="sb-name">${esc(p.name)}</div><div class="sb-meta">${p.age} anos • ${posBadge(p.position)} OVR <b>${p.ovr}</b></div></div>
+    </div>
+    ${NAV_MAIN.map((n) => `<button class="nav-item ${n.route === active ? 'active' : ''}" data-go="${n.route}">${icon(n.icon)}<span>${t(n.key)}</span>${n.route === 'inbox' && (unread || hasPending) ? `<span class="pill gold" style="margin-left:auto">${unread + (hasPending ? 1 : 0)}</span>` : ''}</button>`).join('')}
     <button class="nav-item" data-go="menu" style="margin-top:auto">${icon('logout')}<span>Sair / Menu</span></button>`;
 
   const tabs = [
     { route: 'home', icon: 'home', key: 'home' },
-    { route: 'squad', icon: 'users', key: 'squad' },
+    { route: 'training', icon: 'whistle', key: 'training' },
     { route: 'match', icon: 'play', key: 'play', play: true },
-    { route: 'market', icon: 'cart', key: 'market' },
+    { route: 'career', icon: 'chart', key: 'career' },
     { route: '__more', icon: 'menu', key: 'more' },
   ];
   document.getElementById('tabbar').innerHTML = tabs.map((tb) => {
@@ -290,13 +257,9 @@ function renderChrome(active) {
 
   document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
   document.querySelectorAll('[data-more]').forEach((b) => b.onclick = () => {
-    openSheet(NAV_MAIN.filter((n) => !['home', 'squad', 'match', 'market'].includes(n.route)).map((n) => ({ ...n, label: t(n.key), active: n.route === active })));
+    openSheet(NAV_MAIN.filter((n) => !['home', 'training', 'match', 'career'].includes(n.route)).map((n) => ({ ...n, label: t(n.key), active: n.route === active })));
   });
 }
-
-// -------------------- Partida ao vivo (controlador global) --------------------
-export function setLive(live) { App.live = live; }
-export function stopLive() { if (App.live && App.live.timer) { clearInterval(App.live.timer); App.live.timer = null; } }
 
 // -------------------- Som (WebAudio, sem arquivos) --------------------
 let audioCtx = null;

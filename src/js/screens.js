@@ -2,7 +2,7 @@
 // screens.js — Telas principais: menu, novo jogo, home, partida,
 // elenco, jogador, táticas
 // ============================================================
-import { App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num, crest, avatar, ovrBadge, posBadge, formPill, meter, clubCell, setLive, stopLive, goalSound, autosave, t, renderRoute } from './ui.js';
+import { App, icon, toast, openModal, closeModal, confirmBox, go, esc, money, num, crest, avatar, ovrBadge, posBadge, formPill, meter, clubCell, setLive, stopLive, goalSound, autosave, t, renderRoute, newsLogo } from './ui.js';
 import * as G from './game.js';
 import { simMatch } from './engine.js';
 import { FORMATIONS, MENTALITIES, PRESSING, LINES, STYLES, POSITIONS, POS_ORDER, LEAGUES, COUNTRIES, CLUBS, NAT_LABELS } from './data.js';
@@ -330,7 +330,16 @@ export const homeScreen = {
 
           <section class="ref-card ref-news-card">
             <div class="ref-card-head"><span class="ref-section-label">${icon('clipboard')} NOTICIÁRIO</span><h2>Últimas notícias</h2></div>
-            <div class="ref-news-grid">${news.map((n) => `<article><b>clube</b><strong>${esc(n.text)}</strong></article>`).join('') || '<div class="ref-empty-small">Sem notícias.</div>'}</div>
+            <div class="ref-news-grid">
+              ${news.map((n) => `
+                <article style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+                  ${newsLogo(n.source || 'GE', 32)}
+                  <div>
+                    <b style="font-size:0.75rem;text-transform:uppercase;color:var(--accent)">${n.source || 'GE'}</b>
+                    <strong style="display:block;font-size:0.95rem;margin-top:2px">${esc(n.text)}</strong>
+                  </div>
+                </article>`).join('') || '<div class="ref-empty-small">Sem notícias.</div>'}
+            </div>
           </section>
         </main>
 
@@ -353,9 +362,9 @@ export const homeScreen = {
           </section>
           <section class="ref-card ref-career-card">
             <div class="ref-card-head"><span class="ref-section-label">${icon('clock')} FUTURO DA CARREIRA</span><h2>Avançar ou encerrar</h2></div>
-            <button disabled>${icon('play')}<span>Ir ao fim da temporada<small>Disponível após o último compromisso</small></span></button>
-            <button data-ref-route="stats">${icon('trophy')}<span>Pular para o fim da carreira<small>Simule o legado até a aposentadoria</small></span></button>
-            <button data-ref-route="manager">${icon('trophy')}<span>Aposentar treinador<small>Encerre agora e entre no Hall da Fama</small></span></button>
+            <button data-career-act="endSeason">${icon('play')}<span>Ir ao fim da temporada<small>Simule automaticamente até o encerramento</small></span></button>
+            <button data-career-act="skipCareer">${icon('trophy')}<span>Pular para o fim da carreira<small>Simule o legado até a aposentadoria</small></span></button>
+            <button data-career-act="retire">${icon('trophy')}<span>Aposentar treinador<small>Encerre agora e entre no Hall da Fama</small></span></button>
           </section>
         </aside>
       </div>
@@ -365,8 +374,64 @@ export const homeScreen = {
     el.querySelectorAll('[data-ref-route]').forEach((b) => b.onclick = () => go(b.dataset.refRoute));
     el.querySelector('[data-go-match]')?.addEventListener('click', () => go('match'));
     el.querySelector('[data-go-match]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go('match'); });
+    el.querySelector('[data-career-act=endSeason]')?.addEventListener('click', () => {
+      confirmBox('Ir ao fim da temporada', 'O jogo simulará todas as semanas restantes automaticamente. Deseja continuar?', () => {
+        simulateToSeasonEnd();
+      });
+    });
+    el.querySelector('[data-career-act=skipCareer]')?.addEventListener('click', () => {
+      confirmBox('Pular para o fim da carreira', 'Simula os próximos 15 anos de sua carreira com base no seu desempenho atual. Esta ação não pode ser desfeita!', () => {
+        simulateToCareerEnd();
+      });
+    });
+    el.querySelector('[data-career-act=retire]')?.addEventListener('click', () => {
+      confirmBox('Aposentar treinador', 'Deseja encerrar sua carreira agora e ver seu legado final?', () => {
+        retireManager();
+      });
+    });
   },
 };
+
+function simulateToSeasonEnd() {
+  const el = document.getElementById('screen');
+  el.innerHTML = `<div class="sim-loading"><div class="spinner"></div><div class="muted">Simulando até o fim da temporada...</div></div>`;
+  setTimeout(() => {
+    let r = { seasonEnded: false };
+    while (!r.seasonEnded) {
+      r = G.simWeek(S());
+    }
+    autosave();
+    toast('🏁 Temporada encerrada automaticamente!');
+    go('home');
+    renderRoute();
+  }, 100);
+}
+
+function simulateToCareerEnd() {
+  const el = document.getElementById('screen');
+  el.innerHTML = `<div class="sim-loading"><div class="spinner"></div><div class="muted">Simulando legado da carreira...</div></div>`;
+  setTimeout(() => {
+    const s = S();
+    for (let i = 0; i < 15; i++) {
+      let r = { seasonEnded: false };
+      while (!r.seasonEnded) {
+        r = G.simWeek(s);
+      }
+    }
+    autosave();
+    toast('🏆 Carreira simulada com sucesso!');
+    go('stats');
+    renderRoute();
+  }, 100);
+}
+
+function retireManager() {
+  const s = S();
+  s.retired = true;
+  autosave();
+  go('manager');
+  renderRoute();
+}
 
 // ============================================================
 // PARTIDA (pré-jogo, ao vivo, fim de jogo)
@@ -598,6 +663,7 @@ export const squadScreen = {
 
     return `
     <div class="ref-squad">
+      <header class="ref-page-nav"><button class="ref-back-button" data-ref-back>${icon('back')} <span>Voltar à central</span></button><span class="ref-page-nav-title">${icon('users')} ELENCO</span><span></span></header>
       <section class="ref-squad-filters">
         <label class="ref-squad-search"><span>${icon('search')}</span><input id="sq-q" type="search" placeholder="Pesquisar jogador ou número..." value="${esc(squadFilter.q)}"></label>
         <div class="ref-position-filters">
@@ -623,7 +689,7 @@ export const squadScreen = {
               <td><strong class="ref-overall">${p.ovr}</strong></td>
               <td><strong class="ref-potential">${p.pot}</strong></td>
               <td><div class="ref-condition-value"><span>${p.fitness}</span><i><b style="width:${p.fitness}%"></b></i></div></td>
-              <td><strong class="ref-morale">${p.morale}</strong></td>
+              <td><strong class="ref-morale">${Math.round(p.morale)}</strong></td>
               <td><span class="ref-status-pill">${icon('users')} Integrante</span></td>
               <td><span class="ref-market-pill">${icon('shield')} No elenco</span></td>
               <td>${money(p.value)}</td>
@@ -642,6 +708,7 @@ export const squadScreen = {
     </div>`;
   },
   mount(el) {
+    el.querySelector('[data-ref-back]')?.addEventListener('click', () => go('home'));
     el.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { squadFilter.pos = b.dataset.p; renderRoute(); });
     el.querySelector('#sq-sort').onchange = (e) => { squadFilter.sort = e.target.value; renderRoute(); };
     el.querySelector('#sq-situation').onchange = (e) => { squadFilter.situation = e.target.value; renderRoute(); };

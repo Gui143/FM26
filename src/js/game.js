@@ -136,12 +136,15 @@ function progressCup(state, comp, rng) {
   if (!roundFixtures.length || !roundFixtures.every((f) => f.played)) return;
   const winners = roundFixtures.map((f) => fixtureWinner(f));
   if (winners.length === 1) {
-    comp.champion = winners[0];
+    const w = winners[0];
+    comp.champion = w;
     comp.status = 'finished';
-    addNews(state, `🏆 ${state.db.clubs[winners[0]].name} é campeão: ${comp.name}!`, 'trophy');
-    const c = state.db.clubs[winners[0]];
-    c.titles.push({ comp: comp.short, season: state.season, year: state.year });
-    if (winners[0] === state.clubId) {
+    const c = state.db.clubs[w];
+    if (c) {
+      addNews(state, `🏆 ${c.name} é campeão: ${comp.name}!`, 'trophy');
+      c.titles.push({ comp: comp.short, season: state.season, year: state.year });
+    }
+    if (w === state.clubId) {
       state.manager.titles.push({ comp: comp.name, season: state.season });
       gainXp(state, 150);
     }
@@ -187,7 +190,24 @@ export function createNewGame(db, { clubId, managerName, managerCountry = 'br', 
     version: SAVE_VERSION,
     db,
     clubId,
-    manager: { name: managerName, country: managerCountry, rep: db.clubs[clubId].rep - 8, xp: 0, level: 1, titles: [] },
+    manager: {
+      name: managerName,
+      country: managerCountry,
+      rep: db.clubs[clubId].rep - 8,
+      xp: 0,
+      level: 1,
+      titles: [],
+      attrs: {
+        tactics: 10,
+        training: 10,
+        management: 10,
+        discipline: 10,
+        motivation: 10,
+        adaptability: 10,
+        determination: 10
+      },
+      skills: []
+    },
     season: 1, year: 2026, week: 1,
     chemistry: 70,
     tactics: {
@@ -533,9 +553,9 @@ function progressCdB(state, comp, rng) {
   const round = comp.currentRound + 1;
   if (round > 6) return;
   const rFixtures = comp.fixtures.filter((f) => f.round === round);
-  if (rFixtures.length && !rFixtures.every((f) => f.played)) return;
+  if (!rFixtures.length || !rFixtures.every((f) => f.played)) return;
+  
   if (round === 1) {
-    if (!rFixtures.length) return;
     const winners = tiesOf(comp, 1).map(tieWinner).filter(Boolean);
     if (winners.length < 8) return;
     comp.currentRound = 1;
@@ -547,10 +567,15 @@ function progressCdB(state, comp, rng) {
   comp.currentRound = round;
   if (round === 6) {
     const w = winners[0];
-    comp.champion = w; comp.status = 'finished';
-    addNews(state, `🏆 ${state.db.clubs[w].name} é CAMPEÃO da Copa do Brasil ${state.year} numa final eletrizante em campo neutro!`, 'trophy');
-    state.db.clubs[w].titles.push({ comp: comp.short, season: state.season, year: state.year });
-    if (w === state.clubId) { state.manager.titles.push({ comp: comp.name, season: state.season }); gainXp(state, 150); }
+    if (w) {
+      comp.champion = w; comp.status = 'finished';
+      const c = state.db.clubs[w];
+      if (c) {
+        addNews(state, `🏆 ${c.name} é CAMPEÃO da Copa do Brasil ${state.year} numa final eletrizante em campo neutro!`, 'trophy', 'GE');
+        c.titles.push({ comp: comp.short, season: state.season, year: state.year });
+      }
+      if (w === state.clubId) { state.manager.titles.push({ comp: comp.name, season: state.season }); gainXp(state, 150); }
+    }
     return;
   }
   const next = round + 1;
@@ -611,100 +636,118 @@ export function applyUserResult(state, compId, fixtureId, result) {
 
 // Simula todas as outras partidas da semana + atualizações semanais
 export function simWeek(state) {
-  enforceInfiniteMoney(state);
-  const rng = makeRng(hashStr(`week_${state.week}_${state.season}_${state.db.seed}`) ^ (Date.now() % 1e6));
-  // 1) Partidas sem o usuário
-  for (const comp of state.competitions) {
-    for (const f of comp.fixtures) {
-      if (f.week === state.week && !f.played && f.home !== state.clubId && f.away !== state.clubId) {
-        const home = userMatchSide(state, f.home);
-        const away = userMatchSide(state, f.away);
-        home.name = state.db.clubs[f.home].name; home.short = state.db.clubs[f.home].short;
-        away.name = state.db.clubs[f.away].name; away.short = state.db.clubs[f.away].short;
-        const knockoutFlag = comp.type === 'cup' && (f.knockout !== undefined ? f.knockout : true);
-        const res = quickSim(home, away, rng.int(1, 1e9), knockoutFlag, !!f.neutral);
-        if (f.leg === 2) leg2Decide(state, comp, f, res);
-        finalizeFixture(state, comp, f, res);
-        postMatchPlayerUpdates(state, f, res, false);
-      }
-    }
-  }
-  // Garante que sobrou alguma partida do usuário por jogar? (exceção: quem jogou tudo já aplicou resultados)
-
-  // 2) Progressão de copas
-  for (const comp of state.competitions) {
-    if (comp.type === 'cup' && comp.status === 'running' && !comp.friendly) {
-      if (comp.brazilFormat) { progressCdB(state, comp, rng); }
-      else if (comp.singleMatch) {
-        const f = comp.fixtures[0];
-        if (f.played) { comp.champion = fixtureWinner(f); comp.status = 'finished'; const c = state.db.clubs[comp.champion]; c.titles.push({ comp: comp.short, season: state.season, year: state.year }); addNews(state, `🏆 ${c.name} conquista a ${comp.name}!`, 'trophy'); if (comp.champion === state.clubId) { state.manager.titles.push({ comp: comp.name, season: state.season }); gainXp(state, 120); } }
-      } else progressCup(state, comp, rng);
-    }
-  }
-
-  // 3) Atualizações semanais dos jogadores do usuário
-  const squad = clubPlayers(state.db, state.clubId);
-  const wageBill = squad.reduce((s, p) => s + p.salary, 0);
-  state.finances.balance -= wageBill;
-  log(state, 'Folha salarial da semana', -wageBill);
-  const sponsorWeekly = Math.round(state.db.clubs[state.clubId].sponsor.value / 44);
-  state.finances.balance += sponsorWeekly;
-  log(state, `Patrocínio ${state.db.clubs[state.clubId].sponsor.name}`, sponsorWeekly);
-
-  // Recuperação física / lesões / suspensões (todos os jogadores)
-  for (const p of Object.values(state.db.players)) {
-    if (p.injuredWeeks > 0) p.injuredWeeks--;
-    if (p.suspended > 0) p.suspended--;
-    p.fitness = clamp(p.fitness + 12, 45, 100);
-    p.morale = clamp(p.morale + (p.morale > 70 ? -0.6 : 0.6), 25, 99);
-  }
-
-  // Bilheteria da partida em casa da semana
-  for (const comp of state.competitions) {
-    for (const f of comp.fixtures) {
-      if (f.week === state.week && f.played && f.home === state.clubId) {
-        const club = state.db.clubs[state.clubId];
-        const attend = Math.min(club.capacity, Math.round(club.capacity * (0.55 + club.rep / 400 + state.chemistry / 800)));
-        const price = 40 + club.rep * 1.1;
-        const income = Math.round(attend * price);
-        state.finances.balance += income;
-        log(state, `Bilheteria (${attend.toLocaleString('pt-BR')} torcedores) — ${comp.short}`, income);
-      }
-    }
-  }
-
-  // 4) Mercado: respostas e novas ofertas
-  processMarket(state, rng);
-
-  // 5) Avança semana
-  state.week += 1;
-
-  // Libera novo treino semanal (mantém o planejador e o histórico)
-  const prevTr = state.training || {};
-  state.training = {
-    focus: prevTr.focus || 'fisico',
-    done: false,
-    plan: Array.isArray(prevTr.plan) ? prevTr.plan : defaultTrainPlan(),
-    history: Array.isArray(prevTr.history) ? prevTr.history : [],
-  };
-
-  // Entrosamento evolui com estabilidade
-  state.chemistry = clamp(state.chemistry + 0.5, 40, 98);
-
-  // 6) Fim de temporada?
-  const totalWeeks = Math.max(...state.competitions.filter((c) => c.type === 'league').map((c) => c.totalRounds), 20) + 2;
-  if (state.week > totalWeeks) {
-    endSeason(state, rng);
+  try {
     enforceInfiniteMoney(state);
-    return { seasonEnded: true };
+    const rng = makeRng(hashStr(`week_${state.week}_${state.season}_${state.db.seed}`) ^ (Date.now() % 1e6));
+    // 1) Partidas sem o usuário
+    for (const comp of state.competitions) {
+      for (const f of comp.fixtures) {
+        if (f.week === state.week && !f.played && f.home !== state.clubId && f.away !== state.clubId) {
+          try {
+            const home = userMatchSide(state, f.home);
+            const away = userMatchSide(state, f.away);
+            home.name = state.db.clubs[f.home].name; home.short = state.db.clubs[f.home].short;
+            away.name = state.db.clubs[f.away].name; away.short = state.db.clubs[f.away].short;
+            const knockoutFlag = comp.type === 'cup' && (f.knockout !== undefined ? f.knockout : true);
+            const res = quickSim(home, away, rng.int(1, 1e9), knockoutFlag, !!f.neutral);
+            if (f.leg === 2) leg2Decide(state, comp, f, res);
+            finalizeFixture(state, comp, f, res);
+            postMatchPlayerUpdates(state, f, res, false);
+          } catch (e) { console.error("Error simulating AI match", f, e); }
+        }
+      }
+    }
+
+    // 2) Progressão de copas
+    for (const comp of state.competitions) {
+      try {
+        if (comp.type === 'cup' && comp.status === 'running' && !comp.friendly) {
+          if (comp.brazilFormat) { progressCdB(state, comp, rng); }
+          else if (comp.singleMatch) {
+            const f = comp.fixtures[0];
+            if (f.played) {
+              comp.champion = fixtureWinner(f);
+              comp.status = 'finished';
+              const c = state.db.clubs[comp.champion];
+              if (c) {
+                c.titles.push({ comp: comp.short, season: state.season, year: state.year });
+                addNews(state, `🏆 ${c.name} conquista a ${comp.name}!`, 'trophy');
+                if (comp.champion === state.clubId) {
+                  state.manager.titles.push({ comp: comp.name, season: state.season });
+                  gainXp(state, 120);
+                }
+              }
+            }
+          } else progressCup(state, comp, rng);
+        }
+      } catch (e) { console.error("Error progressing cup", comp, e); }
+    }
+
+    // 3) Atualizações semanais dos jogadores do usuário
+    const squad = clubPlayers(state.db, state.clubId);
+    const wageBill = squad.reduce((s, p) => s + p.salary, 0);
+    state.finances.balance -= wageBill;
+    log(state, 'Folha salarial da semana', -wageBill);
+    const sponsorWeekly = Math.round((state.db.clubs[state.clubId]?.sponsor?.value || 0) / 44);
+    state.finances.balance += sponsorWeekly;
+    log(state, `Patrocínio ${state.db.clubs[state.clubId]?.sponsor?.name || 'Clube'}`, sponsorWeekly);
+
+    // Recuperação física / lesões / suspensões (todos os jogadores)
+    for (const p of Object.values(state.db.players)) {
+      if (p.injuredWeeks > 0) p.injuredWeeks--;
+      if (p.suspended > 0) p.suspended--;
+      p.fitness = clamp(p.fitness + 12, 45, 100);
+      p.morale = clamp(Math.round(p.morale + (p.morale > 70 ? -0.6 : 0.6)), 25, 99);
+    }
+
+    // Bilheteria da partida em casa da semana
+    for (const comp of state.competitions) {
+      for (const f of comp.fixtures) {
+        if (f.week === state.week && f.played && f.home === state.clubId) {
+          const club = state.db.clubs[state.clubId];
+          const attend = Math.min(club.capacity, Math.round(club.capacity * (0.55 + club.rep / 400 + state.chemistry / 800)));
+          const price = 40 + club.rep * 1.1;
+          const income = Math.round(attend * price);
+          state.finances.balance += income;
+          log(state, `Bilheteria (${attend.toLocaleString('pt-BR')} torcedores) — ${comp.short}`, income);
+        }
+      }
+    }
+
+    // 4) Mercado: respostas e novas ofertas
+    processMarket(state, rng);
+    generateJobOffers(state);
+
+    // 5) Avança semana
+    state.week += 1;
+
+    // Libera novo treino semanal
+    const prevTr = state.training || {};
+    state.training = {
+      focus: prevTr.focus || 'fisico',
+      done: false,
+      plan: Array.isArray(prevTr.plan) ? prevTr.plan : defaultTrainPlan(),
+      history: Array.isArray(prevTr.history) ? prevTr.history : [],
+    };
+
+    state.chemistry = clamp(state.chemistry + 0.5, 40, 98);
+
+    // 6) Fim de temporada?
+    const leagueComps = state.competitions.filter((c) => c.type === 'league');
+    const totalWeeks = leagueComps.length ? Math.max(...leagueComps.map((c) => c.totalRounds), 20) + 2 : 40;
+    
+    if (state.week > totalWeeks) {
+      endSeason(state, rng);
+      enforceInfiniteMoney(state);
+      return { seasonEnded: true };
+    }
+    enforceInfiniteMoney(state);
+    return { seasonEnded: false };
+  } catch (err) {
+    console.error("CRITICAL ERROR IN simWeek:", err);
+    state.week += 1; // Força avanço pra não travar
+    return { seasonEnded: false, error: true };
   }
-  // Aviso de renovações
-  const expiring = clubPlayers(state.db, state.clubId).filter((p) => p.contractYears <= 1);
-  if (expiring.length && state.week % 6 === 0) {
-    addInbox(state, { type: 'contract', title: 'Contratos terminando', text: `${expiring.length} jogador(es) com contrato acabando: ${expiring.slice(0, 4).map((p) => p.name).join(', ')}${expiring.length > 4 ? '…' : ''}. Renove na tela do jogador.`, week: state.week });
-  }
-  enforceInfiniteMoney(state);
-  return { seasonEnded: false };
 }
 
 function finalizeFixture(state, comp, f, res) {
@@ -849,33 +892,43 @@ function endSeason(state, rng) {
     }
   }
 
-  // Mundial de Clubes: campeões da Libertadores x Champions
-  const libChamp = state.competitions.find((c) => c.id.startsWith('CONT_AME'))?.champion;
-  const uclChamp = state.competitions.find((c) => c.id.startsWith('CONT_EUR'))?.champion;
-  if (libChamp && uclChamp) {
-    const home = userMatchSide(state, libChamp); home.short = db.clubs[libChamp].short; home.name = db.clubs[libChamp].name;
-    const away = userMatchSide(state, uclChamp); away.short = db.clubs[uclChamp].short; away.name = db.clubs[uclChamp].name;
-    const res = quickSim(home, away, rng.int(1, 1e9), true, true);
-    const winner = res.home > res.away || res.penalties?.winner === 'h' ? libChamp : uclChamp;
-    db.clubs[winner].titles.push({ comp: 'MUN', season: state.season, year });
-    state.history.champions.push({ comp: `MUN_s${state.season}`, name: 'Mundial de Clubes', season: state.season, year, clubId: winner });
-    addNews(state, `🌍 ${db.clubs[winner].name} vence o Mundial de Clubes!`, 'trophy');
-    if (winner === state.clubId) { state.manager.titles.push({ comp: 'Mundial de Clubes', season: state.season }); gainXp(state, 250); state.finances.balance += 120e6; log(state, 'Premiação Mundial de Clubes', 120e6); }
-  }
+  // Mundial de Clubes
+  try {
+    const libChamp = state.competitions.find((c) => c.id.startsWith('CONT_AME'))?.champion;
+    const uclChamp = state.competitions.find((c) => c.id.startsWith('CONT_EUR'))?.champion;
+    if (libChamp && uclChamp) {
+      const home = userMatchSide(state, libChamp); home.short = db.clubs[libChamp].short; home.name = db.clubs[libChamp].name;
+      const away = userMatchSide(state, uclChamp); away.short = db.clubs[uclChamp].short; away.name = db.clubs[uclChamp].name;
+      const res = quickSim(home, away, rng.int(1, 1e9), true, true);
+      const winner = res.home > res.away || res.penalties?.winner === 'h' ? libChamp : uclChamp;
+      db.clubs[winner].titles.push({ comp: 'MUN', season: state.season, year });
+      state.history.champions.push({ comp: `MUN_s${state.season}`, name: 'Mundial de Clubes', season: state.season, year, clubId: winner });
+      addNews(state, `🌍 ${db.clubs[winner].name} vence o Mundial de Clubes!`, 'trophy');
+      if (winner === state.clubId) { state.manager.titles.push({ comp: 'Mundial de Clubes', season: state.season }); gainXp(state, 250); state.finances.balance += 120e6; log(state, 'Premiação Mundial de Clubes', 120e6); }
+    }
+  } catch (e) { console.error("Mundial sim error", e); }
 
   state.history.finalTables = finalTables;
+  generateAwards(state, rng);
 
-  // ----- Acesso e rebaixamento (países com 2 divisões) -----
-  for (const topLeague of LEAGUES.filter((l) => l.tier === 1)) {
-    const second = LEAGUES.find((l) => l.country === topLeague.country && l.tier === 2);
-    if (!second) continue;
-    const t1 = finalTables[topLeague.id] || [], t2 = finalTables[second.id] || [];
-    const down = t1.slice(-(topLeague.relegation || 0));
-    const up = t2.slice(0, (topLeague.relegation || 0));
-    down.forEach((id) => { db.clubs[id].leagueId = second.id; db.clubs[id].tier = 2; });
-    up.forEach((id) => { db.clubs[id].leagueId = topLeague.id; db.clubs[id].tier = 1; });
-    if (down.includes(state.clubId)) addNews(state, `⬇️ Rebaixamento… seu clube caiu para a ${second.name}.`, 'warn');
-    if (up.includes(state.clubId)) addNews(state, `⬆️ ACESSO! Seu clube subiu para a ${topLeague.name}!`, 'trophy');
+  // ----- Acesso e rebaixamento (países com múltiplas divisões) -----
+  const countriesWithDivs = [...new Set(LEAGUES.map(l => l.country))];
+  for (const c of countriesWithDivs) {
+    const sortedLeagues = LEAGUES.filter(l => l.country === c).sort((a, b) => a.tier - b.tier);
+    for (let i = 0; i < sortedLeagues.length - 1; i++) {
+      const topLeague = sortedLeagues[i];
+      const second = sortedLeagues[i + 1];
+      const t1 = finalTables[topLeague.id] || [], t2 = finalTables[second.id] || [];
+      if (!t1.length || !t2.length) continue;
+      const downCount = topLeague.relegation || 0;
+      if (downCount === 0) continue;
+      const down = t1.slice(-downCount);
+      const up = t2.slice(0, downCount);
+      down.forEach((id) => { db.clubs[id].leagueId = second.id; db.clubs[id].tier = second.tier; });
+      up.forEach((id) => { db.clubs[id].leagueId = topLeague.id; db.clubs[id].tier = topLeague.tier; });
+      if (down.includes(state.clubId)) addNews(state, `⬇️ REBAIXAMENTO… seu clube caiu para a ${second.name}.`, 'warn', 'GE');
+      if (up.includes(state.clubId)) addNews(state, `⬆️ ACESSO! Seu clube subiu para a ${topLeague.name}!`, 'trophy', 'TNT');
+    }
   }
 
   // ----- Evolução / envelhecimento dos jogadores -----
@@ -963,6 +1016,56 @@ function endSeason(state, rng) {
   generateSeason(state);
   generateJobOffers(state);
   addNews(state, `📅 A temporada ${state.year} começou! Boa sorte, ${state.manager.name}.`, 'info');
+}
+
+export function generateAwards(state, rng) {
+  state.history.awards = state.history.awards || [];
+  const players = Object.values(state.db.players).filter(p => p.clubId && p.history.length > 0);
+  if (!players.length) return;
+
+  // Bola de Ouro (Ballon dOr): baseada em nota média e títulos
+  const ballonPlayers = players.map(p => {
+    const lastSeason = p.history[p.history.length - 1];
+    const club = state.db.clubs[p.clubId];
+    let score = (lastSeason.ratingSum || (lastSeason.games * 6.5)) / Math.max(1, lastSeason.games);
+    score += (lastSeason.goals * 0.1) + (lastSeason.assists * 0.05);
+    if (club && club.titles.some(t => t.year === state.year)) score += 0.5;
+    if (club && club.rep > 90) score += 0.3;
+    return { id: p.id, score };
+  });
+  ballonPlayers.sort((a, b) => b.score - a.score);
+  const ballonWinner = ballonPlayers[0];
+
+  // Chuteira de Ouro (Golden Shoe): quem fez mais gols na temporada
+  const goldenPlayers = players.map(p => {
+    const lastSeason = p.history[p.history.length - 1];
+    return { id: p.id, goals: lastSeason.goals };
+  });
+  goldenPlayers.sort((a, b) => b.goals - a.goals);
+  const goldenWinner = goldenPlayers[0];
+
+  // The Best FIFA: popularidade (reputação do clube) + desempenho
+  const bestPlayers = players.map(p => {
+    const lastSeason = p.history[p.history.length - 1];
+    const club = state.db.clubs[p.clubId];
+    let score = (club?.rep || 50) * 0.5 + (lastSeason.goals * 2) + (lastSeason.assists * 1.5);
+    return { id: p.id, score };
+  });
+  bestPlayers.sort((a, b) => b.score - a.score);
+  const bestWinner = bestPlayers[0];
+
+  const awards = {
+    year: state.year,
+    ballonDor: ballonWinner.id,
+    goldenShoe: goldenWinner.id,
+    theBest: bestWinner.id,
+    puskas: players[Math.floor(rng.f() * players.length)].id // Sorteado entre os destaques
+  };
+  state.history.awards.push(awards);
+
+  addNews(state, `⭐ Bola de Ouro ${state.year}: ${state.db.players[awards.ballonDor].name} leva o prêmio máximo!`, 'star', 'TNT');
+  addNews(state, `👟 Chuteira de Ouro: ${state.db.players[awards.goldenShoe].name} foi o maior artilheiro com ${state.db.players[awards.goldenShoe].history[state.db.players[awards.goldenShoe].history.length-1].goals} gols.`, 'star', 'GE');
+  addNews(state, `🏆 PUSKAS! O gol de ${state.db.players[awards.puskas].name} foi eleito o mais bonito do ano!`, 'star', 'CAZÉ');
 }
 
 function youthName(rng, country) {
@@ -1203,10 +1306,37 @@ export function worldRanking(state) {
   return arr;
 }
 
-// -------------------- Utilidades de estado --------------------
-export function addNews(state, text, icon = 'info') {
-  state.news.unshift({ id: uid('n'), week: state.week, season: state.season, text, icon });
-  if (state.news.length > 60) state.news.pop();
+export function addNews(state, text, icon = 'info', source = null) {
+  try {
+    const sources = ['GE', 'TNT', 'CAZÉ'];
+    if (!source) source = sources[Math.floor(Math.random() * sources.length)];
+    
+    let formattedText = text;
+    if (source === 'GE') {
+      const prefixes = ['[EXCLUSIVO]', '[BASTIDORES]', '[MERCADO]', '[INFORMAÇÃO]'];
+      formattedText = `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${text}`;
+    } else if (source === 'TNT') {
+      const formats = [
+        `🔥 ATENÇÃO! ${text} Você viu primeiro na TNT Sports! #TNTSports`,
+        `🚨 URGENTE! INFO DE AGORA: ${text} #FutebolBrasileiro`,
+        `💣 BOMBA NO MERCADO! ${text} Acompanhe tudo aqui!`,
+      ];
+      formattedText = formats[Math.floor(Math.random() * formats.length)];
+    } else if (source === 'CAZÉ') {
+      const formats = [
+        `QUE ABSURDO! ${text} O homi meteu essa? 😱`,
+        `SIMPLESMENTE ${text.toUpperCase()}! É A CAZÉTV, NÃO TEM JEITO!`,
+        `ACEITA MAIS UM? ${text} Coisa de maluco, papo reto!`,
+        `OLHA O QUE ACONTECEU! ${text} Sensacional!`,
+        `AI MEU CORAÇÃO! ${text} É o entretenimento, não tem como!`,
+      ];
+      formattedText = formats[Math.floor(Math.random() * formats.length)];
+    }
+
+    state.news = state.news || [];
+    state.news.unshift({ id: uid('n'), week: state.week, season: state.season, text: formattedText, icon, source });
+    if (state.news.length > 60) state.news.pop();
+  } catch (e) { console.error("Error adding news", e); }
 }
 export function addInbox(state, item) {
   state.inbox.unshift({ id: uid('i'), read: false, ...item });
@@ -1275,13 +1405,16 @@ export const memoryStorage = (() => {
 // -------------------- Propostas de emprego (manager job offers) --------------------
 export function generateJobOffers(state) {
   if (!state.jobOffers) state.jobOffers = [];
-  if (state.week % 8 !== 0) return;
+  const windowOpen = transferWindowOpen(state);
+  const freq = windowOpen ? 2 : 4;
+  if (state.week % freq !== 0) return;
   const myRep = state.manager.rep || 50;
+  const chance = windowOpen ? 0.45 : 0.25;
   Object.values(state.db.clubs).forEach(club => {
     if (club.id === state.clubId) return;
     if (state.jobOffers.some(o => o.clubId === club.id)) return;
     const repDiff = club.rep - myRep;
-    if (repDiff <= 12 && Math.random() < 0.35) {
+    if (repDiff <= 15 && Math.random() < chance) {
       state.jobOffers.push({
         id: uid(),
         clubId: club.id,

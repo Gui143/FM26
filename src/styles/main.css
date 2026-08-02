@@ -1275,3 +1275,35 @@ table.data th, table.data td { padding: 8px 10px; }
   .ref-season-list { max-height: none; }
   .rs-opp strong { font-size: .8rem; }
 }
+
+/* Manager Skill Tree and Attributes */
+.skill-card {
+  transition: all 0.2s;
+}
+.skill-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.08) !important;
+}
+.skill-card.active {
+  background: rgba(255, 119, 0, 0.1) !important;
+  box-shadow: 0 0 10px rgba(255, 119, 0, 0.2);
+}
+.attr-row {
+  margin-bottom: 10px;
+}
+.manager-layout {
+  animation: managerFadeIn 0.4s ease-out;
+}
+@keyframes managerFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Awards Styles */
+.award-card {
+  text-align: center;
+  padding: 15px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}

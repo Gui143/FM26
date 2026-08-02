@@ -8,10 +8,11 @@ import { menuScreen, newGameScreen, homeScreen } from './screens.js';
 import {
   trainingScreen, matchScreen, careerScreen, marketScreen, familyScreen,
   moneyScreen, fameScreen, inboxScreen, hallScreen, settingsScreen,
-  savesScreen, creditsScreen, howtoScreen,
+  savesScreen, creditsScreen, howtoScreen, socialScreen, immersionScreen
 } from './screens2.js';
 import { createNewGame, writeSlot, readSlot } from './game.js';
 import { buildDatabase } from './gen.js';
+import { initSupabase, autoSaveToCloud, getCurrentUser } from './supabase.js';
 
 // Registro de rotas
 registerScreens({
@@ -31,6 +32,8 @@ registerScreens({
   saves: savesScreen,
   credits: creditsScreen,
   howto: howtoScreen,
+  social: socialScreen,
+  immersion: immersionScreen,
 });
 
 // Configurações fora de partida (menu)
@@ -83,3 +86,40 @@ window.addEventListener('pagehide', () => { if (App.state) autosave(); });
 applySettingsToBody();
 if (!location.hash) location.hash = '#/menu';
 renderRoute();
+
+// ============================================================
+// SUPABASE INIT + AUTO CLOUD SAVE HOOK
+// ============================================================
+(async () => {
+  try {
+    await initSupabase();
+    console.log('%c[FM26] Supabase conectado', 'color:#22c55e');
+  } catch (e) {
+    console.warn('[FM26] Supabase offline mode');
+  }
+})();
+
+// Hook autosave na nuvem depois de ações importantes
+const _origAutosave = autosave;
+window.autosave = function() {
+  _origAutosave();
+  if (App.state?.player?.hasCellphone) {
+    import('./supabase.js').then(m => m.autoSaveToCloud(App.state));
+  }
+};
+
+// Tenta carregar save da nuvem no início (se logado)
+(async () => {
+  try {
+    const { getCurrentUser, loadGameFromSupabase } = await import('./supabase.js');
+    const user = await getCurrentUser();
+    if (user && !App.state) {
+      const cloudState = await loadGameFromSupabase();
+      if (cloudState) {
+        console.log('%c[Supabase] Save da nuvem encontrado', 'color:#3b82f6');
+        // Não sobrescreve automaticamente para não confundir o usuário
+        // Ele pode usar o botão "Carregar da Nuvem" no futuro
+      }
+    }
+  } catch(e) {}
+})();

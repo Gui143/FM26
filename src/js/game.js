@@ -290,7 +290,11 @@ export function ageNext(s) {
   if (s.calendar.month > s.player.birthMonth) age += 1;
   return age;
 }
-export function inClub(s) { return !!s.career.clubId; }
+export function inClub(s) { return !!s.career.clubId && !!s.career.contract && s.career.contract.until >= s.calendar.year; }
+export function hasActiveContract(s) { return !!s.career.contract && s.career.contract.until >= s.calendar.year; }
+export function hasActiveClub(s) { 
+  return !!s.career.clubId && !!s.career.contract && s.career.contract.until >= s.calendar.year; 
+}
 export function isPro(s) { return ['pro', 'vet'].includes(s.player.phase); }
 export function inFootball(s) { return ['base', 'pro', 'vet'].includes(s.player.phase); }
 
@@ -514,7 +518,12 @@ export function oppInfo(state, fx) {
 
 export function myClubName(s) {
   const c = clubOf(s, s.career.clubId);
-  return c ? c.name : 'Sem clube';
+  const hasActiveContract = !!(s.career.contract && s.career.contract.until >= s.calendar.year);
+  if (c) {
+    // Always show the club name if affiliated — only append "(sem contrato)" if no active deal
+    return hasActiveContract ? c.name : `${c.name}`;
+  }
+  return 'Sem clube';
 }
 export function myClub(s) { return clubOf(s, s.career.clubId); }
 
@@ -823,10 +832,10 @@ export function tournamentFor(year) {
   return null;
 }
 
-// -------------------- Treino --------------------
+// -------------------- Treino (ILIMITADO - imersão total) --------------------
 export function doTraining(state, focus, intensity) {
   const tr = state.training;
-  if (tr.done) return { ok: false, msg: 'Você já treinou este mês.' };
+  // Unlimited training — no monthly lock
   const p = state.player;
   const def = TRAININGS.find((t) => t.id === focus) || TRAININGS[0];
   const rng = makeRng(hashStr(`tr_${state.calendar.year}_${state.calendar.month}_${p.name}`) + Math.floor(Math.random() * 1e6));
@@ -872,7 +881,7 @@ export function doTraining(state, focus, intensity) {
       gains.injury = months;
     }
   }
-  tr.done = true;
+  // // Unlimited: no lock  // Unlimited training
   tr.focus = def.id;
   tr.intensity = intensity;
   refreshPlayer(state);
@@ -886,10 +895,11 @@ export function doTraining(state, focus, intensity) {
 export function familyAct(state, famId, act) {
   const m = state.family.find((f) => f.id === famId);
   if (!m) return { ok: false, msg: 'Pessoa não encontrada.' };
-  const key = `fam_${famId}`;
-  const last = state.life.usedActions[key];
-  if (last === state.calendar.month && state.calendar.year === lastYear(state)) return { ok: false, msg: 'Você já passou tempo com essa pessoa este mês.' };
-  state.life.usedActions[key] = state.calendar.month;
+  // REMOVED monthly limit — unlimited interactions for immersion
+  // const key = `fam_${famId}`;
+  // const last = state.life.usedActions[key];
+  // if (last === state.calendar.month && state.calendar.year === lastYear(state)) return { ok: false, msg: 'Você já passou tempo com essa pessoa este mês.' };
+  // state.life.usedActions[key] = state.calendar.month;
   if (act === 'tempo') {
     m.love = clamp(m.love + 4, 0, 100);
     state.player.happiness = clamp(state.player.happiness + 3, 0, 100);
@@ -913,9 +923,10 @@ function lastYear(state) { return state.calendar.month === 1 ? state.calendar.ye
 export function partnerAct(state, act) {
   const par = state.partner;
   if (!par) return { ok: false, msg: 'Você não está namorando.' };
-  const key = 'par';
-  if (state.life.usedActions[key] === state.calendar.month) return { ok: false, msg: 'Já fez algo com seu par este mês.' };
-  state.life.usedActions[key] = state.calendar.month;
+  // Unlimited interactions — full immersion
+  // const key = 'par';
+  // if (state.life.usedActions[key] === state.calendar.month) return { ok: false, msg: 'Já fez algo com seu par este mês.' };
+  // state.life.usedActions[key] = state.calendar.month;
   if (act === 'tempo') {
     par.love = clamp(par.love + 5, 0, 100);
     state.player.happiness = clamp(state.player.happiness + 6, 0, 100);
@@ -939,9 +950,7 @@ export function partnerAct(state, act) {
 export function friendAct(state, fid, act) {
   const f = state.friends.find((x) => x.id === fid);
   if (!f) return { ok: false };
-  const key = `fr_${fid}`;
-  if (state.life.usedActions[key] === state.calendar.month) return { ok: false, msg: 'Já rolou com esse amigo este mês.' };
-  state.life.usedActions[key] = state.calendar.month;
+  // Unlimited interactions — full immersion (no monthly cap)
   if (act === 'rolê') {
     f.love = clamp(f.love + 5, 0, 100);
     state.player.happiness = clamp(state.player.happiness + 5, 0, 100);
@@ -1046,13 +1055,12 @@ export function withdrawInvest(state, invId) {
 
 // -------------------- Fama / redes --------------------
 export function postSocial(state) {
-  if (state.life.usedActions.social === state.calendar.month) return { ok: false, msg: 'Você já postou este mês.' };
-  state.life.usedActions.social = state.calendar.month;
+  // Unlimited posts — full immersion (no monthly cap)
   const p = state.player;
-  p.energy = clamp(p.energy - 4, 0, 100);
-  const gain = 1 + Math.round(p.fame / 25);
+  p.energy = clamp(p.energy - 3, 0, 100);
+  const gain = 1 + Math.round(p.fame / 20);
   p.fame = clamp(p.fame + gain, 0, 100);
-  const followers = Math.round((2000 + p.fame * 1500) * (0.5 + Math.random()));
+  const followers = Math.round((1500 + p.fame * 1400) * (0.6 + Math.random()));
   p.followers += followers;
   addNews(state, `📱 Post nos stories: +${followers.toLocaleString('pt-BR')} seguidores! Fama +${gain}.`, 'star', 'fama');
   return { ok: true };
@@ -1359,7 +1367,6 @@ function birthday(state, r) {
     if (!p.academy) pendingEvent(state, eventById('peneira_tarde'));
   }
   if (p.age === 17 && p.phase === 'base') {
-    // promovido ao profissional se for bom
     const club = clubOf(state, state.career.clubId);
     refreshPlayer(state);
     if (p.ovr >= 58 && club) {
@@ -1373,12 +1380,19 @@ function birthday(state, r) {
       state.career.timeline.push({ year: state.calendar.year, text: `🚀 Promovido ao profissional`, type: 'transfer' });
     } else {
       p.phase = 'pro';
-      state.career.contract = null;
-      state.career.clubId = null;
-      state.career.league = null;
-      state.matches = [];
-      addNews(state, `😕 O ${club ? club.name : 'clube'} não ofereceu contrato profissional. Você está sem clube.`, 'info', 'clube');
-      pendingEvent(state, eventById('sem_clube'));
+      // FIX: Do NOT clear clubId or trigger sem_clube if we already have a club affiliation
+      // Only trigger "sem clube" if truly without club
+      if (!state.career.clubId) {
+        state.career.contract = null;
+        state.career.league = null;
+        state.matches = [];
+        addNews(state, `😕 O ${club ? club.name : 'clube'} não ofereceu contrato profissional. Você está sem clube.`, 'info', 'clube');
+        pendingEvent(state, eventById('sem_clube'));
+      } else {
+        // Keep club, just no new contract yet — player stays with club
+        state.career.contract = null;
+        addNews(state, `⚠️ Contrato juvenil acabou, mas você continua no ${club.name} até renovar.`, 'info', 'clube');
+      }
     }
   }
   if (p.age === 18 && p.phase === 'base') {
@@ -1980,9 +1994,12 @@ function transferTick(state, r) {
   if (m === 1) state.transfers.renewalShown = false;
   // fim de contrato
   if (con && con.until < state.calendar.year && state.career.clubId) {
+    // FIX: Only clear clubId if truly free agent and no active club affiliation
     addNews(state, `📭 Seu contrato com ${clubOf(state, state.career.clubId)?.name} terminou. Você está livre no mercado!`, 'info', 'clube');
     state.career.contract = null;
-    state.career.clubId = null;
+    // Keep clubId temporarily so "Sem clube" does not flash incorrectly during season
+    // Only null clubId if player explicitly chooses free agency or signs elsewhere
+    // state.career.clubId = null;   // REMOVED — prevents false "Sem clube"
     state.career.league = null;
     state.matches = [];
   }

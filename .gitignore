@@ -3,3 +3,10 @@ image-search/
 
 # Folha de contato para conferência visual (scratch)
 contact-sheet.png
+
+# 🔐 Segredos do Supabase (NUNCA commitar!)
+.env
+.env.local
+.env.*.local
+supabase-service-key.txt
+*.key

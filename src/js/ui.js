@@ -217,9 +217,10 @@ const NAV_MAIN = [
   { route: 'match', icon: 'play', key: 'play' },
   { route: 'career', icon: 'chart', key: 'career' },
   { route: 'market', icon: 'cart', key: 'market' },
-  { route: 'family', icon: 'users', key: 'family' },
+  { route: 'social', icon: 'users', key: 'social' },
+  { route: 'immersion', icon: 'globe', key: 'immersion' },
+  { route: 'family', icon: 'heart', key: 'family' },
   { route: 'money', icon: 'money', key: 'money' },
-  { route: 'fame', icon: 'star', key: 'fame' },
   { route: 'inbox', icon: 'mail', key: 'inbox' },
   { route: 'saves', icon: 'save', key: 'saves' },
   { route: 'settings', icon: 'gear', key: 'settings' },
@@ -260,7 +261,7 @@ function renderChrome(active) {
     { route: 'home', icon: 'home', key: 'home' },
     { route: 'training', icon: 'whistle', key: 'training' },
     { route: 'match', icon: 'play', key: 'play', play: true },
-    { route: 'career', icon: 'chart', key: 'career' },
+    { route: 'social', icon: 'users', key: 'social' },
     { route: '__more', icon: 'menu', key: 'more' },
   ];
   document.getElementById('tabbar').innerHTML = tabs.map((tb) => {

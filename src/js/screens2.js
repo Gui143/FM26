@@ -553,7 +553,18 @@ function openPostComposer(s) {
 }
 
 function npcContext(s) {
-  return { age: s.player.age, club: G.myClub(s)?.name || 'sem clube', phase: s.player.phase };
+  const last = s.career.lastMatch || null;
+  return {
+    age: s.player.age,
+    club: G.myClub(s)?.name || 'sem clube',
+    phase: s.player.phase,
+    ovr: s.player.ovr,
+    form: Math.round(s.player.form),
+    fame: Math.round(s.player.fame || 0),
+    gols: s.career.total.goals,
+    jogos: s.career.total.apps,
+    ultimoJogo: last ? `${last.comp} vs ${last.opp}: ${last.gh}x${last.ga} (${last.result === 'W' ? 'vitória' : last.result === 'L' ? 'derrota' : 'empate'})${last.goals ? `, ${last.goals} gol(s) seu(s)` : ''}${last.motm ? ', melhor em campo' : ''}${last.rating ? `, nota ${last.rating}` : ''}` : null,
+  };
 }
 
 function openNpcChat(s, { role = 'fã', npcName = 'Fã', userId = null } = {}) {
@@ -864,39 +875,37 @@ export const immersionScreen = {
     const sayBtn = el.querySelector('#street-say');
     const area = el.querySelector('#street-area');
 
-    sayBtn.onclick = () => {
+    sayBtn.onclick = async () => {
       const txt = input.value.trim();
       if (!txt) return;
       const div = document.createElement('div');
       div.className = 'dialogue-line';
       div.innerHTML = `<b>Você:</b> ${esc(txt)}`;
       area.appendChild(div);
+      input.value = '';
 
-      // Resposta aleatória + impacto
-      setTimeout(() => {
-        const responses = [
-          'Que legal! Boa sorte nos próximos jogos.',
-          'Mano, você é foda! Me dá um autógrafo?',
-          'Vai com calma que o time precisa de você.',
-          'Cara, eu te vi jogar. Tá absurdo!',
-          'Tô torcendo por você desde sempre.'
-        ];
-        const rep = responses[Math.floor(Math.random()*responses.length)];
+      // Resposta do passante via Gemini (com fallback local) + impacto
+      setTimeout(async () => {
+        const r = await requestNpcReply({
+          role: 'fã',
+          npcName: 'Passante na rua',
+          playerName: s.player.name,
+          message: txt,
+          context: npcContext(s),
+        });
         const rdiv = document.createElement('div');
         rdiv.className = 'dialogue-line';
-        rdiv.innerHTML = `<b>Passante:</b> ${rep}`;
+        rdiv.innerHTML = `<b>Passante:</b> ${esc(r.reply)}`;
         area.appendChild(rdiv);
         area.scrollTop = area.scrollHeight;
 
         // Impacto
         s.player.happiness = Math.min(100, s.player.happiness + (txt.length > 18 ? 2 : 1));
-        if (txt.toLowerCase().includes('treinar') || txt.toLowerCase().includes('jogar')) {
+        if (/treinar|jogar|gol/i.test(txt)) {
           s.player.form = Math.min(99, s.player.form + 1);
         }
         autosave();
-      }, 620);
-
-      input.value = '';
+      }, 500);
     };
 
     input.onkeydown = e => { if (e.key==='Enter') sayBtn.click(); };

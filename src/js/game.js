@@ -278,9 +278,8 @@ function startYouthContract(state, rng) {
   const candidates = allClubs(state).filter((c) => c.tier === tier || c.tier === tier + 1 || c.tier === tier - 1);
   const club = preferredOrRandomClub(state, rng || makeRng(Date.now()), candidates);
   state.career.clubId = club.id;
-  const base = 1500 + ovr * 120;
   state.career.contract = {
-    salary: Math.round(base / 100) * 100,
+    salary: salaryForClub(state, club, 'youth'),
     years: 2, until: state.calendar.year + 2,
     releaseClause: marketValue(p) * 1.5,
     bonus: 10000, signedYear: state.calendar.year, youth: true,
@@ -716,6 +715,15 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
 function applyPerformance(state, fx, { goals = 0, assists = 0, saves = 0, keyActions = 0, cards = 0, rating = 5, canPlay = true }, { sim = false } = {}) {
   const p = state.player;
   const opp = oppInfo(state, fx);
+  // guarda o último jogo para os NPCs reagirem ao desempenho do jogador
+  state.career.lastMatch = {
+    opp: String(opp.name).slice(0, 60),
+    comp: String(fx.compName || '').slice(0, 40),
+    gh: fx.gh, ga: fx.ga,
+    goals, rating,
+    result: fx.result,
+    motm: !!(fx.motm || (canPlay && rating >= 8.5 && (goals > 0 || assists > 0 || saves >= 4))),
+  };
   // energia: partida ao vivo custa mais que simulação
   const energyCost = canPlay ? (sim ? 2 + Math.round(rating * 0.25) : 3 + Math.round(rating * 0.4)) : 1;
   p.energy = clamp(p.energy - energyCost, 0, 100);
@@ -1163,14 +1171,38 @@ export function rejectOffer(state, offerId) {
 }
 
 // -------------------- Transferências / contratos --------------------
+// Teto e base salarial por divisão (R$/mês). O clube paga o que a divisão
+// comporta — um craque de R$ 400 mi de valor não recebe R$ 1 mi/mês para
+// jogar a Série B: o teto da Série B é R$ 250 mil.
+const SALARY_TIERS = {
+  1: { cap: 18000, base: 4500 },      // Série D / ligas regionais
+  2: { cap: 45000, base: 10000 },     // Série D forte / ligas menores
+  3: { cap: 90000, base: 22000 },     // Série C
+  4: { cap: 250000, base: 50000 },    // Série B / ligas médias
+  5: { cap: 800000, base: 130000 },   // Série A / ligas fortes
+  6: { cap: 4000000, base: 400000 },  // Gigantes da Europa
+};
+
 function salaryForClub(state, club, type) {
   const p = state.player;
   const v = p.value;
-  const tierFactor = [0.55, 0.7, 0.85, 1.0, 1.3, 1.7][club.tier - 1] || 1;
-  let base = v / 150 + tierFactor * 60000;
-  if (type === 'youth') base = 1500 + p.ovr * 120;
-  if (type === 'free') base *= 0.85;
-  return Math.round(base / 100) * 100;
+  const tier = clamp(Number(club.tier) || 3, 1, 6);
+  const cfg = SALARY_TIERS[tier];
+  if (type === 'youth') {
+    // Contrato de base: bolsa-auxílio, não salário de profissional.
+    return Math.round(Math.max(600 + p.ovr * 55, 900) / 100) * 100;
+  }
+  // Quanto o jogador acha que merece: proporcional ao valor de mercado,
+  // com deságio para jovens (potencial) e veteranos (declínio).
+  const ageF = p.age <= 20 ? 0.5 : p.age <= 23 ? 0.72 : p.age <= 26 ? 0.9 : p.age <= 29 ? 1 : p.age <= 31 ? 0.78 : p.age <= 34 ? 0.55 : 0.32;
+  const fameF = 1 + (p.fame || 0) / 160;
+  const want = (v / 220) * ageF * fameF;
+  // O clube oferece a base da divisão + até o teto, conforme o jogador valha.
+  // Jovens (21-) recebem um desconto natural de experiência.
+  const youthDiscount = p.age <= 21 ? 0.55 : 1;
+  const offer = (cfg.base + Math.min(want * 0.65, cfg.cap - cfg.base)) * youthDiscount;
+  const base = type === 'free' ? offer * 0.85 : offer;
+  return Math.round(Math.max(base, 900) / 100) * 100;
 }
 
 function makeOffer(state, club, type = 'transfer') {
@@ -1201,13 +1233,20 @@ export function generateOffers(state) {
   let maxRep = clamp(minRep + 25, 40, 99);
   if (p.ovr >= 85) { minRep = 80; maxRep = 99; }
   if (p.ovr <= 50) { minRep = 30; maxRep = 65; }
-  let pool = allClubs(state).filter((c) => c.rep >= minRep && c.rep <= maxRep && c.id !== current);
+  // Divisão esperada para o nível do jogador (realismo: clube pequeno não
+  // contrata estrela e estrela não aceita divisão baixa).
+  const expectedTier = clamp(Math.round((p.ovr - 50) / 7), 2, 6);
+  // O clube precisa ter caixa minimamente compatível com o valor do jogador
+  // (fração do valor; um clube de Série D não negocia uma estrela de R$ 1 bi).
+  const canAfford = (c) => SALARY_TIERS[clamp(Number(c.tier) || 3, 1, 6)].cap >= Math.max(v / 400, 3000);
+  const fitsLevel = (c) => (Number(c.tier) || 3) >= expectedTier - 1 && canAfford(c);
+  let pool = allClubs(state).filter((c) => c.rep >= minRep && c.rep <= maxRep && c.id !== current && fitsLevel(c));
   if (p.phase === 'base' || p.phase === 'teen') {
     pool = allClubs(state).filter((c) => c.tier >= 2 && c.tier <= 4 && c.id !== current);
   }
   const freeAgent = !state.career.clubId && inFootball(state);
   if (freeAgent) {
-    pool = allClubs(state).filter((c) => c.rep >= Math.min(minRep, 50) && c.rep <= Math.max(maxRep, 80) && c.id !== current);
+    pool = allClubs(state).filter((c) => c.rep >= Math.min(minRep, 50) && c.rep <= Math.max(maxRep, 80) && c.id !== current && fitsLevel(c));
   }
   if (!pool.length) return;
   // quantidade de ofertas
@@ -1456,7 +1495,7 @@ function birthday(state, r) {
     if (p.ovr >= 58 && club) {
       p.phase = 'pro';
       state.career.contract = {
-        salary: 8000 + p.ovr * 400, years: 3, until: state.calendar.year + 3,
+        salary: salaryForClub(state, club, 'transfer'), years: 3, until: state.calendar.year + 3,
         releaseClause: p.value * 1.4, bonus: 50000, signedYear: state.calendar.year, youth: false,
       };
       addNews(state, `🎉 ${p.name} foi PROMOVIDO ao profissional do ${club.name}! Contrato de verdade, salário de R$ ${state.career.contract.salary.toLocaleString('pt-BR')}/mês.`, 'club', 'clube');

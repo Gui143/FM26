@@ -30,14 +30,26 @@ export default async function handler(event) {
 
   // O prompt limita o modelo ao papel de NPC de um jogo e evita que ele
   // invente ações de servidor ou peça dados privados ao jogador.
+  const ctxParts = [
+    `idade ${Number(context.age) || 0}`,
+    `fase ${String(context.phase || 'carreira').slice(0, 24)}`,
+    `clube ${String(context.club || 'sem clube').slice(0, 80)}`,
+  ];
+  if (context.ovr !== undefined) ctxParts.push(`OVR ${Math.min(Number(context.ovr) || 0, 99)}`);
+  if (context.form !== undefined) ctxParts.push(`forma ${Math.min(Number(context.form) || 0, 100)}`);
+  if (context.gols !== undefined) ctxParts.push(`${Math.max(Number(context.gols) || 0, 0)} gols na carreira em ${Math.max(Number(context.jogos) || 0, 0)} jogos`);
   const prompt = [
     'Você é um NPC de um simulador de carreira de futebol em português do Brasil.',
     `Seu papel é ${role}; seu nome é ${npcName}. O jogador se chama ${playerName}.`,
-    `Contexto seguro do jogo: idade ${Number(context.age) || 0}, fase ${String(context.phase || 'carreira').slice(0, 24)}, clube ${String(context.club || 'sem clube').slice(0, 80)}.`,
-    'Responda como uma mensagem curta, humana e calorosa, com no máximo 3 frases.',
+    `Contexto seguro do jogo: ${ctxParts.join(', ')}.`,
+  ];
+  if (context.ultimoJogo) prompt.push(`Último jogo do jogador: ${String(context.ultimoJogo).slice(0, 180)}. Reaja a isso naturalmente se fizer sentido.`);
+  prompt.push(
+    'Reaja à mensagem como essa pessoa reagiria de verdade: curta, humana e calorosa, com no máximo 3 frases, em português do Brasil.',
     'Não peça senha, e-mail, telefone, localização precisa ou dados financeiros. Não diga que é uma IA. Não dê instruções médicas, legais ou de apostas.',
     `Mensagem recebida: ${message}`,
-  ].join('\n');
+  );
+  const fullPrompt = prompt.join('\n');
 
   const model = String(process.env.GEMINI_MODEL || 'gemini-3.5-flash').replace(/^models\//, '');
   const endpoint = 'https://generativelanguage.googleapis.com/v1beta/interactions';
@@ -45,7 +57,7 @@ export default async function handler(event) {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ model, input: prompt }),
+      body: JSON.stringify({ model, input: fullPrompt }),
     });
     if (!response.ok) return json({ error: 'Gemini indisponível.' }, 502);
     const data = await response.json();

@@ -1131,6 +1131,219 @@ b, strong { font-weight: 700; }
 .chat-input input:focus { outline: none; border-color: var(--accent); }
 
 /* ============================================================================
+   CELULAR — mockup do aparelho (estilo celular.png)
+   ============================================================================ */
+.phone-wrap { display: flex; justify-content: center; padding: 4px 0 8px; }
+.phone-device {
+  width: min(330px, 88vw);
+  aspect-ratio: 163 / 443;
+  background: linear-gradient(160deg, #2a2a33, #0d0e13 35%, #05060a);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 46px;
+  padding: 11px;
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.55),
+    0 0 0 5px #05060a,
+    inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+.phone-device::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 74px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.92);
+  border-radius: 999px;
+  z-index: 3;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.12);
+}
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 36px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  position: relative;
+  background:
+    radial-gradient(120% 70% at 50% -12%, rgba(255, 107, 0, 0.20), transparent 55%),
+    radial-gradient(130% 60% at 50% 112%, rgba(34, 197, 94, 0.14), transparent 55%),
+    radial-gradient(90% 40% at 85% 40%, rgba(59, 130, 246, 0.08), transparent 60%),
+    linear-gradient(180deg, #14161f, #0a0c12 60%, #08090e);
+}
+.phone-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 26px 18px 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.phone-status-icons { font-size: 11px; opacity: 0.9; }
+.phone-locked {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 26px;
+  text-align: center;
+}
+.phone-locked h2 { font-size: 1.25rem; }
+.phone-locked .muted { font-size: 0.8rem; }
+
+/* Widget laranja (como no celular.png) */
+.phone-widget {
+  margin: 10px 16px 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ff6b00, #ff9a3d 70%, #ffb347);
+  color: #fff;
+  border: none;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 10px 24px rgba(255, 107, 0, 0.35);
+}
+.phone-widget b { font-size: 0.9rem; }
+.phone-widget .tiny { font-size: 0.68rem; opacity: 0.95; }
+.phone-widget.ph-widget-alert { background: linear-gradient(135deg, #e11d48, #fb7185); box-shadow: 0 10px 24px rgba(225, 29, 72, 0.35); }
+.phone-widget.ph-widget-news { background: linear-gradient(135deg, #0f172a, #334155); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.5); }
+
+/* Grade de apps */
+.phone-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px 6px;
+  padding: 18px 14px 4px;
+}
+.phone-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 2px 0;
+  font: inherit;
+}
+.phone-app:active .phone-app-icon { transform: scale(0.9); }
+.phone-app-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease;
+}
+.phone-app-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ph-instagram { background: linear-gradient(135deg, #feda75, #fa7e1e 45%, #d62976 75%, #962fbf); }
+.ph-whats { background: linear-gradient(160deg, #f0fdf4, #dcfce7); }
+.ph-orange { background: linear-gradient(135deg, #ff8a00, #ff5f00); }
+.ph-blue { background: linear-gradient(135deg, #60a5fa, #2563eb); }
+.ph-green { background: linear-gradient(160deg, #4ade80, #16a34a); }
+.ph-red { background: linear-gradient(160deg, #f87171, #dc2626); }
+.ph-gold { background: linear-gradient(160deg, #fde047, #eab308); }
+.ph-teal { background: linear-gradient(160deg, #2dd4bf, #0d9488); }
+.ph-purple { background: linear-gradient(160deg, #c084fc, #7c3aed); }
+.ph-pink { background: linear-gradient(160deg, #f9a8d4, #ec4899); }
+.ph-slate { background: linear-gradient(160deg, #94a3b8, #475569); }
+.ph-gray { background: linear-gradient(160deg, #9ca3af, #4b5563); }
+
+/* Lista de mensagens (como as linhas do celular.png) */
+.phone-list {
+  margin: 12px 16px 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.phone-list-head {
+  padding: 9px 13px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.phone-list-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: #fff;
+  width: 100%;
+  font: inherit;
+}
+.phone-list-row:last-child { border-bottom: none; }
+.phone-list-row:active { background: rgba(255, 255, 255, 0.06); }
+.ph-row-ico { font-size: 16px; }
+.ph-row-body { min-width: 0; }
+.ph-row-text {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Dock */
+.phone-dock {
+  margin: auto 16px 10px;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  padding: 10px 6px 8px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 24px;
+  backdrop-filter: blur(8px);
+}
+.phone-dock .phone-app-label { display: none; }
+
+/* Barra de navegação / home */
+.phone-homebar {
+  width: 116px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  margin: 0 auto 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
    IMERSÃO
    ============================================================================ */
 .immersion-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }

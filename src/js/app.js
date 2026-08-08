@@ -8,7 +8,7 @@ import { menuScreen, newGameScreen, homeScreen } from './screens.js';
 import {
   trainingScreen, matchScreen, careerScreen, marketScreen, familyScreen,
   moneyScreen, fameScreen, inboxScreen, hallScreen, settingsScreen,
-  savesScreen, creditsScreen, howtoScreen, socialScreen, immersionScreen
+  savesScreen, creditsScreen, howtoScreen, socialScreen, immersionScreen, phoneScreen
 } from './screens2.js';
 import { createNewGame, writeSlot, readSlot } from './game.js';
 import { buildDatabase } from './gen.js';
@@ -35,6 +35,7 @@ registerScreens({
   howto: howtoScreen,
   social: socialScreen,
   immersion: immersionScreen,
+  phone: phoneScreen,
 });
 
 // Configurações fora de partida (menu)

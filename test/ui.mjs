@@ -30,7 +30,12 @@ const checks = {
   howto: S2.howtoScreen.html(),
   social: S2.socialScreen.html(),
   immersion: S2.immersionScreen.html(),
+  phone: S2.phoneScreen.html(),
 };
+
+// Celular desbloqueado também deve renderizar
+App.state.player.hasCellphone = true;
+assert(S2.phoneScreen.html().includes('phone-device'), 'celular desbloqueado deve mostrar o aparelho');
 
 let ok = 0;
 for (const [k, v] of Object.entries(checks)) {

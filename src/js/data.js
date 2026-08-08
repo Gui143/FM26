@@ -636,6 +636,7 @@ Object.assign(I18N.pt, {
   training: 'Treino', play: 'Jogar', career: 'Carreira', market: 'Mercado',
   family: 'Família', money: 'Dinheiro', fame: 'Fama', more: 'Mais', inbox: 'Mensagens',
   settings: 'Configurações', saves: 'Saves', credits: 'Créditos', howto: 'Como Jogar',
+  phone: 'Celular', social: 'Rede Social', immersion: 'Cidade',
   newGame: 'Novo Jogo', continue: 'Continuar', loadSave: 'Carregar Save',
   advance: 'Avançar mês', next: 'Próximo', home: 'Início',
 });
@@ -643,6 +644,7 @@ Object.assign(I18N.en, {
   training: 'Training', play: 'Play', career: 'Career', market: 'Market',
   family: 'Family', money: 'Money', fame: 'Fame', more: 'More', inbox: 'Messages',
   settings: 'Settings', saves: 'Saves', credits: 'Credits', howto: 'How to Play',
+  phone: 'Phone', social: 'Social', immersion: 'City',
   newGame: 'New Game', continue: 'Continue', loadSave: 'Load Save',
   advance: 'Advance month', next: 'Next', home: 'Home',
 });

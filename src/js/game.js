@@ -278,9 +278,8 @@ function startYouthContract(state, rng) {
   const candidates = allClubs(state).filter((c) => c.tier === tier || c.tier === tier + 1 || c.tier === tier - 1);
   const club = preferredOrRandomClub(state, rng || makeRng(Date.now()), candidates);
   state.career.clubId = club.id;
-  const base = 1500 + ovr * 120;
   state.career.contract = {
-    salary: Math.round(base / 100) * 100,
+    salary: salaryForClub(state, club, 'youth'),
     years: 2, until: state.calendar.year + 2,
     releaseClause: marketValue(p) * 1.5,
     bonus: 10000, signedYear: state.calendar.year, youth: true,
@@ -577,10 +576,12 @@ function addTeamEvent(narrative, min, text, team) {
 
 function playerGoalChance(p, fx) {
   const pos = p.position;
-  const base = pos === 'ATA' ? 0.42 : pos === 'PON' ? 0.34 : pos === 'MEI' ? 0.2 : pos === 'MC' ? 0.12 : pos === 'VOL' ? 0.07 : pos === 'LAT' ? 0.06 : pos === 'ZAG' ? 0.05 : 0.01;
+  // Probabilidade de um evento de gol por lance narrado, por posição.
+  // Atacantes marcam com frequência; zagueiros/volantes raramente (bola parada).
+  const base = pos === 'ATA' ? 0.34 : pos === 'PON' ? 0.27 : pos === 'MEI' ? 0.17 : pos === 'MC' ? 0.11 : pos === 'VOL' ? 0.075 : pos === 'LAT' ? 0.07 : pos === 'ZAG' ? 0.06 : 0.004;
   const skill = (p.skills.SHO + p.skills.COM) / 2;
   const formF = p.form / 100;
-  const oppF = clamp(1.25 - fx.oppRep / 100, 0.5, 1.3);
+  const oppF = clamp(1.35 - fx.oppRep / 100, 0.55, 1.35);
   return base * (skill / 55) * (0.6 + formF * 0.6) * oppF;
 }
 function playerAssistChance(p) {
@@ -605,7 +606,7 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
   if (!fx.home) { gf = res.ga; ga = res.gh; }
 
   // participação do jogador
-  const canPlay = p.injured <= 0 && p.energy > 15 && ['base', 'pro', 'vet'].includes(p.phase);
+  const canPlay = p.injured <= 0 && p.energy > 10 && ['base', 'pro', 'vet'].includes(p.phase);
   let goals = 0, assists = 0, saves = 0, keyActions = 0, cards = 0, rating = 5;
   const shots = rng.int(0, p.position === 'GOL' ? 0 : 3);
 
@@ -630,9 +631,9 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
         continue;
       }
       const roll = rng.f();
-      if (roll < goalP * 0.55) {
+      if (roll < goalP * 0.5) {
         // gol!
-        const isGoal = rng.chance(0.8);
+        const isGoal = rng.chance(0.85);
         if (isGoal) {
           goals += 1;
           addPlayerEvent(narrative, min, `${rng.pick(R.goal)} ${p.name.split(' ')[0]} balançou as redes!`);
@@ -641,8 +642,8 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
           keyActions += 1;
           addPlayerEvent(narrative, min, `${rng.pick(R.shot)}`);
         }
-      } else if (roll < goalP * 0.55 + assistP * 0.5) {
-        const isAssist = rng.chance(0.75);
+      } else if (roll < goalP * 0.5 + assistP * 0.45) {
+        const isAssist = rng.chance(0.8);
         if (isAssist) {
           assists += 1;
           addPlayerEvent(narrative, min, `${rng.pick(R.assist)}`);
@@ -679,7 +680,6 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     const formF = (p.form - 50) / 50;
     const ovrF = (p.ovr - 60) / 30;
     rating = clamp(Math.round((5.1 + perf * 0.55 + formF * 0.5 + ovrF * 0.6 + rng.f() * 1.6 - 0.8) * 10) / 10, 1, 10);
-    if (rating >= 8.5 && (goals > 0 || assists > 0 || saves >= 4)) { fx.motm = true; }
   } else {
     narrative.push({ min: 0, text: p.injured > 0 ? `Você está lesionado(a) e não entrou em campo. 😞` : `Você ficou no banco sem energia para jogar.`, who: 'you' });
   }
@@ -704,14 +704,41 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
   // copa / continental / seleção
   applyCompOutcome(state, fx);
 
-  // efeitos no jogador
-  const energyCost = canPlay ? (4 + Math.round(rating * 0.7)) : 2;
+  // efeitos no jogador + estatísticas + bicho (compartilhado com simulação rápida)
+  applyPerformance(state, fx, { goals, assists, saves, keyActions, cards, rating, canPlay });
+  refreshPlayer(state);
+  return { ok: true, fx, result: fx.result, rating, goals, assists };
+}
+
+// Aplica os efeitos de uma partida disputada/simulada no jogador: energia,
+// forma, moral, estatísticas de carreira, experiência, fama, lesões e bicho.
+function applyPerformance(state, fx, { goals = 0, assists = 0, saves = 0, keyActions = 0, cards = 0, rating = 5, canPlay = true }, { sim = false } = {}) {
+  const p = state.player;
+  const opp = oppInfo(state, fx);
+  // guarda o último jogo para os NPCs reagirem ao desempenho do jogador
+  state.career.lastMatch = {
+    opp: String(opp.name).slice(0, 60),
+    comp: String(fx.compName || '').slice(0, 40),
+    gh: fx.gh, ga: fx.ga,
+    goals, rating,
+    result: fx.result,
+    motm: !!(fx.motm || (canPlay && rating >= 8.5 && (goals > 0 || assists > 0 || saves >= 4))),
+  };
+  // energia: partida ao vivo custa mais que simulação
+  const energyCost = canPlay ? (sim ? 2 + Math.round(rating * 0.25) : 3 + Math.round(rating * 0.4)) : 1;
   p.energy = clamp(p.energy - energyCost, 0, 100);
-  p.fitness = clamp(p.fitness - (canPlay ? 3 : 1), 20, 100);
+  p.fitness = clamp(p.fitness - (canPlay ? (sim ? 1 : 3) : 1), 20, 100);
   const formDelta = rating >= 8 ? 6 : rating >= 7 ? 3 : rating >= 6 ? 0 : rating >= 5 ? -3 : -6;
-  p.form = clamp(p.form + formDelta, 10, 99);
+  p.form = clamp(p.form + (sim ? Math.round(formDelta / 2) : formDelta), 10, 99);
   p.morale = clamp(p.morale + (fx.result === 'W' ? 4 : fx.result === 'L' ? -4 : 0) + (rating >= 8 ? 3 : 0), 10, 99);
-  if (fx.motm) { p.morale = clamp(p.morale + 4, 10, 99); addNews(state, `⭐ ${p.name} foi eleito o melhor em campo contra ${opp.name}!`, 'star', 'clube'); }
+  fx.motm = canPlay && rating >= 8.5 && (goals > 0 || assists > 0 || saves >= 4);
+  if (fx.motm) {
+    p.morale = clamp(p.morale + 4, 10, 99);
+    addNews(state, `⭐ ${p.name} foi eleito o melhor em campo contra ${opp.name}!`, 'star', 'clube');
+  }
+  if (goals >= 3) {
+    addNews(state, `🎩 HAT-TRICK! ${p.name} marcou ${goals} gols contra ${opp.name}!`, 'star', 'clube');
+  }
 
   // estatísticas
   if (canPlay) {
@@ -725,7 +752,7 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     state.career.season.pts += (rating - 5) * 12 + goals * 30 + assists * 20 + (fx.motm ? 25 : 0);
     // experiência de jogo (jovens evoluem jogando)
     if (p.age <= 23 && rating >= 6) {
-      const rng2 = makeRng(hashStr(`xp_${fixtureId}_${goals}_${assists}`) + Math.floor(Math.random() * 1e3));
+      const rng2 = makeRng(hashStr(`xp_${fx.id}_${goals}_${assists}`) + Math.floor(Math.random() * 1e3));
       if (rng2.chance(0.5)) {
         const sk = rng2.pick([...TECH_SKILLS, ...PHYS_SKILLS]);
         p.skills[sk] = clamp(p.skills[sk] + 1, 1, 99);
@@ -735,15 +762,17 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     // fama
     if (rating >= 8) {
       p.fame = clamp(p.fame + 1 + (fx.motm ? 1 : 0) + (fx.type === 'nt' ? 1 : 0), 0, 100);
-      p.followers += Math.round((3000 + p.fame * 2000) * (0.5 + rng.f()));
+      p.followers += Math.round((3000 + p.fame * 2000) * (0.5 + Math.random()));
     }
-    // lesão por partida
-    const injP = 0.02 + (p.energy < 25 ? 0.04 : 0) + (p.fitness < 35 ? 0.04 : 0) + (p.traits.includes('fog') ? 0.01 : 0);
-    if (rng.chance(injP)) {
-      const months = p.traits.includes('res') ? rng.int(1, 2) : rng.int(1, 3);
-      p.injured = months;
-      p.health = clamp(p.health - rng.int(4, 10), 5, 100);
-      addNews(state, `🤕 Lesão! ${p.name} fica ${months} mes(es) no departamento médico.`, 'injury', 'clube');
+    // lesão por partida (apenas ao vivo)
+    if (!sim) {
+      const injP = 0.02 + (p.energy < 25 ? 0.04 : 0) + (p.fitness < 35 ? 0.04 : 0) + (p.traits.includes('fog') ? 0.01 : 0);
+      if (Math.random() < injP) {
+        const months = p.traits.includes('res') ? intRand(1, 2) : intRand(1, 3);
+        p.injured = months;
+        p.health = clamp(p.health - intRand(4, 10), 5, 100);
+        addNews(state, `🤕 Lesão! ${p.name} fica ${months} mes(es) no departamento médico.`, 'injury', 'clube');
+      }
     }
   }
   // prêmio de jogo (bicho)
@@ -752,8 +781,10 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     p.totalEarnings += bonus;
     state.life.bank += bonus;
   }
-  refreshPlayer(state);
-  return { ok: true, fx, result: fx.result, rating, goals, assists };
+}
+
+function intRand(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 export function quickSimMatch(state, fixtureId) {
@@ -761,15 +792,40 @@ export function quickSimMatch(state, fixtureId) {
   if (!fx || fx.played) return { ok: false, msg: 'Indisponível.' };
   const p = state.player;
   const rng = makeRng(hashStr(`qs_${fixtureId}`));
+  const canPlay = p.injured <= 0 && p.energy > 10 && ['base', 'pro', 'vet'].includes(p.phase);
   const myStr = teamStrength(state) * 0.92;
   const res = simTeamMatch(rng, myStr, fx.oppRep + rng.int(-2, 2), fx.home ? 1.1 : 0.95);
   let gf = fx.home ? res.gh : res.ga, ga = fx.home ? res.ga : res.gh;
+
+  // Desempenho do jogador na simulação: gols e assistências CONTAM aqui também!
+  let goals = 0, assists = 0;
+  const narrative = [];
+  const minutePool = [2, 8, 15, 23, 31, 38, 44, 52, 58, 66, 73, 79, 85, 90];
+  if (canPlay) {
+    const goalP = playerGoalChance(p, fx);
+    const assistP = playerAssistChance(p);
+    // piso mínimo garante uma chance rara até para zagueiros; goleiro é raríssimo
+    const goalFloor = p.position === 'GOL' ? 0.005 : 0.03;
+    goals = Math.min(poisson(rng, Math.max(goalFloor, goalP * 1.45)), 5);
+    assists = Math.min(poisson(rng, Math.max(0.03, assistP * 1.2)), 4);
+    gf += goals;
+    for (let i = 0; i < goals; i++) {
+      const min = minutePool[Math.floor(rng.f() * minutePool.length)];
+      addPlayerEvent(narrative, min, `${rng.pick(R.goal)} ${p.name.split(' ')[0]} balançou as redes!`);
+    }
+    for (let i = 0; i < assists; i++) {
+      const min = minutePool[Math.floor(rng.f() * minutePool.length)];
+      addPlayerEvent(narrative, min, `${rng.pick(R.assist)}`);
+    }
+  }
+
   fx.gh = gf; fx.ga = ga;
   fx.result = gf > ga ? 'W' : gf < ga ? 'L' : 'D';
   fx.played = true;
-  fx.rating = p.injured > 0 ? 0 : clamp(Math.round((4.6 + p.form / 25 + rng.f() * 2 - 0.5) * 10) / 10, 1, 10);
+  fx.rating = !canPlay ? 0 : clamp(Math.round((4.6 + p.form / 25 + rng.f() * 2 - 0.5 + goals * 1.2 + assists * 0.8) * 10) / 10, 1, 10);
   fx.quick = true;
-  fx.narrative = [];
+  fx.goals = goals; fx.assists = assists;
+  fx.narrative = narrative.sort((a, b) => a.min - b.min);
   if (fx.type === 'league' && fx.extra?.lgFixture && state.career.league) {
     const f = fx.extra.lgFixture;
     f.gh = gf; f.ga = ga; f.played = true;
@@ -778,13 +834,7 @@ export function quickSimMatch(state, fixtureId) {
     if (h && a) { applyResult(h, f.gh, f.ga); applyResult(a, f.ga, f.gh); }
   }
   applyCompOutcome(state, fx);
-  p.energy = clamp(p.energy - 3, 0, 100);
-  if (fx.rating > 0 && p.injured <= 0) {
-    state.career.season.apps++;
-    state.career.total.apps++;
-    state.career.season.ratingSum += fx.rating;
-    state.career.season.pts += (fx.rating - 5) * 8;
-  }
+  applyPerformance(state, fx, { goals, assists, rating: fx.rating, canPlay }, { sim: true });
   return { ok: true, fx };
 }
 
@@ -1121,14 +1171,38 @@ export function rejectOffer(state, offerId) {
 }
 
 // -------------------- Transferências / contratos --------------------
+// Teto e base salarial por divisão (R$/mês). O clube paga o que a divisão
+// comporta — um craque de R$ 400 mi de valor não recebe R$ 1 mi/mês para
+// jogar a Série B: o teto da Série B é R$ 250 mil.
+const SALARY_TIERS = {
+  1: { cap: 18000, base: 4500 },      // Série D / ligas regionais
+  2: { cap: 45000, base: 10000 },     // Série D forte / ligas menores
+  3: { cap: 90000, base: 22000 },     // Série C
+  4: { cap: 250000, base: 50000 },    // Série B / ligas médias
+  5: { cap: 800000, base: 130000 },   // Série A / ligas fortes
+  6: { cap: 4000000, base: 400000 },  // Gigantes da Europa
+};
+
 function salaryForClub(state, club, type) {
   const p = state.player;
   const v = p.value;
-  const tierFactor = [0.55, 0.7, 0.85, 1.0, 1.3, 1.7][club.tier - 1] || 1;
-  let base = v / 150 + tierFactor * 60000;
-  if (type === 'youth') base = 1500 + p.ovr * 120;
-  if (type === 'free') base *= 0.85;
-  return Math.round(base / 100) * 100;
+  const tier = clamp(Number(club.tier) || 3, 1, 6);
+  const cfg = SALARY_TIERS[tier];
+  if (type === 'youth') {
+    // Contrato de base: bolsa-auxílio, não salário de profissional.
+    return Math.round(Math.max(600 + p.ovr * 55, 900) / 100) * 100;
+  }
+  // Quanto o jogador acha que merece: proporcional ao valor de mercado,
+  // com deságio para jovens (potencial) e veteranos (declínio).
+  const ageF = p.age <= 20 ? 0.5 : p.age <= 23 ? 0.72 : p.age <= 26 ? 0.9 : p.age <= 29 ? 1 : p.age <= 31 ? 0.78 : p.age <= 34 ? 0.55 : 0.32;
+  const fameF = 1 + (p.fame || 0) / 160;
+  const want = (v / 220) * ageF * fameF;
+  // O clube oferece a base da divisão + até o teto, conforme o jogador valha.
+  // Jovens (21-) recebem um desconto natural de experiência.
+  const youthDiscount = p.age <= 21 ? 0.55 : 1;
+  const offer = (cfg.base + Math.min(want * 0.65, cfg.cap - cfg.base)) * youthDiscount;
+  const base = type === 'free' ? offer * 0.85 : offer;
+  return Math.round(Math.max(base, 900) / 100) * 100;
 }
 
 function makeOffer(state, club, type = 'transfer') {
@@ -1159,13 +1233,20 @@ export function generateOffers(state) {
   let maxRep = clamp(minRep + 25, 40, 99);
   if (p.ovr >= 85) { minRep = 80; maxRep = 99; }
   if (p.ovr <= 50) { minRep = 30; maxRep = 65; }
-  let pool = allClubs(state).filter((c) => c.rep >= minRep && c.rep <= maxRep && c.id !== current);
+  // Divisão esperada para o nível do jogador (realismo: clube pequeno não
+  // contrata estrela e estrela não aceita divisão baixa).
+  const expectedTier = clamp(Math.round((p.ovr - 50) / 7), 2, 6);
+  // O clube precisa ter caixa minimamente compatível com o valor do jogador
+  // (fração do valor; um clube de Série D não negocia uma estrela de R$ 1 bi).
+  const canAfford = (c) => SALARY_TIERS[clamp(Number(c.tier) || 3, 1, 6)].cap >= Math.max(v / 400, 3000);
+  const fitsLevel = (c) => (Number(c.tier) || 3) >= expectedTier - 1 && canAfford(c);
+  let pool = allClubs(state).filter((c) => c.rep >= minRep && c.rep <= maxRep && c.id !== current && fitsLevel(c));
   if (p.phase === 'base' || p.phase === 'teen') {
     pool = allClubs(state).filter((c) => c.tier >= 2 && c.tier <= 4 && c.id !== current);
   }
   const freeAgent = !state.career.clubId && inFootball(state);
   if (freeAgent) {
-    pool = allClubs(state).filter((c) => c.rep >= Math.min(minRep, 50) && c.rep <= Math.max(maxRep, 80) && c.id !== current);
+    pool = allClubs(state).filter((c) => c.rep >= Math.min(minRep, 50) && c.rep <= Math.max(maxRep, 80) && c.id !== current && fitsLevel(c));
   }
   if (!pool.length) return;
   // quantidade de ofertas
@@ -1414,7 +1495,7 @@ function birthday(state, r) {
     if (p.ovr >= 58 && club) {
       p.phase = 'pro';
       state.career.contract = {
-        salary: 8000 + p.ovr * 400, years: 3, until: state.calendar.year + 3,
+        salary: salaryForClub(state, club, 'transfer'), years: 3, until: state.calendar.year + 3,
         releaseClause: p.value * 1.4, bonus: 50000, signedYear: state.calendar.year, youth: false,
       };
       addNews(state, `🎉 ${p.name} foi PROMOVIDO ao profissional do ${club.name}! Contrato de verdade, salário de R$ ${state.career.contract.salary.toLocaleString('pt-BR')}/mês.`, 'club', 'clube');
@@ -2009,8 +2090,8 @@ function autoSimRemaining(state, r) {
 
 function monthlyRecovery(state, r) {
   const p = state.player;
-  // energia
-  p.energy = clamp(p.energy + 35, 0, 100);
+  // energia (recuperação maior para aguentar 4-6 jogos por mês)
+  p.energy = clamp(p.energy + 45, 0, 100);
   // forma tende ao overall base
   if (p.injured > 0) {
     p.form = clamp(p.form - 3, 10, 99);

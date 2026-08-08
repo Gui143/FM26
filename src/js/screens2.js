@@ -152,7 +152,7 @@ function matchRow(s, f, played=false) {
       <div class="tiny muted">${esc(f.compName)} • ${f.home?'🏟️ Casa':'✈️ Fora'}</div>
     </div>
     ${!played ? `<div><button class="btn small primary" data-play="${f.id}">${icon('play')}</button><button class="btn small" data-quick="${f.id}">Simular</button></div>` : 
-      `<div class="tiny" style="text-align:right">${f.rating?`Nota <b>${f.rating}</b>`:''} ${f.motm?'⭐':''}</div>`}
+      `<div class="tiny" style="text-align:right">${f.rating?`Nota <b>${f.rating}</b>`:''}${f.goals?` • <b>${f.goals}⚽</b>`:''}${f.motm?' ⭐':''}</div>`}
   </div>`;
 }
 
@@ -553,7 +553,18 @@ function openPostComposer(s) {
 }
 
 function npcContext(s) {
-  return { age: s.player.age, club: G.myClub(s)?.name || 'sem clube', phase: s.player.phase };
+  const last = s.career.lastMatch || null;
+  return {
+    age: s.player.age,
+    club: G.myClub(s)?.name || 'sem clube',
+    phase: s.player.phase,
+    ovr: s.player.ovr,
+    form: Math.round(s.player.form),
+    fame: Math.round(s.player.fame || 0),
+    gols: s.career.total.goals,
+    jogos: s.career.total.apps,
+    ultimoJogo: last ? `${last.comp} vs ${last.opp}: ${last.gh}x${last.ga} (${last.result === 'W' ? 'vitória' : last.result === 'L' ? 'derrota' : 'empate'})${last.goals ? `, ${last.goals} gol(s) seu(s)` : ''}${last.motm ? ', melhor em campo' : ''}${last.rating ? `, nota ${last.rating}` : ''}` : null,
+  };
 }
 
 function openNpcChat(s, { role = 'fã', npcName = 'Fã', userId = null } = {}) {
@@ -688,6 +699,109 @@ export const socialScreen = {
 };
 
 // ============================================================
+// CELULAR — mockup do aparelho no estilo celular.png
+// Home screen com barra de status, grade de apps e dock
+// ============================================================
+const PHONE_APPS = [
+  { route: 'social', icon: '📸', label: 'Rede Social', cls: 'ph-instagram' },
+  { route: 'inbox', icon: '💬', label: 'Mensagens', cls: 'ph-whats' },
+  { route: 'family', icon: '❤️', label: 'Família', cls: 'ph-orange' },
+  { route: 'money', icon: '💰', label: 'Finanças', cls: 'ph-blue' },
+  { route: 'match', icon: '⚽', label: 'Partidas', cls: 'ph-green' },
+  { route: 'training', icon: '🎯', label: 'Treino', cls: 'ph-red' },
+  { route: 'career', icon: '🏆', label: 'Carreira', cls: 'ph-gold' },
+  { route: 'immersion', icon: '🌆', label: 'Cidade', cls: 'ph-teal' },
+  { route: 'market', icon: '🛒', label: 'Mercado', cls: 'ph-purple' },
+  { route: 'fame', icon: '⭐', label: 'Fama', cls: 'ph-pink' },
+  { route: 'saves', icon: '💾', label: 'Saves', cls: 'ph-slate' },
+  { route: 'settings', icon: '⚙️', label: 'Ajustes', cls: 'ph-gray' },
+];
+const PHONE_DOCK = [
+  { route: 'match', icon: '⚽', label: 'Partidas', cls: 'ph-green' },
+  { route: 'social', icon: '📸', label: 'Rede', cls: 'ph-instagram' },
+  { route: 'inbox', icon: '💬', label: 'Zap', cls: 'ph-whats' },
+  { route: 'settings', icon: '⚙️', label: 'Ajustes', cls: 'ph-gray' },
+];
+
+function phoneStatusBar() {
+  const now = new Date();
+  const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="phone-statusbar"><span class="phone-time">${time}</span><span class="phone-status-icons">📶 🔋</span></div>`;
+}
+
+function phoneWidgetHTML(s) {
+  if (s.pending) {
+    return `<button class="phone-widget ph-widget-alert" data-open-pending="1"><div class="tiny" style="opacity:.9">⚠️ DECISÃO PENDENTE</div><b>${esc(s.pending.title)}</b><div class="tiny">Toque para responder →</div></button>`;
+  }
+  const next = s.matches.find((f) => !f.played);
+  if (next) {
+    const opp = G.oppInfo(s, next);
+    return `<button class="phone-widget" data-go="match"><div class="tiny" style="opacity:.9">⚽ PRÓXIMO JOGO</div><b>vs ${esc(opp.name)}</b><div class="tiny">${next.home ? '🏟️ Casa' : '✈️ Fora'} • ${esc(next.compName)} →</div></button>`;
+  }
+  const news = s.inbox[0];
+  return `<button class="phone-widget ph-widget-news" data-go="inbox"><div class="tiny" style="opacity:.9">📰 ÚLTIMA NOTÍCIA</div><b>${esc(news ? news.text : 'Sua história começa agora!')}</b></button>`;
+}
+
+function phoneMessagesHTML(s) {
+  const items = s.inbox.slice(0, 3);
+  if (!items.length) return '<div class="phone-list-row muted">Nenhuma mensagem ainda.</div>';
+  const ico = { info: '📌', club: '🏟️', vida: '💬', clube: '🏟️', selecao: '🦅', fama: '⭐', money: '💰', star: '⭐', trophy: '🏆', injury: '🤕' };
+  return items.map((n) => `<div class="phone-list-row" data-go="inbox"><span class="ph-row-ico">${ico[n.type] || '📌'}</span><div class="ph-row-body"><div class="ph-row-text">${esc(n.text)}</div><div class="tiny" style="opacity:.55">${esc(n.date)}</div></div></div>`).join('');
+}
+
+export const phoneScreen = {
+  html() {
+    const s = S();
+    const p = s.player;
+    const locked = !p.hasCellphone;
+    return `
+    <div class="vc-screen">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <button class="btn ghost small" data-go="home">${icon('back')} Início</button>
+        <h1 class="h-title" style="margin:0">${icon('phone')} MEU CELULAR</h1>
+      </div>
+      <p class="muted" style="margin:4px 0 14px">${locked ? 'Aparelho bloqueado — compre um celular para desbloquear.' : `Aparelho de ${esc(p.name)} • toque em um app para abrir.`}</p>
+      <div class="phone-wrap">
+        <div class="phone-device">
+          <div class="phone-screen">
+            ${phoneStatusBar()}
+            ${locked ? `
+              <div class="phone-locked">
+                <div style="font-size:3.2rem;margin-bottom:6px">📵</div>
+                <h2 style="margin:0 0 6px">Sem celular</h2>
+                <p class="muted" style="line-height:1.5">Compre um celular no Mercado (R$ 2.800) para desbloquear a rede social, conversas e a cidade.</p>
+                <button class="btn primary" data-go="market">Ir ao Mercado</button>
+              </div>` : `
+              ${phoneWidgetHTML(s)}
+              <div class="phone-grid">
+                ${PHONE_APPS.map((a) => `<button class="phone-app" data-app="${a.route}" title="${esc(a.label)}"><span class="phone-app-icon ${a.cls}">${a.icon}</span><span class="phone-app-label">${esc(a.label)}</span></button>`).join('')}
+              </div>
+              <div class="phone-list">
+                <div class="phone-list-head">📩 Mensagens recentes</div>
+                ${phoneMessagesHTML(s)}
+              </div>
+              <div class="phone-dock">
+                ${PHONE_DOCK.map((a) => `<button class="phone-app" data-app="${a.route}" title="${esc(a.label)}"><span class="phone-app-icon ${a.cls}" style="width:46px;height:46px;font-size:21px">${a.icon}</span><span class="phone-app-label">${esc(a.label)}</span></button>`).join('')}
+              </div>
+              <div class="phone-homebar" data-go="home" title="Voltar ao início"></div>`}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px"><button class="btn ghost block" data-go="home">${icon('back')} Voltar ao Início</button></div>
+    </div>`;
+  },
+  mount(el) {
+    const s = S();
+    el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
+    el.querySelectorAll('.phone-app').forEach((b) => b.onclick = () => {
+      tone(560, 0.07, 'sine');
+      go(b.dataset.app);
+    });
+    el.querySelector('[data-open-pending]')?.addEventListener('click', () => openPendingModal(s));
+  },
+};
+
+// ============================================================
 // IMERSÃO — CARROS REAIS + RUAS REAIS + FALAR O QUE QUISER
 // ============================================================
 export const immersionScreen = {
@@ -761,39 +875,37 @@ export const immersionScreen = {
     const sayBtn = el.querySelector('#street-say');
     const area = el.querySelector('#street-area');
 
-    sayBtn.onclick = () => {
+    sayBtn.onclick = async () => {
       const txt = input.value.trim();
       if (!txt) return;
       const div = document.createElement('div');
       div.className = 'dialogue-line';
       div.innerHTML = `<b>Você:</b> ${esc(txt)}`;
       area.appendChild(div);
+      input.value = '';
 
-      // Resposta aleatória + impacto
-      setTimeout(() => {
-        const responses = [
-          'Que legal! Boa sorte nos próximos jogos.',
-          'Mano, você é foda! Me dá um autógrafo?',
-          'Vai com calma que o time precisa de você.',
-          'Cara, eu te vi jogar. Tá absurdo!',
-          'Tô torcendo por você desde sempre.'
-        ];
-        const rep = responses[Math.floor(Math.random()*responses.length)];
+      // Resposta do passante via Gemini (com fallback local) + impacto
+      setTimeout(async () => {
+        const r = await requestNpcReply({
+          role: 'fã',
+          npcName: 'Passante na rua',
+          playerName: s.player.name,
+          message: txt,
+          context: npcContext(s),
+        });
         const rdiv = document.createElement('div');
         rdiv.className = 'dialogue-line';
-        rdiv.innerHTML = `<b>Passante:</b> ${rep}`;
+        rdiv.innerHTML = `<b>Passante:</b> ${esc(r.reply)}`;
         area.appendChild(rdiv);
         area.scrollTop = area.scrollHeight;
 
         // Impacto
         s.player.happiness = Math.min(100, s.player.happiness + (txt.length > 18 ? 2 : 1));
-        if (txt.toLowerCase().includes('treinar') || txt.toLowerCase().includes('jogar')) {
+        if (/treinar|jogar|gol/i.test(txt)) {
           s.player.form = Math.min(99, s.player.form + 1);
         }
         autosave();
-      }, 620);
-
-      input.value = '';
+      }, 500);
     };
 
     input.onkeydown = e => { if (e.key==='Enter') sayBtn.click(); };

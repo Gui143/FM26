@@ -328,6 +328,20 @@ export const homeScreen = {
         </div>
       </section>
 
+      <!-- CELULAR -->
+      <section class="card phone-shortcut" style="margin-top:16px">
+        <div class="h-sec">📱 MEU CELULAR</div>
+        ${p.hasCellphone ? `
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px"><b>Aparelho de ${esc(p.name)}</b><div class="tiny muted">Rede social, mensagens, finanças e cidade na palma da mão.</div></div>
+          <button class="btn primary" data-go="phone">${icon('phone')} Abrir Celular</button>
+        </div>` : `
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px"><b>Celular bloqueado 📵</b><div class="tiny muted">Compre um celular (R$ 2.800) para desbloquear rede social, mensagens e a cidade.</div></div>
+          <button class="btn primary" data-act="buy-phone" ${s.life.bank >= 2800 ? '' : 'disabled'}>Comprar — R$ 2.800</button>
+        </div>`}
+      </section>
+
       <!-- NOTÍCIAS -->
       <section class="card news-card" style="margin-top:16px">
         <div class="h-sec" style="display:flex;justify-content:space-between;align-items:center">📰 NOTÍCIAS DO FUTEBOL ${unread ? `<button class="btn small primary" data-act="readall">Marcar lidas</button>` : ''}</div>
@@ -342,6 +356,14 @@ export const homeScreen = {
     const s = S();
     el.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
     el.querySelector('[data-open-pending]')?.addEventListener('click', () => openPendingModal(s));
+    el.querySelector('[data-act=buy-phone]')?.addEventListener('click', () => {
+      if (s.life.bank < 2800) return toast('Dinheiro insuficiente.', 'error');
+      s.life.bank -= 2800;
+      s.player.hasCellphone = true;
+      autosave();
+      toast('📱 Celular comprado! Abra a aba Celular para usar.');
+      renderRoute();
+    });
     el.querySelector('[data-act=readall]')?.addEventListener('click', () => { G.markAllRead(s); autosave(); renderRoute(); });
     el.querySelector('[data-act=advance]')?.addEventListener('click', () => advanceMonthUI());
     el.querySelectorAll('[data-play]').forEach((b) => b.onclick = () => {

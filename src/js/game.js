@@ -577,10 +577,12 @@ function addTeamEvent(narrative, min, text, team) {
 
 function playerGoalChance(p, fx) {
   const pos = p.position;
-  const base = pos === 'ATA' ? 0.42 : pos === 'PON' ? 0.34 : pos === 'MEI' ? 0.2 : pos === 'MC' ? 0.12 : pos === 'VOL' ? 0.07 : pos === 'LAT' ? 0.06 : pos === 'ZAG' ? 0.05 : 0.01;
+  // Probabilidade de um evento de gol por lance narrado, por posição.
+  // Atacantes marcam com frequência; zagueiros/volantes raramente (bola parada).
+  const base = pos === 'ATA' ? 0.34 : pos === 'PON' ? 0.27 : pos === 'MEI' ? 0.17 : pos === 'MC' ? 0.11 : pos === 'VOL' ? 0.075 : pos === 'LAT' ? 0.07 : pos === 'ZAG' ? 0.06 : 0.004;
   const skill = (p.skills.SHO + p.skills.COM) / 2;
   const formF = p.form / 100;
-  const oppF = clamp(1.25 - fx.oppRep / 100, 0.5, 1.3);
+  const oppF = clamp(1.35 - fx.oppRep / 100, 0.55, 1.35);
   return base * (skill / 55) * (0.6 + formF * 0.6) * oppF;
 }
 function playerAssistChance(p) {
@@ -605,7 +607,7 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
   if (!fx.home) { gf = res.ga; ga = res.gh; }
 
   // participação do jogador
-  const canPlay = p.injured <= 0 && p.energy > 15 && ['base', 'pro', 'vet'].includes(p.phase);
+  const canPlay = p.injured <= 0 && p.energy > 10 && ['base', 'pro', 'vet'].includes(p.phase);
   let goals = 0, assists = 0, saves = 0, keyActions = 0, cards = 0, rating = 5;
   const shots = rng.int(0, p.position === 'GOL' ? 0 : 3);
 
@@ -630,9 +632,9 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
         continue;
       }
       const roll = rng.f();
-      if (roll < goalP * 0.55) {
+      if (roll < goalP * 0.5) {
         // gol!
-        const isGoal = rng.chance(0.8);
+        const isGoal = rng.chance(0.85);
         if (isGoal) {
           goals += 1;
           addPlayerEvent(narrative, min, `${rng.pick(R.goal)} ${p.name.split(' ')[0]} balançou as redes!`);
@@ -641,8 +643,8 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
           keyActions += 1;
           addPlayerEvent(narrative, min, `${rng.pick(R.shot)}`);
         }
-      } else if (roll < goalP * 0.55 + assistP * 0.5) {
-        const isAssist = rng.chance(0.75);
+      } else if (roll < goalP * 0.5 + assistP * 0.45) {
+        const isAssist = rng.chance(0.8);
         if (isAssist) {
           assists += 1;
           addPlayerEvent(narrative, min, `${rng.pick(R.assist)}`);
@@ -679,7 +681,6 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     const formF = (p.form - 50) / 50;
     const ovrF = (p.ovr - 60) / 30;
     rating = clamp(Math.round((5.1 + perf * 0.55 + formF * 0.5 + ovrF * 0.6 + rng.f() * 1.6 - 0.8) * 10) / 10, 1, 10);
-    if (rating >= 8.5 && (goals > 0 || assists > 0 || saves >= 4)) { fx.motm = true; }
   } else {
     narrative.push({ min: 0, text: p.injured > 0 ? `Você está lesionado(a) e não entrou em campo. 😞` : `Você ficou no banco sem energia para jogar.`, who: 'you' });
   }
@@ -704,14 +705,32 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
   // copa / continental / seleção
   applyCompOutcome(state, fx);
 
-  // efeitos no jogador
-  const energyCost = canPlay ? (4 + Math.round(rating * 0.7)) : 2;
+  // efeitos no jogador + estatísticas + bicho (compartilhado com simulação rápida)
+  applyPerformance(state, fx, { goals, assists, saves, keyActions, cards, rating, canPlay });
+  refreshPlayer(state);
+  return { ok: true, fx, result: fx.result, rating, goals, assists };
+}
+
+// Aplica os efeitos de uma partida disputada/simulada no jogador: energia,
+// forma, moral, estatísticas de carreira, experiência, fama, lesões e bicho.
+function applyPerformance(state, fx, { goals = 0, assists = 0, saves = 0, keyActions = 0, cards = 0, rating = 5, canPlay = true }, { sim = false } = {}) {
+  const p = state.player;
+  const opp = oppInfo(state, fx);
+  // energia: partida ao vivo custa mais que simulação
+  const energyCost = canPlay ? (sim ? 2 + Math.round(rating * 0.25) : 3 + Math.round(rating * 0.4)) : 1;
   p.energy = clamp(p.energy - energyCost, 0, 100);
-  p.fitness = clamp(p.fitness - (canPlay ? 3 : 1), 20, 100);
+  p.fitness = clamp(p.fitness - (canPlay ? (sim ? 1 : 3) : 1), 20, 100);
   const formDelta = rating >= 8 ? 6 : rating >= 7 ? 3 : rating >= 6 ? 0 : rating >= 5 ? -3 : -6;
-  p.form = clamp(p.form + formDelta, 10, 99);
+  p.form = clamp(p.form + (sim ? Math.round(formDelta / 2) : formDelta), 10, 99);
   p.morale = clamp(p.morale + (fx.result === 'W' ? 4 : fx.result === 'L' ? -4 : 0) + (rating >= 8 ? 3 : 0), 10, 99);
-  if (fx.motm) { p.morale = clamp(p.morale + 4, 10, 99); addNews(state, `⭐ ${p.name} foi eleito o melhor em campo contra ${opp.name}!`, 'star', 'clube'); }
+  fx.motm = canPlay && rating >= 8.5 && (goals > 0 || assists > 0 || saves >= 4);
+  if (fx.motm) {
+    p.morale = clamp(p.morale + 4, 10, 99);
+    addNews(state, `⭐ ${p.name} foi eleito o melhor em campo contra ${opp.name}!`, 'star', 'clube');
+  }
+  if (goals >= 3) {
+    addNews(state, `🎩 HAT-TRICK! ${p.name} marcou ${goals} gols contra ${opp.name}!`, 'star', 'clube');
+  }
 
   // estatísticas
   if (canPlay) {
@@ -725,7 +744,7 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     state.career.season.pts += (rating - 5) * 12 + goals * 30 + assists * 20 + (fx.motm ? 25 : 0);
     // experiência de jogo (jovens evoluem jogando)
     if (p.age <= 23 && rating >= 6) {
-      const rng2 = makeRng(hashStr(`xp_${fixtureId}_${goals}_${assists}`) + Math.floor(Math.random() * 1e3));
+      const rng2 = makeRng(hashStr(`xp_${fx.id}_${goals}_${assists}`) + Math.floor(Math.random() * 1e3));
       if (rng2.chance(0.5)) {
         const sk = rng2.pick([...TECH_SKILLS, ...PHYS_SKILLS]);
         p.skills[sk] = clamp(p.skills[sk] + 1, 1, 99);
@@ -735,15 +754,17 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     // fama
     if (rating >= 8) {
       p.fame = clamp(p.fame + 1 + (fx.motm ? 1 : 0) + (fx.type === 'nt' ? 1 : 0), 0, 100);
-      p.followers += Math.round((3000 + p.fame * 2000) * (0.5 + rng.f()));
+      p.followers += Math.round((3000 + p.fame * 2000) * (0.5 + Math.random()));
     }
-    // lesão por partida
-    const injP = 0.02 + (p.energy < 25 ? 0.04 : 0) + (p.fitness < 35 ? 0.04 : 0) + (p.traits.includes('fog') ? 0.01 : 0);
-    if (rng.chance(injP)) {
-      const months = p.traits.includes('res') ? rng.int(1, 2) : rng.int(1, 3);
-      p.injured = months;
-      p.health = clamp(p.health - rng.int(4, 10), 5, 100);
-      addNews(state, `🤕 Lesão! ${p.name} fica ${months} mes(es) no departamento médico.`, 'injury', 'clube');
+    // lesão por partida (apenas ao vivo)
+    if (!sim) {
+      const injP = 0.02 + (p.energy < 25 ? 0.04 : 0) + (p.fitness < 35 ? 0.04 : 0) + (p.traits.includes('fog') ? 0.01 : 0);
+      if (Math.random() < injP) {
+        const months = p.traits.includes('res') ? intRand(1, 2) : intRand(1, 3);
+        p.injured = months;
+        p.health = clamp(p.health - intRand(4, 10), 5, 100);
+        addNews(state, `🤕 Lesão! ${p.name} fica ${months} mes(es) no departamento médico.`, 'injury', 'clube');
+      }
     }
   }
   // prêmio de jogo (bicho)
@@ -752,8 +773,10 @@ export function playMatch(state, fixtureId, { live = false } = {}) {
     p.totalEarnings += bonus;
     state.life.bank += bonus;
   }
-  refreshPlayer(state);
-  return { ok: true, fx, result: fx.result, rating, goals, assists };
+}
+
+function intRand(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 export function quickSimMatch(state, fixtureId) {
@@ -761,15 +784,40 @@ export function quickSimMatch(state, fixtureId) {
   if (!fx || fx.played) return { ok: false, msg: 'Indisponível.' };
   const p = state.player;
   const rng = makeRng(hashStr(`qs_${fixtureId}`));
+  const canPlay = p.injured <= 0 && p.energy > 10 && ['base', 'pro', 'vet'].includes(p.phase);
   const myStr = teamStrength(state) * 0.92;
   const res = simTeamMatch(rng, myStr, fx.oppRep + rng.int(-2, 2), fx.home ? 1.1 : 0.95);
   let gf = fx.home ? res.gh : res.ga, ga = fx.home ? res.ga : res.gh;
+
+  // Desempenho do jogador na simulação: gols e assistências CONTAM aqui também!
+  let goals = 0, assists = 0;
+  const narrative = [];
+  const minutePool = [2, 8, 15, 23, 31, 38, 44, 52, 58, 66, 73, 79, 85, 90];
+  if (canPlay) {
+    const goalP = playerGoalChance(p, fx);
+    const assistP = playerAssistChance(p);
+    // piso mínimo garante uma chance rara até para zagueiros; goleiro é raríssimo
+    const goalFloor = p.position === 'GOL' ? 0.005 : 0.03;
+    goals = Math.min(poisson(rng, Math.max(goalFloor, goalP * 1.45)), 5);
+    assists = Math.min(poisson(rng, Math.max(0.03, assistP * 1.2)), 4);
+    gf += goals;
+    for (let i = 0; i < goals; i++) {
+      const min = minutePool[Math.floor(rng.f() * minutePool.length)];
+      addPlayerEvent(narrative, min, `${rng.pick(R.goal)} ${p.name.split(' ')[0]} balançou as redes!`);
+    }
+    for (let i = 0; i < assists; i++) {
+      const min = minutePool[Math.floor(rng.f() * minutePool.length)];
+      addPlayerEvent(narrative, min, `${rng.pick(R.assist)}`);
+    }
+  }
+
   fx.gh = gf; fx.ga = ga;
   fx.result = gf > ga ? 'W' : gf < ga ? 'L' : 'D';
   fx.played = true;
-  fx.rating = p.injured > 0 ? 0 : clamp(Math.round((4.6 + p.form / 25 + rng.f() * 2 - 0.5) * 10) / 10, 1, 10);
+  fx.rating = !canPlay ? 0 : clamp(Math.round((4.6 + p.form / 25 + rng.f() * 2 - 0.5 + goals * 1.2 + assists * 0.8) * 10) / 10, 1, 10);
   fx.quick = true;
-  fx.narrative = [];
+  fx.goals = goals; fx.assists = assists;
+  fx.narrative = narrative.sort((a, b) => a.min - b.min);
   if (fx.type === 'league' && fx.extra?.lgFixture && state.career.league) {
     const f = fx.extra.lgFixture;
     f.gh = gf; f.ga = ga; f.played = true;
@@ -778,13 +826,7 @@ export function quickSimMatch(state, fixtureId) {
     if (h && a) { applyResult(h, f.gh, f.ga); applyResult(a, f.ga, f.gh); }
   }
   applyCompOutcome(state, fx);
-  p.energy = clamp(p.energy - 3, 0, 100);
-  if (fx.rating > 0 && p.injured <= 0) {
-    state.career.season.apps++;
-    state.career.total.apps++;
-    state.career.season.ratingSum += fx.rating;
-    state.career.season.pts += (fx.rating - 5) * 8;
-  }
+  applyPerformance(state, fx, { goals, assists, rating: fx.rating, canPlay }, { sim: true });
   return { ok: true, fx };
 }
 
@@ -2009,8 +2051,8 @@ function autoSimRemaining(state, r) {
 
 function monthlyRecovery(state, r) {
   const p = state.player;
-  // energia
-  p.energy = clamp(p.energy + 35, 0, 100);
+  // energia (recuperação maior para aguentar 4-6 jogos por mês)
+  p.energy = clamp(p.energy + 45, 0, 100);
   // forma tende ao overall base
   if (p.injured > 0) {
     p.form = clamp(p.form - 3, 10, 99);

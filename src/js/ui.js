@@ -46,6 +46,7 @@ const P = {
   pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6L22 7"/>',
   bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  phone: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
   plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/>',
   award: '<circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/>',
   alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
@@ -217,6 +218,7 @@ const NAV_MAIN = [
   { route: 'match', icon: 'play', key: 'play' },
   { route: 'career', icon: 'chart', key: 'career' },
   { route: 'market', icon: 'cart', key: 'market' },
+  { route: 'phone', icon: 'phone', key: 'phone' },
   { route: 'social', icon: 'users', key: 'social' },
   { route: 'immersion', icon: 'globe', key: 'immersion' },
   { route: 'family', icon: 'heart', key: 'family' },
@@ -261,7 +263,7 @@ function renderChrome(active) {
     { route: 'home', icon: 'home', key: 'home' },
     { route: 'training', icon: 'whistle', key: 'training' },
     { route: 'match', icon: 'play', key: 'play', play: true },
-    { route: 'social', icon: 'users', key: 'social' },
+    { route: 'phone', icon: 'phone', key: 'phone' },
     { route: '__more', icon: 'menu', key: 'more' },
   ];
   document.getElementById('tabbar').innerHTML = tabs.map((tb) => {
